@@ -1,0 +1,35 @@
+2024-07-11T22:36:14.342+03:00  INFO 9256 --- [zoomos_v2] [main] by.zoomos_v2.ZoomosV2Application         : Starting ZoomosV2Application using Java 17.0.3.1 with PID 9256 (D:\project\zoomos_v2\target\classes started by dima2 in D:\project\zoomos_v2)
+2024-07-11T22:36:14.346+03:00  INFO 9256 --- [zoomos_v2] [main] by.zoomos_v2.ZoomosV2Application         : No active profile set, falling back to 1 default profile: "default"
+2024-07-11T22:36:15.123+03:00  INFO 9256 --- [zoomos_v2] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-07-11T22:36:15.177+03:00  INFO 9256 --- [zoomos_v2] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 46 ms. Found 1 JPA repository interface.
+2024-07-11T22:36:15.678+03:00  INFO 9256 --- [zoomos_v2] [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2024-07-11T22:36:15.689+03:00  INFO 9256 --- [zoomos_v2] [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2024-07-11T22:36:15.689+03:00  INFO 9256 --- [zoomos_v2] [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.25]
+2024-07-11T22:36:15.740+03:00  INFO 9256 --- [zoomos_v2] [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2024-07-11T22:36:15.741+03:00  INFO 9256 --- [zoomos_v2] [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1331 ms
+2024-07-11T22:36:15.904+03:00  INFO 9256 --- [zoomos_v2] [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-07-11T22:36:15.991+03:00  INFO 9256 --- [zoomos_v2] [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-07-11T22:36:16.035+03:00  INFO 9256 --- [zoomos_v2] [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2024-07-11T22:36:16.467+03:00  INFO 9256 --- [zoomos_v2] [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-07-11T22:36:16.505+03:00  INFO 9256 --- [zoomos_v2] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2024-07-11T22:36:16.667+03:00  INFO 9256 --- [zoomos_v2] [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@141aba65
+2024-07-11T22:36:16.668+03:00  INFO 9256 --- [zoomos_v2] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2024-07-11T22:36:16.720+03:00  WARN 9256 --- [zoomos_v2] [main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2024-07-11T22:36:17.716+03:00  INFO 9256 --- [zoomos_v2] [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-07-11T22:36:17.795+03:00  INFO 9256 --- [zoomos_v2] [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-07-11T22:36:18.028+03:00  WARN 9256 --- [zoomos_v2] [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2024-07-11T22:36:18.200+03:00  WARN 9256 --- [zoomos_v2] [main] o.thymeleaf.templatemode.TemplateMode    : [THYMELEAF][main] Unknown Template Mode 'HTML5'. Must be one of: 'HTML', 'XML', 'TEXT', 'JAVASCRIPT', 'CSS', 'RAW'. Using default Template Mode 'HTML'.
+2024-07-11T22:36:18.416+03:00  INFO 9256 --- [zoomos_v2] [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2024-07-11T22:36:18.426+03:00  INFO 9256 --- [zoomos_v2] [main] by.zoomos_v2.ZoomosV2Application         : Started ZoomosV2Application in 4.752 seconds (process running for 5.883)
+2024-07-11T22:36:24.928+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-07-11T22:36:24.928+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2024-07-11T22:36:24.929+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2024-07-11T22:36:30.070+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-2] b.z.controller.CustomerController        : Customer saved successfully: Customer(id=1, name=Азбука, files=null)
+2024-07-11T22:36:34.887+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-6] b.z.controller.CustomerController        : Customer saved successfully: Customer(id=2, name=Азбука1, files=null)
+2024-07-11T22:36:42.025+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-9] b.z.controller.CustomerController        : Customer saved successfully: Customer(id=3, name=Азбука2, files=null)
+2024-07-11T22:36:43.400+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-1] b.z.controller.CustomerController        : Customer deleted successfully: Customer(id=3, name=Азбука2, files=[])
+2024-07-11T22:36:44.159+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-2] b.z.controller.CustomerController        : Customer deleted successfully: Customer(id=2, name=Азбука1, files=[])
+2024-07-11T22:36:44.789+03:00  INFO 9256 --- [zoomos_v2] [http-nio-8080-exec-5] b.z.controller.CustomerController        : Customer deleted successfully: Customer(id=1, name=Азбука, files=[])
+2024-07-11T22:41:36.965+03:00  INFO 9256 --- [zoomos_v2] [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2024-07-11T22:41:36.968+03:00  INFO 9256 --- [zoomos_v2] [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2024-07-11T22:41:36.975+03:00  INFO 9256 --- [zoomos_v2] [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
