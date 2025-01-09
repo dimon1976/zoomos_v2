@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройки клиента</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" />
+</head>
+<body>
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+<div th:replace="~{fragments/navbar :: shop_navbar}"></div>
+
+<div class="client-settings-container" style="padding: 20px;">
+    <h1 th:text="'Настройки клиента: ' + ${client.name}"></h1>
+    <p>ID клиента: <span th:text="${client.id}"></span></p>
+    <p>Дата создания: <span th:text="${#temporals.format(client.creationDate, 'yyyy-MM-dd HH:mm')}"></span></p>
+
+    <!-- Здесь можно добавить форму для редактирования данных клиента, если это необходимо -->
+    <!-- <form th:action="@{'/clients/' + ${client.name} + '/update'}" method="post">
+        <label for="clientName">Название клиента:</label>
+        <input type="text" id="clientName" name="name" th:value="${client.name}">
+        <button type="submit">Обновить</button>
+    </form> -->
+
+    <a href="/clients">Вернуться к списку клиентов</a>
+</div>
+
+</body>
+</html>

@@ -1,12 +1,18 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Home</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoomos v2 - Главная</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" />
 </head>
 <body>
-<h1>Home</h1>
-<nav>
-    <a href="/customers">Manage Customers</a>
-</nav>
+<div th:replace="~{/fragments/navbar :: navbar}"></div>
+
+<div class="main-content">
+    <h1>Добро пожаловать на Zoomos v2</h1>
+    <p>Здесь будет основное содержание вашей главной страницы.</p>
+</div>
+
 </body>
 </html>

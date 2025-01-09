@@ -1,0 +1,29 @@
+<!-- navbar.html -->
+<div th:fragment="navbar">
+    <div class="navbar-container">
+        <ul class="navbar-nav">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/clients">Клиенты</a></li>
+            <li><a href="/tools">Инструменты</a></li>
+        </ul>
+        <div class="search-container">
+            <form th:action="@{/search}" method="get">
+                <input type="text" placeholder="Поиск.." name="query">
+                <button type="submit"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+    </div>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w==" crossorigin="anonymous" />
+</div>
+
+<div th:fragment="shop_navbar">
+    <div class="shop_navbar-container">
+        <ul class="shop_navbar-nav">
+            <li><a th:href="${'/shop/' + client.name + '/settings'}">Настройки</a></li>
+            <li><a th:href="${'/shop/' + client.name + '/upload'}">Загрузка</a></li>
+            <li><a th:href="${'/shop/' + client.name + '/download'}">Выкачка</a></li>
+            <li><a th:href="${'/shop/' + client.name + '/tools'}">Инструменты</a></li>
+            <li><a th:href="${'/shop/' + client.name + '/stats'}">Статистика</a></li>
+        </ul>
+    </div>
+</div>

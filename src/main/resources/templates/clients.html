@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Клиенты</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" />
+</head>
+<body>
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<h1>Клиенты</h1>
+
+<div class="search-add-row">
+    <form th:action="@{/clients/search}" method="get">
+        <input type="text" name="name" placeholder="Поиск по имени" th:value="${param.name}">
+        <button type="submit">Искать</button>
+    </form>
+    <form th:action="@{/clients/add}" method="post">
+        <input type="text" name="name" placeholder="Имя клиента">
+        <button type="submit">Добавить</button>
+    </form>
+</div>
+
+<div class="error-message" th:if="${error}" th:text="${error}"></div>
+
+<table>
+    <thead>
+    <tr>
+        <th>Название</th>
+        <th>Дата создания</th>
+        <th>ID</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="client : ${clients}">
+        <td><a th:href="${'/shop/' + client.name + '/settings'}" th:text="${client.name}"></a></td>
+        <td th:text="${#temporals.format(client.creationDate, 'yyyy-MM-dd HH:mm')} ?: 'Не указана'"></td>
+        <td th:text="${client.id}"></td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
