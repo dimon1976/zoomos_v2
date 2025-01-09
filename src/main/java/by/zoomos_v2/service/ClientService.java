@@ -1,5 +1,6 @@
 package by.zoomos_v2.service;
 
+import by.zoomos_v2.model.AvFileEntity;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.repository.ClientRepository;
 import org.slf4j.Logger;
@@ -19,7 +20,7 @@ public class ClientService {
         this.clientRepository = clientRepository;
     }
 
-    public Client addClient(String name) {
+    public Client addClient(String name, String entityType) {
         if (clientRepository.findByName(name).isPresent()) {
             logger.warn("Attempt to add existing client: {}", name);
             throw new IllegalArgumentException("Client with name " + name + " already exists");

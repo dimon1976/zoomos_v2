@@ -13,7 +13,9 @@
 
 <div class="container mt-5">
     <h2 th:text="'Настройки загрузки файлов для клиента: ' + ${clientName}"></h2>
-    <form th:action="@{'/shop/' + ${clientName} + '/mapping/add-config'}" method="post" class="mb-4">
+
+    <!-- Форма для добавления новой настройки -->
+    <form th:action="@{'/shop/' + ${clientName} + '/mapping'}" method="get" class="mb-4">
         <div class="mb-3">
             <label for="configName" class="form-label">Название настройки</label>
             <input type="text" class="form-control" id="configName" name="configName" required>
@@ -35,11 +37,13 @@
             <td th:text="${iterStat.count}"></td>
             <td th:text="${config.name}"></td>
             <td>
+                <!-- Форма загрузки файла для конфигурации -->
                 <form th:action="@{'/shop/' + ${clientName} + '/upload-file'}" method="post" enctype="multipart/form-data" class="d-inline">
                     <input type="file" name="file" class="form-control d-inline" style="width: auto;" required>
                     <input type="hidden" name="configId" th:value="${config.id}">
                     <button type="submit" class="btn btn-success">Загрузить</button>
                 </form>
+                <!-- Кнопки для редактирования и удаления конфигурации -->
                 <a th:href="@{'/shop/' + ${clientName} + '/edit-config/' + ${config.id}}" class="btn btn-warning">Редактировать</a>
                 <a th:href="@{'/shop/' + ${clientName} + '/delete-config/' + ${config.id}}" class="btn btn-danger">Удалить</a>
             </td>

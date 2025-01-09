@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Entity
@@ -30,9 +29,6 @@ public class FileMetaData {
     @ManyToOne
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
-
-    @OneToMany(mappedBy = "fileMetadata", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<FileFieldData> fileFieldDataList;
 
     public FileMetaData() {
 

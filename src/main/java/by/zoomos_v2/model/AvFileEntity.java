@@ -1,13 +1,11 @@
 package by.zoomos_v2.model;
 
-import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import lombok.Data;
 
 @Data
 @Entity
-@DiscriminatorValue("av.ru") // Указываем тип для отличия сущности
-public class AvFileEntity extends BaseFileEntity{
+public class AvFileEntity extends ProductEntity {
 
     private String competitorStatus;
     private String parseDate;
