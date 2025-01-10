@@ -30,7 +30,7 @@ public class MappingConfigService {
 
     // Сохранить новый маппинг
     public void saveMappingConfig(Client client, String configName, String type, String mappingJson) {
-        // Проверяем, не существует ли уже такого маппинга для клиента
+        // Проверяем, не существует ли уже такого маппинга для клиента с таким типом
         ClientMappingConfig existingConfig = clientMappingConfigRepository.findByClientId(client.getId())
                 .stream()
                 .filter(c -> c.getType().equals(type))

@@ -53,28 +53,31 @@ public class ClientMappingController {
             return "error";  // Шаблон ошибки
         }
 
-        // Сохраняем новый маппинг с указанным названием
-        mappingConfigService.saveMappingConfig(client, configName, type, mappingJson);
-        model.addAttribute("success", "Mapping configuration saved successfully.");
-        return "redirect:/shop/{clientName}/mapping";  // Перенаправление на страницу маппинга клиента
+        try {
+            // Сохраняем новый маппинг с указанным названием
+            mappingConfigService.saveMappingConfig(client, configName, type, mappingJson);
+            model.addAttribute("success", "Mapping configuration saved successfully.");
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());  // Обрабатываем ошибку, если конфигурация уже существует
+            return "edit-mapping";  // Возвращаем на страницу маппинга с ошибкой
+        }
+
+        return "redirect:/shop/{clientName}/upload";  // Перенаправление на страницу маппинга клиента
     }
 
-    // Редактирование маппинга для конкретного типа
-    @GetMapping("/edit/{type}")
-    public String editMappingConfig(@PathVariable String clientName, @PathVariable String type, Model model) {
-        Client client = clientService.getClientByName(clientName);  // Ищем клиента по имени
+    // Переход к редактированию нового маппинга (поле для ввода названия)
+    @PostMapping("/edit")
+    public String editMappingConfig(@PathVariable String clientName, Model model) {
+        Client client = clientService.getClientByName(clientName);
 
         if (client == null) {
             model.addAttribute("error", "Client not found");
             return "error";  // Шаблон ошибки
         }
 
-        String mappingConfig = mappingConfigService.getMappingConfigByType(client.getId(), type);
-
+        // Отправляем форму для ввода данных нового маппинга
         model.addAttribute("client", client);
-        model.addAttribute("type", type);
-        model.addAttribute("mappingConfig", mappingConfig);
-        return "edit-mapping";  // Шаблон для редактирования конкретного маппинга
+        return "edit-mapping";  // Шаблон для редактирования конфигурации
     }
 
     // Обновление маппинга для конкретного типа
@@ -91,7 +94,7 @@ public class ClientMappingController {
 
         mappingConfigService.updateMappingConfig(client.getId(), type, configName, mappingJson);
         model.addAttribute("success", "Mapping configuration updated successfully.");
-        return "redirect:/shop/{clientName}/mapping";  // Перенаправление на страницу маппинга клиента
+        return "redirect:/shop/{clientName}/upload";  // Перенаправление на страницу маппинга клиента
     }
 
     // Удаление маппинга
@@ -106,6 +109,6 @@ public class ClientMappingController {
 
         mappingConfigService.deleteMappingConfig(configId);
         model.addAttribute("success", "Mapping configuration deleted successfully.");
-        return "redirect:/shop/{clientName}/mapping";  // Перенаправление на страницу с маппингами
+        return "redirect:/shop/{clientName}/upload";  // Перенаправление на страницу с маппингами
     }
 }

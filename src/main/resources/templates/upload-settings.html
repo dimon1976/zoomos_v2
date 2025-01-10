@@ -14,13 +14,9 @@
 <div class="container mt-5">
     <h2 th:text="'Настройки загрузки файлов для клиента: ' + ${clientName}"></h2>
 
-    <!-- Форма для добавления новой настройки -->
-    <form th:action="@{'/shop/' + ${clientName} + '/mapping'}" method="get" class="mb-4">
-        <div class="mb-3">
-            <label for="configName" class="form-label">Название настройки</label>
-            <input type="text" class="form-control" id="configName" name="configName" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Добавить настройку</button>
+    <!-- Форма для добавления новой настройки маппинга -->
+    <form th:action="@{'/shop/' + ${clientName} + '/mapping/edit'}" method="post" class="mb-4">
+        <button type="submit" class="btn btn-primary">Добавить новую настройку</button>
     </form>
 
     <h3>Список настроек</h3>
@@ -44,8 +40,8 @@
                     <button type="submit" class="btn btn-success">Загрузить</button>
                 </form>
                 <!-- Кнопки для редактирования и удаления конфигурации -->
-                <a th:href="@{'/shop/' + ${clientName} + '/edit-config/' + ${config.id}}" class="btn btn-warning">Редактировать</a>
-                <a th:href="@{'/shop/' + ${clientName} + '/delete-config/' + ${config.id}}" class="btn btn-danger">Удалить</a>
+                <a th:href="@{'/shop/' + ${clientName} + '/mapping/edit/' + ${config.id}}" class="btn btn-warning">Редактировать</a>
+                <a th:href="@{'/shop/' + ${clientName} + '/mapping/delete/' + ${config.id}}" class="btn btn-danger">Удалить</a>
             </td>
         </tr>
         </tbody>
