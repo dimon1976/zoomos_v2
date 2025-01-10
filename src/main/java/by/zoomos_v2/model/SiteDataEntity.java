@@ -1,5 +1,6 @@
 package by.zoomos_v2.model;
 
+import by.zoomos_v2.annotations.FieldDescription;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,11 +14,17 @@ public class SiteDataEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String siteName;      // Название сайта
-    private String price;         // Цена товара
-    private String competitorPrice; // Цена конкурента
-    private String stockStatus;   // Статус наличия товара (в наличии, нет в наличии)
-    private String promotionalPrice; // Акционная цена
+    @FieldDescription("Название сайта")
+    private String siteName;
+    @FieldDescription("Цена товара")
+    private String price;
+    @FieldDescription("Цена конкурента")
+    private String competitorPrice;
+    @FieldDescription("Статус наличия товара")
+    private String stockStatus;
+    @FieldDescription("Акционная цена")
+    private String promotionalPrice;
+    @FieldDescription("не заполнять")
     private String productId;     // Ссылка на ProductEntity (по id товара)
 
     // Другие поля, специфичные для данных с сайта

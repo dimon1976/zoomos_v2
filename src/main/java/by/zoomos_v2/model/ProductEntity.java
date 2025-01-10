@@ -1,5 +1,6 @@
 package by.zoomos_v2.model;
 
+import by.zoomos_v2.annotations.FieldDescription;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -10,11 +11,17 @@ public class ProductEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
-    private String productId;  // ID товара
-    private String name;       // Наименование товара
-    private String brand;      // Бренд товара
-    private String category;   // Категория товара
-    private String description; // Описание товара
+
+    @FieldDescription("ID товара")
+    private String productId;
+    @FieldDescription("Наименование товара")
+    private String name;
+    @FieldDescription("Бренд товара")
+    private String brand;
+    @FieldDescription("Категория товара")
+    private String category;
+    @FieldDescription("Описание товара")
+    private String description;
     // Другие поля, специфичные для товара
 }
 

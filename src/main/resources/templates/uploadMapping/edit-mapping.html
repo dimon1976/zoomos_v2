@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование маппинга</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}" />
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+<div th:replace="~{fragments/navbar :: shop_navbar}"></div>
+<h1>Редактирование конфигурации маппинга для клиента: <span th:text="${client.name}"></span></h1>
+
+<!-- Форма для редактирования маппинга -->
+<form th:action="@{'/shop/' + ${clientName} + '/mapping/edit/' + ${config.id}}" method="post">
+    <input type="hidden" name="entityType" th:value="${entityType}"/>
+
+    <div class="mb-3">
+        <label for="configName" class="form-label">Название конфигурации</label>
+        <input type="text" id="configName" name="configName" class="form-control" th:value="${config.name}" required/>
+    </div>
+
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Поле</th>
+            <th>Описание</th>
+            <th>Заголовок</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="entry : ${fieldDescriptions}">
+            <td th:text="${entry.key}"></td>
+            <td th:text="${entry.value}"></td>
+            <td>
+<!--                <input type="text" th:name="${entry.key}" class="form-control" th:value="${entry.value}"/>-->
+                <input type="text" th:name="${mappingHeaders[${entry.key}]}" class="form-control"
+                       th:value="${mappingHeaders[entry.value]}"/>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+</form>
+
+
+<a href="#" th:href="@{'/shop/' + ${client.name} + '/upload'}" class="btn btn-secondary">Назад</a>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package by.zoomos_v2.service;
 
+import by.zoomos_v2.annotations.FieldDescription;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
@@ -7,7 +8,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class MappingConfigService {
@@ -30,23 +34,14 @@ public class MappingConfigService {
 
     // Сохранить новый маппинг
     public void saveMappingConfig(Client client, String configName, String type, String mappingJson) {
-        // Проверяем, не существует ли уже такого маппинга для клиента с таким типом
-        ClientMappingConfig existingConfig = clientMappingConfigRepository.findByClientId(client.getId())
-                .stream()
-                .filter(c -> c.getType().equals(type))
-                .findFirst()
-                .orElse(null);
-
-        if (existingConfig != null) {
-            throw new IllegalArgumentException("Mapping configuration for this type already exists.");
-        }
-
         // Создаем новый маппинг
         ClientMappingConfig config = new ClientMappingConfig();
         config.setClient(client);
         config.setName(configName);  // Устанавливаем имя конфигурации
         config.setType(type);
         config.setMappingData(mappingJson);
+
+        // Сохраняем конфигурацию, даже если она уже существует для этого типа
         clientMappingConfigRepository.save(config);
     }
 
@@ -83,5 +78,22 @@ public class MappingConfigService {
         ClientMappingConfig config = clientMappingConfigRepository.findById(configId)
                 .orElseThrow(() -> new IllegalArgumentException("Mapping configuration not found."));
         clientMappingConfigRepository.delete(config);
+    }
+
+    // метод для получения полей сущности с учётом аннотаций
+    public Map<String, String> getEntityFieldDescriptions(Class<?> entityClass) {
+        Map<String, String> fieldDescriptions = new LinkedHashMap<>();
+
+        for (Field field : entityClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(FieldDescription.class)) {
+                FieldDescription annotation = field.getAnnotation(FieldDescription.class);
+                fieldDescriptions.put(field.getName(), annotation.value());
+            } else {
+                // Если аннотация отсутствует, используем имя поля
+                fieldDescriptions.put(field.getName(), field.getName());
+            }
+        }
+
+        return fieldDescriptions;
     }
 }

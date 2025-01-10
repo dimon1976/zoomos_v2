@@ -1,5 +1,6 @@
 package by.zoomos_v2.model;
 
+import by.zoomos_v2.annotations.FieldDescription;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,8 +14,11 @@ public class RegionDataEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String region;       // Регион (город, область)
-    private String address;      // Адрес
+    @FieldDescription("Регион (город, область)")
+    private String region;
+    @FieldDescription("Адрес")
+    private String address;
+    @FieldDescription("не заполнять")
     private String productId;    // Ссылка на ProductEntity (по id товара)
 
     // Другие поля, специфичные для региональных данных

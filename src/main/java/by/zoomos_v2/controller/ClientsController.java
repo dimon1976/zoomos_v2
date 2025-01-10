@@ -20,7 +20,7 @@ public class ClientsController {
     public String listClients(Model model) {
         List<Client> clients = clientService.getAllClients();
         model.addAttribute("clients", clients);
-        return "clients";
+        return "/client/clients";
     }
 
     @PostMapping("/add")
@@ -33,7 +33,7 @@ public class ClientsController {
             return "redirect:/clients";
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
-            return "clients";
+            return "/client/clients";
         }
     }
 
@@ -42,10 +42,10 @@ public class ClientsController {
         try {
             Client client = clientService.getClientByName(name);
             model.addAttribute("client", client);
-            return "clients";
+            return "/client/clients";
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
-            return "clients";
+            return "/client/clients";
         }
     }
 }

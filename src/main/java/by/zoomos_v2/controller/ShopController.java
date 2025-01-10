@@ -31,7 +31,7 @@ public class ShopController {
         try {
             Client client = clientService.getClientByName(clientName);
             model.addAttribute("client", client);
-            return "client-settings"; // Шаблон настроек клиента
+            return "/client/client-settings"; // Шаблон настроек клиента
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", "Клиент не найден");
             return "error"; // Шаблон ошибки
@@ -54,6 +54,6 @@ public class ShopController {
         // Добавляем в модель
         model.addAttribute("client", client);
         model.addAttribute("configurations", mappingConfigs); // Передаем список маппингов
-        return "upload-settings"; // Шаблон с настройками загрузки
+        return "/client/upload-settings"; // Шаблон с настройками загрузки
     }
 }
