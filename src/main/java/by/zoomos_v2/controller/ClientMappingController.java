@@ -2,12 +2,10 @@ package by.zoomos_v2.controller;
 
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
-import by.zoomos_v2.model.ProductEntity;
-import by.zoomos_v2.model.RegionDataEntity;
-import by.zoomos_v2.model.SiteDataEntity;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
 import by.zoomos_v2.service.ClientService;
 import by.zoomos_v2.service.MappingConfigService;
+import by.zoomos_v2.util.EntityRegistryService;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,12 +20,19 @@ import java.util.Map;
 @RequestMapping("/shop/{clientName}/mapping")
 public class ClientMappingController {
 
+
+    private final MappingConfigService mappingConfigService;
+    private final ClientMappingConfigRepository clientMappingConfigRepository;
+    private final ClientService clientService;
+    private final EntityRegistryService entityRegistryService;
+
     @Autowired
-    private MappingConfigService mappingConfigService;
-    @Autowired
-    private ClientMappingConfigRepository clientMappingConfigRepository;
-    @Autowired
-    private ClientService clientService;
+    public ClientMappingController(MappingConfigService mappingConfigService, ClientMappingConfigRepository clientMappingConfigRepository, ClientService clientService, EntityRegistryService entityRegistryService) {
+        this.mappingConfigService = mappingConfigService;
+        this.clientMappingConfigRepository = clientMappingConfigRepository;
+        this.clientService = clientService;
+        this.entityRegistryService = entityRegistryService;
+    }
 
 
     // Сохранение нового маппинга для клиента
@@ -66,7 +71,7 @@ public class ClientMappingController {
         }
 
         // Получаем объединенные поля для всех фиксированных сущностей
-        List<Class<?>> entityClasses = mappingConfigService.getEntityClasses();
+        List<Class<?>> entityClasses = entityRegistryService.getEntityClasses();
         Map<String, String> fieldDescriptions = mappingConfigService.getCombinedEntityFieldDescriptions(entityClasses);
 
         // Отправляем форму для ввода данных нового маппинга
@@ -98,7 +103,7 @@ public class ClientMappingController {
 
 
         // Получаем объединенные поля для всех фиксированных сущностей
-        List<Class<?>> entityClasses = mappingConfigService.getEntityClasses();
+        List<Class<?>> entityClasses = entityRegistryService.getEntityClasses();
         Map<String, String> fieldDescriptions = mappingConfigService.getCombinedEntityFieldDescriptions(entityClasses);
 
         // Отправляем форму для ввода данных нового маппинга
@@ -112,7 +117,6 @@ public class ClientMappingController {
     // Обновление маппинга по ID
     @PostMapping("/edit/{configId}")
     public String editMappingConfig(@PathVariable String clientName,
-                                    @RequestParam String configName,
                                     @PathVariable Long configId,
                                     @RequestParam Map<String, String> mappingHeaders,
                                     Model model) {

@@ -13,8 +13,12 @@ import java.util.List;
 @RequestMapping("/clients")
 public class ClientsController {
 
+    private final ClientService clientService;
+
     @Autowired
-    private ClientService clientService;
+    public ClientsController(ClientService clientService) {
+        this.clientService = clientService;
+    }
 
     @GetMapping
     public String listClients(Model model) {

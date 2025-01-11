@@ -1,15 +1,14 @@
 package by.zoomos_v2.model;
 
 import by.zoomos_v2.annotations.FieldDescription;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Setter
+@Getter
 @Entity
-public class RegionDataEntity {
+public class RegionData {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @FieldDescription("пропустить")
@@ -18,9 +17,13 @@ public class RegionDataEntity {
     @FieldDescription("Регион (город, область)")
     private String region;
     @FieldDescription("Адрес")
-    private String address;
+    private String regionAddress;
+
+    // Ссылка на продукт
+    @ManyToOne
+    @JoinColumn(name = "product_id", nullable = false)
     @FieldDescription("пропустить")
-    private String productId;    // Ссылка на ProductEntity (по id товара)
+    private Product product;
 
     // Другие поля, специфичные для региональных данных
 }

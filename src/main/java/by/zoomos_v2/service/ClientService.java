@@ -1,6 +1,5 @@
 package by.zoomos_v2.service;
 
-import by.zoomos_v2.model.AvFileEntity;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.repository.ClientRepository;
 import org.slf4j.Logger;

@@ -3,11 +3,11 @@ package by.zoomos_v2.service;
 import by.zoomos_v2.annotations.FieldDescription;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
-import by.zoomos_v2.model.ProductEntity;
-import by.zoomos_v2.model.RegionDataEntity;
-import by.zoomos_v2.model.SiteDataEntity;
+import by.zoomos_v2.model.Product;
+import by.zoomos_v2.model.RegionData;
+import by.zoomos_v2.model.SiteData;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import by.zoomos_v2.util.EntityRegistryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,14 +20,13 @@ import java.util.Map;
 @Service
 public class MappingConfigService {
 
-    @Autowired
-    private ClientMappingConfigRepository clientMappingConfigRepository;
+    private final ClientMappingConfigRepository clientMappingConfigRepository;
+    private final EntityRegistryService entityRegistryService;
 
     @Autowired
-    private ObjectMapper objectMapper; // Для преобразования JSON в объекты и обратно
-
-    public List<Class<?>> getEntityClasses() {
-        return Arrays.asList(ProductEntity.class, RegionDataEntity.class, SiteDataEntity.class);
+    public MappingConfigService(ClientMappingConfigRepository clientMappingConfigRepository, EntityRegistryService entityRegistryService) {
+        this.clientMappingConfigRepository = clientMappingConfigRepository;
+        this.entityRegistryService = entityRegistryService;
     }
 
     // Получить все маппинги для клиента по ID
@@ -85,6 +84,12 @@ public class MappingConfigService {
         clientMappingConfigRepository.delete(config);
     }
 
+    // Получить конфигурацию маппинга по ID
+    public ClientMappingConfig getConfigById(Long configId) {
+        return clientMappingConfigRepository.findById(configId)
+                .orElseThrow(() -> new IllegalArgumentException("Mapping configuration not found."));
+    }
+
     // метод для получения полей сущности с учётом аннотаций
     public Map<String, String> getEntityFieldDescriptions(Class<?> entityClass) {
         Map<String, String> fieldDescriptions = new LinkedHashMap<>();
@@ -92,7 +97,7 @@ public class MappingConfigService {
         for (Field field : entityClass.getDeclaredFields()) {
             if (field.isAnnotationPresent(FieldDescription.class)) {
                 FieldDescription annotation = field.getAnnotation(FieldDescription.class);
-                if(!annotation.value().equals("пропустить")){
+                if (!annotation.value().equals("пропустить")) {
                     fieldDescriptions.put(field.getName(), annotation.value());
                 }
             } else {
@@ -102,6 +107,7 @@ public class MappingConfigService {
         }
         return fieldDescriptions;
     }
+
     // метод для получения полей всех сущностей с учётом аннотаций
     public Map<String, String> getCombinedEntityFieldDescriptions(List<Class<?>> entityClasses) {
         Map<String, String> combinedFields = new LinkedHashMap<>();

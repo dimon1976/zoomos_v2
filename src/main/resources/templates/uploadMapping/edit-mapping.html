@@ -12,7 +12,6 @@
 
 <!-- Форма для редактирования маппинга -->
 <form th:action="@{'/shop/' + ${clientName} + '/mapping/edit/' + ${config.id}}" method="post">
-    <input type="hidden" name="entityType" th:value="${entityType}"/>
 
     <div class="mb-3">
         <label for="configName" class="form-label">Название конфигурации</label>
@@ -31,7 +30,6 @@
         <tr th:each="entry : ${fieldDescriptions}">
             <td th:text="${entry.key}"></td>
             <td th:text="${entry.value}"></td>
-            <!--                <input type="text" th:name="${entry.key}" class="form-control" th:value="${entry.value}"/>-->
             <td>
                 <input type="text"
                        th:name="${entry.key}"

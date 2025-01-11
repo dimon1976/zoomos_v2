@@ -1,11 +1,16 @@
 package by.zoomos_v2.model;
 
-import jakarta.persistence.Entity;
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
-@Entity
-public class AvFileEntity extends ProductEntity {
+@Setter
+@Getter
+public class AvFile {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
+    private Long id;
 
     private String competitorStatus;
     private String parseDate;
@@ -27,5 +32,4 @@ public class AvFileEntity extends ProductEntity {
     private String promotionalPrice;// Цена акционная\по карте
     private String analog;// Аналог
     private String note;// Примечание
-
 }

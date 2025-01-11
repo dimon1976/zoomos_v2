@@ -1,11 +1,11 @@
 package by.zoomos_v2.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-import java.time.LocalDateTime;
-
-@Data
+@Setter
+@Getter
 @Entity
 public class FileMetaData {
 
@@ -29,11 +29,4 @@ public class FileMetaData {
     @ManyToOne
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
-
-    public FileMetaData() {
-
-    }
-
-    public FileMetaData(String fileName, String s, String s1, LocalDateTime now, Long fileSize, String fileHash) {
-    }
 }

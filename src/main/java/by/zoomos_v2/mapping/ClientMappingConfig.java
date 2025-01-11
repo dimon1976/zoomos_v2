@@ -2,9 +2,9 @@ package by.zoomos_v2.mapping;
 
 import by.zoomos_v2.model.Client;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Entity
 public class ClientMappingConfig {
     @Id
@@ -20,4 +20,26 @@ public class ClientMappingConfig {
 
     @Column(name = "mapping_data", columnDefinition = "TEXT")
     private String mappingData;  // Храним конфигурацию в виде JSON-строки
+
+    public void setEntityType(String entityType) {
+        this.entityType = entityType;
+    }
+
+    private String entityType; // Тип сущности: Product, RegionData, SiteData и т.д.
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setMappingData(String mappingData) {
+        this.mappingData = mappingData;
+    }
 }

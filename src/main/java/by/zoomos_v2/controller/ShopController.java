@@ -3,11 +3,13 @@ package by.zoomos_v2.controller;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.service.ClientService;
-import by.zoomos_v2.service.ConfigurationService;
 import by.zoomos_v2.service.MappingConfigService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.List;
 
@@ -18,7 +20,7 @@ public class ShopController {
     private final ClientService clientService;
     private final MappingConfigService mappingConfigService;
 
-
+    @Autowired
     public ShopController(ClientService clientService, MappingConfigService mappingConfigService) {
         this.clientService = clientService;
         this.mappingConfigService = mappingConfigService;
