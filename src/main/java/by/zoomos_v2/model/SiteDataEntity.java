@@ -12,6 +12,7 @@ import lombok.Data;
 public class SiteDataEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @FieldDescription("пропустить")
     private Long id;
 
     @FieldDescription("Название сайта")
@@ -24,7 +25,7 @@ public class SiteDataEntity {
     private String stockStatus;
     @FieldDescription("Акционная цена")
     private String promotionalPrice;
-    @FieldDescription("не заполнять")
+    @FieldDescription("пропустить")
     private String productId;     // Ссылка на ProductEntity (по id товара)
 
     // Другие поля, специфичные для данных с сайта

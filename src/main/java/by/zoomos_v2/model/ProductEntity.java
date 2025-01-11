@@ -10,6 +10,7 @@ public class ProductEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
+    @FieldDescription("пропустить")
     private Long id;
 
     @FieldDescription("ID товара")

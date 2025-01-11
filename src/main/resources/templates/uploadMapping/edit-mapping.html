@@ -31,10 +31,12 @@
         <tr th:each="entry : ${fieldDescriptions}">
             <td th:text="${entry.key}"></td>
             <td th:text="${entry.value}"></td>
+            <!--                <input type="text" th:name="${entry.key}" class="form-control" th:value="${entry.value}"/>-->
             <td>
-<!--                <input type="text" th:name="${entry.key}" class="form-control" th:value="${entry.value}"/>-->
-                <input type="text" th:name="${mappingHeaders[${entry.key}]}" class="form-control"
-                       th:value="${mappingHeaders[entry.value]}"/>
+                <input type="text"
+                       th:name="${entry.key}"
+                       class="form-control"
+                       th:value="${mappingHeaders[entry.key]}"/> <!-- Значение из mappingHeaders -->
             </td>
         </tr>
         </tbody>

@@ -12,13 +12,14 @@ import lombok.Data;
 public class RegionDataEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @FieldDescription("пропустить")
     private Long id;
 
     @FieldDescription("Регион (город, область)")
     private String region;
     @FieldDescription("Адрес")
     private String address;
-    @FieldDescription("не заполнять")
+    @FieldDescription("пропустить")
     private String productId;    // Ссылка на ProductEntity (по id товара)
 
     // Другие поля, специфичные для региональных данных

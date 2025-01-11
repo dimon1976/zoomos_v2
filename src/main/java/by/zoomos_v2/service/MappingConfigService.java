@@ -87,7 +87,9 @@ public class MappingConfigService {
         for (Field field : entityClass.getDeclaredFields()) {
             if (field.isAnnotationPresent(FieldDescription.class)) {
                 FieldDescription annotation = field.getAnnotation(FieldDescription.class);
-                fieldDescriptions.put(field.getName(), annotation.value());
+                if(!annotation.value().equals("пропустить")){
+                    fieldDescriptions.put(field.getName(), annotation.value());
+                }
             } else {
                 // Если аннотация отсутствует, используем имя поля
                 fieldDescriptions.put(field.getName(), field.getName());
