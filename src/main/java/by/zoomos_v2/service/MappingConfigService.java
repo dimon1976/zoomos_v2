@@ -3,12 +3,16 @@ package by.zoomos_v2.service;
 import by.zoomos_v2.annotations.FieldDescription;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
+import by.zoomos_v2.model.ProductEntity;
+import by.zoomos_v2.model.RegionDataEntity;
+import by.zoomos_v2.model.SiteDataEntity;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +25,10 @@ public class MappingConfigService {
 
     @Autowired
     private ObjectMapper objectMapper; // Для преобразования JSON в объекты и обратно
+
+    public List<Class<?>> getEntityClasses() {
+        return Arrays.asList(ProductEntity.class, RegionDataEntity.class, SiteDataEntity.class);
+    }
 
     // Получить все маппинги для клиента по ID
     public List<ClientMappingConfig> getAllMappingConfigsForClient(Long clientId) {
