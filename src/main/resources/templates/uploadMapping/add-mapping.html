@@ -16,7 +16,6 @@
 
     <!-- Форма для редактирования маппинга -->
     <form th:action="@{'/shop/' + ${client.name} + '/mapping/save'}" method="post">
-        <input type="hidden" name="entityType" th:value="${entityType}"/>
 
         <div class="mb-3">
             <label for="configName" class="form-label">Название конфигурации</label>

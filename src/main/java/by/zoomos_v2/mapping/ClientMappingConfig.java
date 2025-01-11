@@ -20,8 +20,4 @@ public class ClientMappingConfig {
 
     @Column(name = "mapping_data", columnDefinition = "TEXT")
     private String mappingData;  // Храним конфигурацию в виде JSON-строки
-
-    @Column(name = "type")
-    private String type;  // Тип маппинга (например, "Product", "SiteData", "Region")
-
 }

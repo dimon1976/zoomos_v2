@@ -15,7 +15,7 @@
     <h2 th:text="'Настройки загрузки файлов для клиента: ' + ${clientName}"></h2>
 
     <!-- Форма для добавления новой настройки маппинга -->
-    <form th:action="@{'/shop/' + ${clientName} + '/mapping/add?entityType=Product'}" method="post" class="mb-4">
+    <form th:action="@{'/shop/' + ${clientName} + '/mapping/add'}" method="post" class="mb-4">
         <button type="submit" class="btn btn-primary">Добавить новую настройку</button>
     </form>
 
@@ -40,7 +40,7 @@
                     <button type="submit" class="btn btn-success">Загрузить</button>
                 </form>
                 <!-- Кнопки для редактирования и удаления конфигурации -->
-                <a th:href="@{'/shop/' + ${clientName} + '/mapping/edit/' + ${config.id} + '?entityType=Product'}" class="btn btn-warning">Редактировать</a>
+                <a th:href="@{'/shop/' + ${clientName} + '/mapping/edit/' + ${config.id}}" class="btn btn-warning">Редактировать</a>
                 <a th:href="@{'/shop/' + ${clientName} + '/mapping/delete/' + ${config.id}}" class="btn btn-danger">Удалить</a>
             </td>
         </tr>

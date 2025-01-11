@@ -41,12 +41,11 @@ public class MappingConfigService {
     }
 
     // Сохранить новый маппинг
-    public void saveMappingConfig(Client client, String configName, String type, String mappingJson) {
+    public void saveMappingConfig(Client client, String configName, String mappingJson) {
         // Создаем новый маппинг
         ClientMappingConfig config = new ClientMappingConfig();
         config.setClient(client);
         config.setName(configName);  // Устанавливаем имя конфигурации
-        config.setType(type);
         config.setMappingData(mappingJson);
 
         // Сохраняем конфигурацию, даже если она уже существует для этого типа
@@ -54,21 +53,19 @@ public class MappingConfigService {
     }
 
     // Получить конфигурацию маппинга по типу для клиента
-    public String getMappingConfigByType(Long clientId, String type) {
+    public String getMappingConfigByType(Long clientId) {
         ClientMappingConfig config = clientMappingConfigRepository.findByClientId(clientId)
                 .stream()
-                .filter(c -> c.getType().equals(type))
                 .findFirst()
                 .orElse(null);
         return config != null ? config.getMappingData() : null;
     }
 
     // Обновить существующий маппинг
-    public void updateMappingConfig(Long clientId, String type, String configName, String mappingJson) {
+    public void updateMappingConfig(Long clientId, String configName, String mappingJson) {
         // Ищем конфигурацию по типу и клиенту
         ClientMappingConfig config = clientMappingConfigRepository.findByClientId(clientId)
                 .stream()
-                .filter(c -> c.getType().equals(type))
                 .findFirst()
                 .orElse(null);
 
