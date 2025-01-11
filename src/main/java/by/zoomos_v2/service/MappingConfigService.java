@@ -95,7 +95,15 @@ public class MappingConfigService {
                 fieldDescriptions.put(field.getName(), field.getName());
             }
         }
-
         return fieldDescriptions;
+    }
+    // метод для получения полей всех сущностей с учётом аннотаций
+    public Map<String, String> getCombinedEntityFieldDescriptions(List<Class<?>> entityClasses) {
+        Map<String, String> combinedFields = new LinkedHashMap<>();
+        for (Class<?> entityClass : entityClasses) {
+            Map<String, String> fieldDescriptions = getEntityFieldDescriptions(entityClass);
+            combinedFields.putAll(fieldDescriptions); // Объединяем все поля в один список
+        }
+        return combinedFields;
     }
 }
