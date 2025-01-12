@@ -35,4 +35,10 @@ public class ClientService {
     public Client getClientByName(String name) {
         return clientRepository.findByName(name).orElseThrow(() -> new IllegalArgumentException("Client not found"));
     }
+
+    public Long getClientIdByName(String name) {
+        return clientRepository.findByName(name)
+                .map(Client::getId)
+                .orElseThrow(() -> new IllegalArgumentException("Client with name '" + name + "' not found"));
+    }
 }

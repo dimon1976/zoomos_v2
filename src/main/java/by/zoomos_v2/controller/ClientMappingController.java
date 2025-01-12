@@ -1,8 +1,6 @@
 package by.zoomos_v2.controller;
 
-import by.zoomos_v2.DTO.MappingConfigDTO;
 import by.zoomos_v2.DTO.MappingFieldDTO;
-import by.zoomos_v2.config.MappingException;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
@@ -11,14 +9,9 @@ import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.util.EntityRegistryService;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -96,7 +89,7 @@ public class ClientMappingController {
         try {
             Client client = getClientOrThrow(clientName);
             ClientMappingConfig config = getMappingConfigOrThrow(configId);
-            Map<String, String> mappingHeaders = parseMappingJson(config.getMappingData());
+            Map<String, String> mappingHeaders = mappingConfigService.parseMappingJson(config.getMappingData());
             Map<String, String> fieldDescriptions = getMappingFields();
 
             model.addAttribute("client", client);
@@ -113,13 +106,11 @@ public class ClientMappingController {
     }
 
     @PostMapping("/edit/{configId}")
-    public String updateMappingConfig(@PathVariable String clientName,
-                                      @PathVariable Long configId,
+    public String updateMappingConfig(@PathVariable Long configId,
                                       @RequestParam Map<String, String> mappingHeaders,
                                       RedirectAttributes redirectAttributes,
-                                      Model model) {
+                                      Model model, @PathVariable String clientName) {
         try {
-            Client client = getClientOrThrow(clientName);
             ClientMappingConfig config = getMappingConfigOrThrow(configId);
             mappingHeaders.remove("configName");
             mappingConfigService.updateMappingConfig(configId, config.getName(), mappingHeaders);
@@ -173,7 +164,7 @@ public class ClientMappingController {
         // Преобразуем Map<String, MappingFieldDTO> в Map<String, String>
         return fieldDTOs.entrySet().stream()
                 .collect(Collectors.toMap(
-                        e -> e.getKey(),
+                        Map.Entry::getKey,
                         e -> e.getValue().getDescription(),
                         (existing, replacement) -> existing,
                         LinkedHashMap::new
@@ -186,13 +177,4 @@ public class ClientMappingController {
         return mappingConfigService.getCombinedEntityFieldDescriptions(entityClasses);
     }
 
-    private Map<String, String> parseMappingJson(String mappingJson) {
-        try {
-            return new Gson().fromJson(mappingJson,
-                    new TypeToken<Map<String, String>>(){}.getType());
-        } catch (Exception e) {
-            log.error("Error parsing mapping JSON", e);
-            throw new IllegalArgumentException("Ошибка при чтении конфигурации маппинга");
-        }
-    }
 }

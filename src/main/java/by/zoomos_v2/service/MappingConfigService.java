@@ -9,6 +9,8 @@ import by.zoomos_v2.repository.ClientMappingConfigRepository;
 import by.zoomos_v2.util.EntityRegistryService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +23,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -44,6 +45,12 @@ public class MappingConfigService {
     @Cacheable(value = "mappingConfigs", key = "#clientId")
     public List<ClientMappingConfig> getAllMappingConfigsForClient(Long clientId) {
         return clientMappingConfigRepository.findByClientId(clientId);
+    }
+
+    @Transactional
+    public ClientMappingConfig getConfigById(Long configId) {
+        return clientMappingConfigRepository.findById(configId)
+                .orElseThrow(() -> new MappingException("Mapping configuration not found"));
     }
 
     @Transactional
@@ -151,21 +158,6 @@ public class MappingConfigService {
         }
     }
 
-//    private void validateMappingHeaders(Map<String, String> mappingHeaders) {
-//        if (mappingHeaders == null || mappingHeaders.isEmpty()) {
-//            throw new MappingException("Mapping headers cannot be empty");
-//        }
-//
-//        List<Class<?>> entityClasses = entityRegistryService.getEntityClasses();
-//        Map<String, MappingFieldDTO> validFields = getCombinedEntityFieldDescriptions(entityClasses);
-//
-//        for (String mappedField : mappingHeaders.values()) {
-//            if (!validFields.containsKey(mappedField)) {
-//                throw new MappingException("Invalid field mapping: " + mappedField);
-//            }
-//        }
-//    }
-
     private void validateMappingHeaders(Map<String, String> mappingHeaders) {
         if (mappingHeaders == null || mappingHeaders.isEmpty()) {
             throw new MappingException("Mapping headers cannot be empty");
@@ -223,7 +215,16 @@ public class MappingConfigService {
         return false;
     }
 
-
+    public Map<String, String> parseMappingJson(String mappingJson) {
+        try {
+            return new Gson().fromJson(mappingJson,
+                    new TypeToken<Map<String, String>>() {
+                    }.getType());
+        } catch (Exception e) {
+            log.error("Error parsing mapping JSON", e);
+            throw new IllegalArgumentException("Ошибка при чтении конфигурации маппинга");
+        }
+    }
 
     // Удалить маппинг
     public void deleteMappingConfig(Long configId) {
@@ -231,4 +232,19 @@ public class MappingConfigService {
                 .orElseThrow(() -> new IllegalArgumentException("Mapping configuration not found."));
         clientMappingConfigRepository.delete(config);
     }
+
+    //    private void validateMappingHeaders(Map<String, String> mappingHeaders) {
+//        if (mappingHeaders == null || mappingHeaders.isEmpty()) {
+//            throw new MappingException("Mapping headers cannot be empty");
+//        }
+//
+//        List<Class<?>> entityClasses = entityRegistryService.getEntityClasses();
+//        Map<String, MappingFieldDTO> validFields = getCombinedEntityFieldDescriptions(entityClasses);
+//
+//        for (String mappedField : mappingHeaders.values()) {
+//            if (!validFields.containsKey(mappedField)) {
+//                throw new MappingException("Invalid field mapping: " + mappedField);
+//            }
+//        }
+//    }
 }
