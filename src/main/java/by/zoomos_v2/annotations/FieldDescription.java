@@ -11,5 +11,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME) // Аннотация доступна во время выполнения.
 @Target(ElementType.FIELD)          // Аннотация применяется только к полям.
 public @interface FieldDescription {
-    String value(); // Атрибут для описания.
+    String value();
+    boolean skipMapping() default false;
 }

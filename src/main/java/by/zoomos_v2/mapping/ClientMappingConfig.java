@@ -4,6 +4,9 @@ import by.zoomos_v2.model.Client;
 import jakarta.persistence.*;
 import lombok.Getter;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 @Getter
 @Entity
 public class ClientMappingConfig {
@@ -18,14 +21,19 @@ public class ClientMappingConfig {
 
     private String name;
 
-    @Column(name = "mapping_data", columnDefinition = "TEXT")
-    private String mappingData;  // Храним конфигурацию в виде JSON-строки
-
-    public void setEntityType(String entityType) {
-        this.entityType = entityType;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
-    private String entityType; // Тип сущности: Product, RegionData, SiteData и т.д.
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    @Column(name = "mapping_data", columnDefinition = "TEXT")
+    private String mappingData;  // Храним конфигурацию в виде JSON-строки
 
     public void setId(Long id) {
         this.id = id;

@@ -1,5 +1,8 @@
 package by.zoomos_v2.controller;
 
+import by.zoomos_v2.DTO.MappingConfigDTO;
+import by.zoomos_v2.DTO.MappingFieldDTO;
+import by.zoomos_v2.config.MappingException;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
@@ -8,154 +11,188 @@ import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.util.EntityRegistryService;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Controller
 @RequestMapping("/shop/{clientName}/mapping")
 public class ClientMappingController {
-
 
     private final MappingConfigService mappingConfigService;
     private final ClientMappingConfigRepository clientMappingConfigRepository;
     private final ClientService clientService;
     private final EntityRegistryService entityRegistryService;
 
-    @Autowired
-    public ClientMappingController(MappingConfigService mappingConfigService, ClientMappingConfigRepository clientMappingConfigRepository, ClientService clientService, EntityRegistryService entityRegistryService) {
+    public ClientMappingController(MappingConfigService mappingConfigService,
+                                   ClientMappingConfigRepository clientMappingConfigRepository,
+                                   ClientService clientService,
+                                   EntityRegistryService entityRegistryService) {
         this.mappingConfigService = mappingConfigService;
         this.clientMappingConfigRepository = clientMappingConfigRepository;
         this.clientService = clientService;
         this.entityRegistryService = entityRegistryService;
     }
 
-
-    // Сохранение нового маппинга для клиента
     @PostMapping("/save")
     public String saveMapping(@PathVariable String clientName,
                               @RequestParam String configName,
                               @RequestParam Map<String, String> mappingHeaders,
+                              RedirectAttributes redirectAttributes,
                               Model model) {
-        Client client = clientService.getClientByName(clientName);
-        if (client == null) {
-            model.addAttribute("error", "Клиент не найден");
-            return "error";
-        }
-
-        // Преобразуем Map в JSON
-        String mappingJson = new Gson().toJson(mappingHeaders);
-
         try {
-            mappingConfigService.saveMappingConfig(client, configName, mappingJson);
-            model.addAttribute("success", "Mapping configuration saved successfully.");
-        } catch (IllegalArgumentException e) {
-            model.addAttribute("error", e.getMessage());
-            return "/uploadMapping/add-mapping"; // Возвращаемся к форме с ошибкой
-        }
+            Client client = getClientOrThrow(clientName);
+            mappingHeaders.remove("configName");
+            mappingConfigService.saveMappingConfig(client, configName, mappingHeaders);
 
-        return "redirect:/shop/{clientName}/upload";
+            redirectAttributes.addFlashAttribute("success",
+                    "Конфигурация маппинга успешно сохранена");
+            return "redirect:/shop/{clientName}/upload";
+
+        } catch (Exception e) {
+            log.error("Error saving mapping configuration", e);
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("fieldDescriptions",
+                    getMappingFields());
+            return "/uploadMapping/add-mapping";
+        }
     }
 
-    // Переход к редактированию нового маппинга (поле для ввода названия)
     @PostMapping("/add")
-    public String addMappingConfig(@PathVariable String clientName, Model model) {
-        Client client = clientService.getClientByName(clientName);
-        if (client == null) {
-            model.addAttribute("error", "Client not found");
-            return "error";  // Шаблон ошибки
+    public String addMappingConfig(@PathVariable String clientName,
+                                   Model model) {
+        try {
+            Client client = getClientOrThrow(clientName);
+            Map<String, String> fieldDescriptions = getMappingFields();
+
+            model.addAttribute("client", client);
+            model.addAttribute("fieldDescriptions", fieldDescriptions);
+            return "/uploadMapping/add-mapping";
+
+        } catch (Exception e) {
+            log.error("Error preparing add mapping form", e);
+            model.addAttribute("error", e.getMessage());
+            return "error";
         }
-
-        // Получаем объединенные поля для всех фиксированных сущностей
-        List<Class<?>> entityClasses = entityRegistryService.getEntityClasses();
-        Map<String, String> fieldDescriptions = mappingConfigService.getCombinedEntityFieldDescriptions(entityClasses);
-
-        // Отправляем форму для ввода данных нового маппинга
-        model.addAttribute("client", client);
-        model.addAttribute("fieldDescriptions", fieldDescriptions);
-        return "/uploadMapping/add-mapping";  // Шаблон для редактирования конфигурации
     }
 
     @GetMapping("/edit/{configId}")
     public String editMappingConfig(@PathVariable String clientName,
                                     @PathVariable Long configId,
                                     Model model) {
+        try {
+            Client client = getClientOrThrow(clientName);
+            ClientMappingConfig config = getMappingConfigOrThrow(configId);
+            Map<String, String> mappingHeaders = parseMappingJson(config.getMappingData());
+            Map<String, String> fieldDescriptions = getMappingFields();
 
-        Client client = clientService.getClientByName(clientName);
-        if (client == null) {
-            model.addAttribute("error", "Client not found");
+            model.addAttribute("client", client);
+            model.addAttribute("config", config);
+            model.addAttribute("mappingHeaders", mappingHeaders);
+            model.addAttribute("fieldDescriptions", fieldDescriptions);
+            return "/uploadMapping/edit-mapping";
+
+        } catch (Exception e) {
+            log.error("Error preparing edit mapping form", e);
+            model.addAttribute("error", e.getMessage());
             return "error";
         }
-
-        // Получаем конфигурацию по ID
-        ClientMappingConfig config = clientMappingConfigRepository.findById(configId)
-                .orElseThrow(() -> new IllegalArgumentException("Mapping config not found"));
-
-        // Преобразуем строку JSON в Map
-        Gson gson = new Gson();
-        Map<String, String> mappingHeaders = gson.fromJson(config.getMappingData(), new TypeToken<Map<String, String>>() {
-        }.getType());
-
-
-
-        // Получаем объединенные поля для всех фиксированных сущностей
-        List<Class<?>> entityClasses = entityRegistryService.getEntityClasses();
-        Map<String, String> fieldDescriptions = mappingConfigService.getCombinedEntityFieldDescriptions(entityClasses);
-
-        // Отправляем форму для ввода данных нового маппинга
-        model.addAttribute("client", client);
-        model.addAttribute("config", config);  // передаем текущую конфигурацию
-        model.addAttribute("mappingHeaders", mappingHeaders); // передаем данные для отображения
-        model.addAttribute("fieldDescriptions", fieldDescriptions);
-        return "/uploadMapping/edit-mapping";  // Шаблон для редактирования конфигурации
     }
 
-    // Обновление маппинга по ID
     @PostMapping("/edit/{configId}")
-    public String editMappingConfig(@PathVariable String clientName,
-                                    @PathVariable Long configId,
-                                    @RequestParam Map<String, String> mappingHeaders,
-                                    Model model) {
+    public String updateMappingConfig(@PathVariable String clientName,
+                                      @PathVariable Long configId,
+                                      @RequestParam Map<String, String> mappingHeaders,
+                                      RedirectAttributes redirectAttributes,
+                                      Model model) {
+        try {
+            Client client = getClientOrThrow(clientName);
+            ClientMappingConfig config = getMappingConfigOrThrow(configId);
+            mappingHeaders.remove("configName");
+            mappingConfigService.updateMappingConfig(configId, config.getName(), mappingHeaders);
 
-        Client client = clientService.getClientByName(clientName);
-        if (client == null) {
-            model.addAttribute("error", "Client not found");
-            return "error";
+            redirectAttributes.addFlashAttribute("success",
+                    "Конфигурация маппинга успешно обновлена");
+            return "redirect:/shop/{clientName}/upload";
+
+        } catch (Exception e) {
+            log.error("Error updating mapping configuration", e);
+            model.addAttribute("error", e.getMessage());
+            return "/uploadMapping/edit-mapping";
         }
-
-        // Получаем конфигурацию по ID
-        ClientMappingConfig config = clientMappingConfigRepository.findById(configId)
-                .orElseThrow(() -> new IllegalArgumentException("Mapping config not found"));
-
-        // Преобразуем Map в JSON
-        String mappingJson = new Gson().toJson(mappingHeaders);
-
-        // Обновляем конфигурацию маппинга
-        config.setMappingData(mappingJson);
-
-        // Сохраняем обновленную конфигурацию
-        clientMappingConfigRepository.save(config);
-
-        model.addAttribute("success", "Mapping configuration updated successfully.");
-        return "redirect:/shop/{clientName}/upload";
     }
 
-    // Удаление маппинга
     @GetMapping("/delete/{configId}")
-    public String deleteMappingConfig(@PathVariable String clientName, @PathVariable Long configId, Model model) {
-        Client client = clientService.getClientByName(clientName);  // Ищем клиента по имени
+    public String deleteMappingConfig(@PathVariable String clientName,
+                                      @PathVariable Long configId,
+                                      RedirectAttributes redirectAttributes,
+                                      Model model) {
+        try {
+            getClientOrThrow(clientName);
+            mappingConfigService.deleteMappingConfig(configId);
 
-        if (client == null) {
-            model.addAttribute("error", "Client not found");
-            return "error";  // Шаблон ошибки
+            redirectAttributes.addFlashAttribute("success",
+                    "Конфигурация маппинга успешно удалена");
+            return "redirect:/shop/{clientName}/upload";
+
+        } catch (Exception e) {
+            log.error("Error deleting mapping configuration", e);
+            model.addAttribute("error", e.getMessage());
+            return "error";
         }
+    }
 
-        mappingConfigService.deleteMappingConfig(configId);
-        model.addAttribute("success", "Mapping configuration deleted successfully.");
-        return "redirect:/shop/{clientName}/upload";  // Перенаправление на страницу с маппингами
+    private Client getClientOrThrow(String clientName) {
+        return clientService.getClientByName(clientName);
+//                .orElseThrow(() -> new IllegalArgumentException("Клиент не найден: " + clientName));
+
+    }
+
+    private ClientMappingConfig getMappingConfigOrThrow(Long configId) {
+        return clientMappingConfigRepository.findById(configId)
+                .orElseThrow(() -> new IllegalArgumentException("Конфигурация маппинга не найдена"));
+    }
+
+    private Map<String, String> getMappingFields() {
+        List<Class<?>> entityClasses = entityRegistryService.getEntityClasses();
+        Map<String, MappingFieldDTO> fieldDTOs = mappingConfigService.getCombinedEntityFieldDescriptions(entityClasses);
+
+        // Преобразуем Map<String, MappingFieldDTO> в Map<String, String>
+        return fieldDTOs.entrySet().stream()
+                .collect(Collectors.toMap(
+                        e -> e.getKey(),
+                        e -> e.getValue().getDescription(),
+                        (existing, replacement) -> existing,
+                        LinkedHashMap::new
+                ));
+    }
+
+    // Альтернативный вариант - если нужно сохранить полную информацию о полях в представлении
+    private Map<String, MappingFieldDTO> getDetailedMappingFields() {
+        List<Class<?>> entityClasses = entityRegistryService.getEntityClasses();
+        return mappingConfigService.getCombinedEntityFieldDescriptions(entityClasses);
+    }
+
+    private Map<String, String> parseMappingJson(String mappingJson) {
+        try {
+            return new Gson().fromJson(mappingJson,
+                    new TypeToken<Map<String, String>>(){}.getType());
+        } catch (Exception e) {
+            log.error("Error parsing mapping JSON", e);
+            throw new IllegalArgumentException("Ошибка при чтении конфигурации маппинга");
+        }
     }
 }

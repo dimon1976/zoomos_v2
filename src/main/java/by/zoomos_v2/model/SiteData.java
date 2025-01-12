@@ -8,26 +8,34 @@ import lombok.Setter;
 @Setter
 @Getter
 @Entity
+@Table(name = "site_data")
 public class SiteData {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @FieldDescription("пропустить")
+    @FieldDescription(value = "пропустить", skipMapping = true)
     private Long id;
 
     @FieldDescription("Название сайта")
+    @Column(nullable = false)
     private String competitorName;
+
     @FieldDescription("Цена конкурента")
     private String competitorPrice;
+
     @FieldDescription("Статус наличия товара")
     private String competitorStockStatus;
+
     @FieldDescription("Акционная цена")
     private String competitorPromotionalPrice;
 
-    // Ссылка на продукт
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    @FieldDescription("пропустить")
+    @FieldDescription(value = "пропустить", skipMapping = true)
     private Product product;
+
+    @Version
+    @FieldDescription(value = "пропустить", skipMapping = true)
+    private Long version;
 
     // Другие поля, специфичные для данных с сайта
 }

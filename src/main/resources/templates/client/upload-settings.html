@@ -19,6 +19,16 @@
         <button type="submit" class="btn btn-primary">Добавить новую настройку</button>
     </form>
 
+    <!-- Успешное сообщение -->
+    <div th:if="${success}">
+        <div class="alert alert-success" th:text="${success}"></div>
+    </div>
+
+    <!-- Сообщение об ошибке -->
+    <div th:if="${error}">
+        <div class="alert alert-danger" th:text="${error}"></div>
+    </div>
+
     <h3>Список настроек</h3>
     <table class="table table-bordered">
         <thead>
