@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Управление загрузкой файлов</title>
     <link rel="stylesheet" th:href="@{/css/styles.css}"/>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-pzjw8f+ua7Kw1TIq0b5dKDoI1p6FjA1VdT3F9aN1O+Rx3tB1w4aM4zUsFQ7ZZJ+K" crossorigin="anonymous">
+
 </head>
 <body>
 
@@ -39,13 +41,13 @@
         </tr>
         </thead>
         <tbody>
-        <tr th:each="config, iterStat : ${configurations}">
+        <tr th:each="config : ${configurations}">
             <td th:text="${config.id}"></td>
             <td th:text="${config.name}"></td>
             <td>
                 <!-- Форма загрузки файла для конфигурации -->
-                <form th:action="@{'/shop/' + ${clientName} + '/upload-file'}" method="post" enctype="multipart/form-data" class="d-inline">
-                    <input type="file" name="file" class="form-control d-inline" style="width: auto;" required>
+                <form th:action="@{'/shop/' + ${clientName} + '/upload-file'}" method="post" enctype="multipart/form-data" class="upload-form">
+                    <input type="file" name="file" class="form-control d-inline file-input" style="width: auto;" required>
                     <input type="hidden" name="configId" th:value="${config.id}">
                     <button type="submit" class="btn btn-success">Загрузить</button>
                 </form>

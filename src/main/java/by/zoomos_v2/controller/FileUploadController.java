@@ -2,7 +2,6 @@ package by.zoomos_v2.controller;
 
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.service.ClientService;
-import by.zoomos_v2.service.ConfigurationService;
 import by.zoomos_v2.service.FileProcessingService;
 import by.zoomos_v2.service.MappingConfigService;
 import lombok.extern.slf4j.Slf4j;
@@ -24,14 +23,13 @@ public class FileUploadController {
 
     private final MappingConfigService mappingConfigService;
     private final FileProcessingService fileProcessingService;
-    private final ConfigurationService configurationService;
     private final ClientService clientService;
 
-    public FileUploadController(MappingConfigService mappingConfigService, FileProcessingService fileProcessingService, ConfigurationService configurationService, ClientService clientService) {
+    public FileUploadController(MappingConfigService mappingConfigService, FileProcessingService fileProcessingService, ClientService clientService) {
         this.mappingConfigService = mappingConfigService;
         this.fileProcessingService = fileProcessingService;
-        this.configurationService = configurationService;
         this.clientService = clientService;
+
     }
 
     @PostMapping("/upload-file")
@@ -62,10 +60,10 @@ public class FileUploadController {
 
             // Получаем конфигурацию маппинга
             ClientMappingConfig mappingConfig = mappingConfigService.getConfigById(configId);
+            Long clientId = clientService.getClientIdByName(clientName);
 
             // Обрабатываем файл и получаем данные
             List<Map<String, String>> processedData = fileProcessingService.readFile(file, configId);
-            Long clientId = clientService.getClientIdByName(clientName);
 
             // Валидируем полученные данные
             validateProcessedData(processedData);
@@ -98,6 +96,7 @@ public class FileUploadController {
             return baseRedirectUrl;
         }
     }
+
 
     private boolean isSupportedFileType(String filename) {
         String extension = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();

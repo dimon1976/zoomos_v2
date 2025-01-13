@@ -1,9 +1,11 @@
 package by.zoomos_v2.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 
+@Getter
 @Entity
 public class Client {
     @Id
@@ -26,24 +28,12 @@ public class Client {
         this.creationDate = creationDate;
     }
 
-    public Long getId() {
-        return id;
-    }
-
     public void setId(Long id) {
         this.id = id;
     }
 
-    public String getName() {
-        return name;
-    }
-
     public void setName(String name) {
         this.name = name;
-    }
-
-    public LocalDateTime getCreationDate() {
-        return creationDate;
     }
 
     public void setCreationDate(LocalDateTime creationDate) {
