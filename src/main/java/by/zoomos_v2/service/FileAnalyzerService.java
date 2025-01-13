@@ -16,13 +16,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 // Сервис для определения метаданных файла
@@ -95,7 +93,7 @@ public class FileAnalyzerService {
     }
 
     // Метод для определения кодировки
-    private String detectEncoding(byte[] data) throws IOException {
+    private String detectEncoding(byte[] data){
         UniversalDetector detector = new UniversalDetector(null);
         detector.handleData(data, 0, data.length);
         detector.dataEnd();
@@ -161,20 +159,4 @@ public class FileAnalyzerService {
             default -> "";
         };
     }
-    //    // Метод для определения разделителя
-//    private char detectDelimiter(String line) {
-//        // Возможные разделители
-//        char[] delimiters = {',', ';', '\t', '|'};
-//        Map<Character, Integer> delimiterCount = new HashMap<>();
-//
-//        for (char delimiter : delimiters) {
-//            delimiterCount.put(delimiter, line.split(Pattern.quote(String.valueOf(delimiter))).length - 1);
-//        }
-//
-//        // Находим разделитель с максимальным количеством вхождений
-//        return delimiterCount.entrySet().stream()
-//                .max(Map.Entry.comparingByValue())
-//                .map(Map.Entry::getKey)
-//                .orElseThrow(() -> new IllegalArgumentException("Не удалось определить разделитель."));
-//    }
 }

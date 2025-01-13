@@ -29,11 +29,10 @@ public class ClientsController {
 
     @PostMapping("/add")
     public String addClient(@RequestParam String name,
-                            @RequestParam String entityType, // Добавляем параметр для типа сущности
                             Model model) {
         try {
             // Передаем выбранный тип сущности в сервис для обработки
-            Client client = clientService.addClient(name, entityType);
+            Client client = clientService.addClient(name);
             return "redirect:/clients";
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());

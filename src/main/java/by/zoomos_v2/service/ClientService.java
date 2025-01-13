@@ -19,7 +19,7 @@ public class ClientService {
         this.clientRepository = clientRepository;
     }
 
-    public Client addClient(String name, String entityType) {
+    public Client addClient(String name) {
         if (clientRepository.findByName(name).isPresent()) {
             logger.warn("Attempt to add existing client: {}", name);
             throw new IllegalArgumentException("Client with name " + name + " already exists");

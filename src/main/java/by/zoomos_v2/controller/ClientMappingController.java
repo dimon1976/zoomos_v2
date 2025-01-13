@@ -7,8 +7,6 @@ import by.zoomos_v2.repository.ClientMappingConfigRepository;
 import by.zoomos_v2.service.ClientService;
 import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.util.EntityRegistryService;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

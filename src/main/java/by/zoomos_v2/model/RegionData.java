@@ -15,15 +15,18 @@ public class RegionData {
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long id;
 
+    @FieldDescription(value = "пропустить", skipMapping = true)
+    private Long clientId;
+
     @FieldDescription("Регион (город, область)")
-    @Column(nullable = false)
+//    @Column(nullable = false)
     private String region;
 
     @FieldDescription("Адрес")
     private String regionAddress;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
+    @JoinColumn(name = "product_id")
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Product product;
 

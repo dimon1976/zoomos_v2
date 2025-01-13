@@ -18,12 +18,15 @@ public class Product {
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long id;
 
+    @FieldDescription(value = "пропустить", skipMapping = true)
+    private Long clientId;
+
     @FieldDescription("ID товара")
-    @Column(nullable = false)
+//    @Column(nullable = false)
     private String productId;
 
     @FieldDescription("Наименование товара")
-    @Column(nullable = false)
+//    @Column(nullable = false)
     private String productName;
 
     @FieldDescription("Бренд товара")

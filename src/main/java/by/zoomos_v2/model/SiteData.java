@@ -15,8 +15,11 @@ public class SiteData {
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long id;
 
+    @FieldDescription(value = "пропустить", skipMapping = true)
+    private Long clientId;
+
     @FieldDescription("Название сайта")
-    @Column(nullable = false)
+//    @Column(nullable = false)
     private String competitorName;
 
     @FieldDescription("Цена конкурента")
@@ -29,7 +32,7 @@ public class SiteData {
     private String competitorPromotionalPrice;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
+    @JoinColumn(name = "product_id")
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Product product;
 

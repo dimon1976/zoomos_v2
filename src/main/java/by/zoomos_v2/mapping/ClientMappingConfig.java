@@ -4,7 +4,6 @@ import by.zoomos_v2.model.Client;
 import jakarta.persistence.*;
 import lombok.Getter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter

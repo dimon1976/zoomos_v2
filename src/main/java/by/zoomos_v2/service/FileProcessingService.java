@@ -14,14 +14,9 @@ import org.apache.poi.ss.usermodel.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.*;
 import java.util.stream.Collectors;
 
 // Сервис для чтения и записи данных
@@ -30,10 +25,12 @@ import java.util.stream.Collectors;
 public class FileProcessingService {
     private final FileAnalyzerService fileAnalyzerService;
     private final MappingConfigService mappingConfigService;
+    private final DataPersistenceService dataPersistenceService;
 
-    public FileProcessingService(FileAnalyzerService fileAnalyzerService, MappingConfigService mappingConfigService) {
+    public FileProcessingService(FileAnalyzerService fileAnalyzerService, MappingConfigService mappingConfigService, DataPersistenceService dataPersistenceService) {
         this.fileAnalyzerService = fileAnalyzerService;
         this.mappingConfigService = mappingConfigService;
+        this.dataPersistenceService = dataPersistenceService;
     }
 
     public List<Map<String, String>> readFile(MultipartFile file, Long mappingConfigId) throws IOException {
@@ -57,15 +54,12 @@ public class FileProcessingService {
                                                    Map<String, String> mapping) throws IOException {
         List<Map<String, String>> results = new ArrayList<>();
 
-        // Инвертируем mapping: "заголовок файла" -> "поле сущности"
-        Map<String, String> invertedMapping = mapping.entrySet()
-                .stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getValue,  // значение становится ключом
-                        Map.Entry::getKey,    // ключ становится значением
-                        (existing, replacement) -> existing,  // в случае дубликатов оставляем первое значение
-                        LinkedHashMap::new
-                ));
+        // Создаем карту соответствия индексов колонок и заголовков файла
+        Map<Integer, String> headerIndexMap = new HashMap<>();
+        for (int i = 0; i < metadata.getHeaders().size(); i++) {
+            String header = metadata.getHeaders().get(i).replaceAll("^\"|\"$", "").trim();
+            headerIndexMap.put(i, header);
+        }
 
         CSVParser parser = new CSVParserBuilder()
                 .withSeparator(metadata.getDelimiter().charAt(0))
@@ -81,23 +75,27 @@ public class FileProcessingService {
 
             String[] line;
             while ((line = reader.readNext()) != null) {
-                Map<String, String> row = new LinkedHashMap<>();
+                Map<String, String> rowData = new LinkedHashMap<>();
 
-                // До цикла добавим отладочную информацию
-                log.debug("Headers: {}", metadata.getHeaders());
-                log.debug("Mapping: {}", mapping);
+                // Проходим по маппингу (поле сущности -> заголовок файла)
+                for (Map.Entry<String, String> entry : mapping.entrySet()) {
+                    String entityField = entry.getKey();      // поле сущности
+                    String fileHeader = entry.getValue();     // заголовок в файле
 
-                for (int i = 0; i < metadata.getHeaders().size() && i < line.length; i++) {
-                    String header = metadata.getHeaders().get(i).replaceAll("^\"|\"$", "").trim();
-                    String entityField = invertedMapping.get(header);  // Теперь ищем по заголовку файла
-
-                    if (entityField != null) {
-                        row.put(entityField, line[i].trim());
+                    // Ищем индекс колонки с нужным заголовком
+                    for (Map.Entry<Integer, String> headerEntry : headerIndexMap.entrySet()) {
+                        if (headerEntry.getValue().equals(fileHeader)) {
+                            int columnIndex = headerEntry.getKey();
+                            if (columnIndex < line.length) {
+                                String value = line[columnIndex].trim();
+                                rowData.put(entityField, value);
+                            }
+                        }
                     }
                 }
 
-                if (!row.isEmpty()) {
-                    results.add(row);
+                if (!rowData.isEmpty()) {
+                    results.add(rowData);
                 } else {
                     log.warn("Empty row found in file");
                 }
@@ -114,18 +112,15 @@ public class FileProcessingService {
                                                     Map<String, String> mapping) throws IOException {
         List<Map<String, String>> results = new ArrayList<>();
 
-        // Инвертируем mapping: "заголовок файла" -> "поле сущности"
-        Map<String, String> invertedMapping = mapping.entrySet()
-                .stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getValue,  // значение становится ключом
-                        Map.Entry::getKey,    // ключ становится значением
-                        (existing, replacement) -> existing,  // в случае дубликатов оставляем первое значение
-                        LinkedHashMap::new
-                ));
-
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
+
+            // Создаем карту соответствия индексов колонок и заголовков файла
+            Map<Integer, String> headerIndexMap = new HashMap<>();
+            for (int i = 0; i < metadata.getHeaders().size(); i++) {
+                String header = metadata.getHeaders().get(i).replaceAll("^\"|\"$", "").trim();
+                headerIndexMap.put(i, header);
+            }
 
             // Пропускаем заголовок
             int firstDataRow = 1;
@@ -136,13 +131,19 @@ public class FileProcessingService {
 
                 Map<String, String> rowData = new LinkedHashMap<>();
 
-                for (int i = 0; i < metadata.getHeaders().size(); i++) {
-                    Cell cell = row.getCell(i);
-                    String header = metadata.getHeaders().get(i).replaceAll("^\"|\"$", "").trim();
-                    String entityField = invertedMapping.get(header);
+                // Проходим по маппингу (поле сущности -> заголовок файла)
+                for (Map.Entry<String, String> entry : mapping.entrySet()) {
+                    String entityField = entry.getKey();      // поле сущности
+                    String fileHeader = entry.getValue();     // заголовок в файле
 
-                    if (entityField != null) {
-                        rowData.put(entityField, fileAnalyzerService.getCellValueAsString(cell));
+                    // Ищем индекс колонки с нужным заголовком
+                    for (Map.Entry<Integer, String> headerEntry : headerIndexMap.entrySet()) {
+                        if (headerEntry.getValue().equals(fileHeader)) {
+                            int columnIndex = headerEntry.getKey();
+                            Cell cell = row.getCell(columnIndex);
+                            String cellValue = fileAnalyzerService.getCellValueAsString(cell);
+                            rowData.put(entityField, cellValue);
+                        }
                     }
                 }
 
@@ -157,10 +158,10 @@ public class FileProcessingService {
 
     // Сохранение данных в БД
     @Transactional
-    public void saveData(List<Map<String, String>> data, Long clientId) {
-        // Здесь будет логика сохранения данных в БД
-        // Нужно будет реализовать создание и сохранение сущностей
-        // на основе полученных данных
+    public void saveData(List<Map<String, String>> data, Long clientId, Long mappingId) {
+        ClientMappingConfig mappingConfig = mappingConfigService.getConfigById(mappingId);
+        Map<String, String> mapping = mappingConfigService.parseMappingJson(mappingConfig.getMappingData());
+        dataPersistenceService.saveEntities(data, clientId, mapping);
     }
 
 }

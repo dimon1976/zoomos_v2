@@ -65,13 +65,13 @@ public class FileUploadController {
 
             // Обрабатываем файл и получаем данные
             List<Map<String, String>> processedData = fileProcessingService.readFile(file, configId);
+            Long clientId = clientService.getClientIdByName(clientName);
 
             // Валидируем полученные данные
             validateProcessedData(processedData);
 
             // Сохраняем данные
-            Long clientId = clientService.getClientIdByName(clientName);
-            fileProcessingService.saveData(processedData, clientId);
+            fileProcessingService.saveData(processedData, clientId, configId);
 
             // Добавляем сообщение об успехе
             redirectAttributes.addFlashAttribute("success",
@@ -126,43 +126,4 @@ public class FileUploadController {
                 "Файл слишком большой. Пожалуйста, загрузите файл меньшего размера");
         return "redirect:/shop/" + clientName + "/upload";
     }
-
-
-
-//    @PostMapping("/upload-file")
-//    public String uploadFile(@PathVariable String clientName,
-//                             @RequestParam("file") MultipartFile file,
-//                             @RequestParam("configId") Long configId,
-//                             Model model) {
-//        // Проверка наличия файла
-//        if (file.isEmpty()) {
-//            model.addAttribute("error", "Файл не выбран.");
-//            return "redirect:/shop/" + clientName + "/upload"; // Возвращаемся на страницу настроек
-//        }
-//
-//        // Определяем тип файла
-//        String fileType = FileTypeDetector.detectFileType(file.getOriginalFilename());
-//        if (fileType == null) {
-//            model.addAttribute("error", "Неподдерживаемый тип файла.");
-//            return "redirect:/shop/" + clientName + "/upload";
-//        }
-//
-//        // Получаем настройки маппинга
-//        try {
-//            ClientMappingConfig config = mappingConfigService.getConfigurationById(configId);
-//            if (config == null) {
-//                model.addAttribute("error", "Настройка маппинга не найдена.");
-//                return "redirect:/shop/" + clientName + "/upload";
-//            }
-//
-//            // Обработка файла
-////            fileProcessorService.processFile(file, fileType, config);
-//
-//            model.addAttribute("success", "Файл успешно загружен и обработан.");
-//        } catch (Exception e) {
-//            model.addAttribute("error", "Ошибка обработки файла: " + e.getMessage());
-//        }
-//
-//        return "redirect:/shop/" + clientName + "/upload";
-//    }
 }
