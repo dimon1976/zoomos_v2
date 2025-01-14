@@ -2,19 +2,18 @@ package by.zoomos_v2.service;
 
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
-import by.zoomos_v2.aspect.LogExecution;
+import by.zoomos_v2.exception.FileProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.EntityNotFoundException;
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Сервис для управления конфигурациями маппинга данных.
- * Обеспечивает бизнес-логику работы с настройками маппинга для магазинов.
+ * Сервис для управления конфигурациями маппинга.
+ * Обеспечивает создание, получение, обновление и удаление
+ * конфигураций маппинга для магазинов.
  */
 @Slf4j
 @Service
@@ -24,113 +23,100 @@ public class MappingConfigService {
     private final ClientMappingConfigRepository mappingRepository;
 
     /**
-     * Получает все маппинги для конкретного магазина
+     * Получает все конфигурации маппинга для магазина
+     *
+     * @param clientId идентификатор магазина
+     * @return список конфигураций маппинга
      */
     @Transactional(readOnly = true)
     public List<ClientMappingConfig> getMappingsForClient(Long clientId) {
-        log.debug("Получение маппингов для магазина с ID: {}", clientId);
+        log.debug("Получение конфигураций маппинга для магазина: {}", clientId);
         return mappingRepository.findByClientId(clientId);
     }
 
     /**
-     * Получает конкретный маппинг по ID
+     * Получает конфигурацию маппинга по ID
+     *
+     * @param id идентификатор конфигурации
+     * @return конфигурация маппинга
+     * @throws FileProcessingException если конфигурация не найдена
      */
     @Transactional(readOnly = true)
     public ClientMappingConfig getMappingById(Long id) {
-        log.debug("Получение маппинга по ID: {}", id);
+        log.debug("Получение конфигурации маппинга по ID: {}", id);
         return mappingRepository.findById(id)
                 .orElseThrow(() -> {
-                    log.error("Маппинг с ID {} не найден", id);
-                    return new EntityNotFoundException("Настройки маппинга не найдены");
+                    log.error("Конфигурация маппинга с ID {} не найдена", id);
+                    return new FileProcessingException("Конфигурация маппинга не найдена");
                 });
     }
 
     /**
-     * Создает новый маппинг
+     * Создает новую конфигурацию маппинга
+     *
+     * @param mapping новая конфигурация
+     * @return сохраненная конфигурация
      */
     @Transactional
-    @LogExecution("Создание маппинга")
     public ClientMappingConfig createMapping(ClientMappingConfig mapping) {
-        log.debug("Создание нового маппинга для магазина: {}", mapping.getClientId());
+        log.debug("Создание новой конфигурации маппинга для магазина: {}", mapping.getClientId());
         validateMapping(mapping);
-
-        mapping.setId(null);
-        mapping.setCreatedAt(LocalDateTime.now());
-        mapping.setUpdatedAt(LocalDateTime.now());
-
-        try {
-            ClientMappingConfig savedMapping = mappingRepository.save(mapping);
-            log.info("Создан новый маппинг с ID: {}", savedMapping.getId());
-            return savedMapping;
-        } catch (Exception e) {
-            log.error("Ошибка при создании маппинга: {}", e.getMessage(), e);
-            throw new RuntimeException("Ошибка при создании настроек маппинга", e);
-        }
+        mapping.setId(null); // Гарантируем создание новой записи
+        return mappingRepository.save(mapping);
     }
 
     /**
-     * Обновляет существующий маппинг
+     * Обновляет существующую конфигурацию маппинга
+     *
+     * @param mapping обновленная конфигурация
+     * @return обновленная конфигурация
+     * @throws FileProcessingException если конфигурация не найдена
      */
     @Transactional
-    @LogExecution("Обновление маппинга")
     public ClientMappingConfig updateMapping(ClientMappingConfig mapping) {
-        log.debug("Обновление маппинга с ID: {}", mapping.getId());
+        log.debug("Обновление конфигурации маппинга с ID: {}", mapping.getId());
         validateMapping(mapping);
 
         if (!mappingRepository.existsById(mapping.getId())) {
-            log.error("Попытка обновить несуществующий маппинг с ID: {}", mapping.getId());
-            throw new EntityNotFoundException("Настройки маппинга не найдены");
+            throw new FileProcessingException("Конфигурация маппинга не найдена");
         }
 
-        mapping.setUpdatedAt(LocalDateTime.now());
-
-        try {
-            ClientMappingConfig updatedMapping = mappingRepository.save(mapping);
-            log.info("Маппинг с ID: {} успешно обновлен", mapping.getId());
-            return updatedMapping;
-        } catch (Exception e) {
-            log.error("Ошибка при обновлении маппинга: {}", e.getMessage(), e);
-            throw new RuntimeException("Ошибка при обновлении настроек маппинга", e);
-        }
+        return mappingRepository.save(mapping);
     }
 
     /**
-     * Удаляет маппинг
+     * Удаляет конфигурацию маппинга
+     *
+     * @param id идентификатор конфигурации
+     * @throws FileProcessingException если конфигурация не найдена
      */
     @Transactional
-    @LogExecution("Удаление маппинга")
     public void deleteMapping(Long id) {
-        log.debug("Удаление маппинга с ID: {}", id);
+        log.debug("Удаление конфигурации маппинга с ID: {}", id);
         if (!mappingRepository.existsById(id)) {
-            log.error("Попытка удалить несуществующий маппинг с ID: {}", id);
-            throw new EntityNotFoundException("Настройки маппинга не найдены");
+            throw new FileProcessingException("Конфигурация маппинга не найдена");
         }
-
-        try {
-            mappingRepository.deleteById(id);
-            log.info("Маппинг с ID: {} успешно удален", id);
-        } catch (Exception e) {
-            log.error("Ошибка при удалении маппинга: {}", e.getMessage(), e);
-            throw new RuntimeException("Ошибка при удалении настроек маппинга", e);
-        }
+        mappingRepository.deleteById(id);
     }
 
     /**
-     * Валидирует данные маппинга
+     * Проверяет базовую валидность конфигурации маппинга
+     *
+     * @param mapping конфигурация для проверки
+     * @throws FileProcessingException если конфигурация невалидна
      */
     private void validateMapping(ClientMappingConfig mapping) {
         if (mapping == null) {
-            throw new IllegalArgumentException("Маппинг не может быть null");
+            throw new FileProcessingException("Конфигурация маппинга не может быть null");
         }
         if (mapping.getClientId() == null) {
-            throw new IllegalArgumentException("ID магазина не может быть null");
+            throw new FileProcessingException("ID магазина не может быть null");
         }
         if (mapping.getName() == null || mapping.getName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Название маппинга не может быть пустым");
+            throw new FileProcessingException("Название конфигурации не может быть пустым");
         }
         if (mapping.getColumnsConfig() == null || mapping.getColumnsConfig().trim().isEmpty()) {
-            throw new IllegalArgumentException("Конфигурация колонок не может быть пустой");
+            throw new FileProcessingException("Конфигурация колонок не может быть пустой");
         }
-        // Можно добавить дополнительные проверки по необходимости
     }
 }

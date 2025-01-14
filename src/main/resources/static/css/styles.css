@@ -1,189 +1,34 @@
-/* Стили для основного навбара */
-.navbar-container {
-    background-color: #003366; /* Темно-синий */
-    color: white;
-    padding: 15px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    font-size: 1.2rem;
-}
-
-.navbar-nav {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-}
-
-.navbar-nav li {
-    margin-right: 20px;
-}
-
-.navbar-nav li a {
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.navbar-nav li a:hover {
-    text-decoration: underline;
-}
-
-/* Стили контейнера поиска */
-.search-container {
-    display: flex;
-    align-items: center;
-}
-
-.search-container input {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 4px;
-    margin-right: 5px;
-}
-
-.search-container button {
-    background-color: white;
-    color: #003366;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.search-container button:hover {
-    background-color: #ccc;
-}
-
-/* Стили для дополнительного навбара */
-.shop_navbar-container {
-    background-color: #f4f4f4; /* Светло-серый */
-    padding: 10px 15px;
-    display: flex;
-    justify-content: center;
-    border-bottom: 2px solid #ccc;
-    font-size: 1rem;
-}
-
-.shop_navbar-nav {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-}
-
-.shop_navbar-nav li {
-    margin-right: 15px;
-}
-
-.shop_navbar-nav li a {
-    color: #003366; /* Темно-синий */
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.shop_navbar-nav li a:hover {
-    color: #0055a5; /* Яркий синий */
-}
-
-
-/* Общие стили */
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f9f9f9;
-    color: #333;
-}
-
-h1 {
-    font-size: 2rem;
-    color: #003366;
+/* src/main/resources/static/css/styles.css */
+.navbar {
     margin-bottom: 20px;
 }
 
-/* Стили строки поиска и добавления */
-.search-add-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    align-items: center;
-}
-
-.search-add-row form {
-    display: flex;
-    gap: 10px;
-}
-
-.search-add-row input {
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1rem;
-}
-
-.search-add-row button {
-    padding: 8px 15px;
-    background-color: #003366;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-}
-
-.search-add-row button:hover {
-    background-color: #0055a5;
-}
-
-/* Стили таблицы */
-table {
-    width: 100%;
-    border-collapse: collapse;
+.table-responsive {
     margin-top: 20px;
-    background-color: white;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-thead {
-    background-color: #003366;
-    color: white;
+.alert {
+    margin-top: 20px;
 }
 
-thead th {
-    padding: 10px;
-    text-align: left;
-    font-size: 1rem;
-}
-
-tbody tr {
-    border-bottom: 1px solid #ccc;
-}
-
-tbody tr:nth-child(even) {
-    background-color: #f4f4f4;
-}
-
-tbody td {
-    padding: 10px;
-    font-size: 0.95rem;
-}
-
-tbody td a {
-    color: #003366;
-    text-decoration: none;
-}
-
-tbody td a:hover {
-    text-decoration: underline;
-}
-
-/* Стили ошибок */
-.error-message {
-    color: #ff0000;
-    font-weight: bold;
+.btn-toolbar {
     margin-bottom: 20px;
 }
 
+.card {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.progress {
+    height: 20px;
+    margin-bottom: 20px;
+}
+
+.badge {
+    font-size: 0.9em;
+    padding: 5px 10px;
+}
