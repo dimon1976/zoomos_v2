@@ -1,18 +1,59 @@
+<!-- src/main/resources/templates/index.html -->
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zoomos v2 - Главная</title>
-    <link rel="stylesheet" th:href="@{/css/styles.css}" />
+    <title>Zoomos - Главная</title>
+    <div th:replace="fragments/navbar :: header-css"/>
 </head>
 <body>
-<div th:replace="~{/fragments/navbar :: navbar}"></div>
+<div th:replace="fragments/navbar :: header"/>
 
-<div class="main-content">
-    <h1>Добро пожаловать на Zoomos v2</h1>
-    <p>Здесь будет основное содержание вашей главной страницы.</p>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Панель управления</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-store fa-3x mb-3"></i>
+                                    <h5 class="card-title">Магазины</h5>
+                                    <p class="card-text">Управление магазинами и их настройками</p>
+                                    <a th:href="@{/shops}" class="btn btn-primary">Перейти к магазинам</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-file-upload fa-3x mb-3"></i>
+                                    <h5 class="card-title">Загрузка файлов</h5>
+                                    <p class="card-text">Загрузка и обработка файлов</p>
+                                    <a th:href="@{/shops}" class="btn btn-primary">Выбрать магазин</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-cog fa-3x mb-3"></i>
+                                    <h5 class="card-title">Настройки маппинга</h5>
+                                    <p class="card-text">Настройка правил обработки данных</p>
+                                    <a th:href="@{/shops}" class="btn btn-primary">Выбрать магазин</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
+<div th:replace="fragments/navbar :: footer"/>
 </body>
 </html>

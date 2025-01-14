@@ -1,42 +1,30 @@
 package by.zoomos_v2.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
-@Getter
+/**
+ * Сущность магазина (клиента)
+ */
+@Data
 @Entity
+@NoArgsConstructor
+@Table(name = "clients")
 public class Client {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Column(nullable = false)
-    private LocalDateTime creationDate;
+    private String url;
 
-    // Конструкторы, геттеры и сеттеры
-    public Client() {
-    }
+    @Column(name = "api_key")
+    private String apiKey;
 
-    public Client(String name, LocalDateTime creationDate) {
-        this.name = name;
-        this.creationDate = creationDate;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public void setCreationDate(LocalDateTime creationDate) {
-        this.creationDate = creationDate;
-    }
+    @Column(nullable = false)
+    private boolean active = true;
 }

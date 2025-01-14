@@ -11,8 +11,8 @@ public class HomeController {
     private static final Logger logger = LoggerFactory.getLogger(HomeController.class);
 
     @GetMapping("/")
-    public String home() {
-        return "index"; // Возвращает имя шаблона Thymeleaf
+    public String index() {
+        return "index";
     }
 
     @GetMapping("/tools")

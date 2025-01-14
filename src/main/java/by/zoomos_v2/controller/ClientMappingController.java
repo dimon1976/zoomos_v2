@@ -49,15 +49,17 @@ public class ClientMappingController {
     @GetMapping("/new")
     @LogExecution("Форма нового маппинга")
     public String showNewMappingForm(@PathVariable Long shopId, Model model) {
-        log.debug("Запрошена форма создания маппинга для магазина с ID: {}", shopId);
+        log.debug("Отображение формы создания маппинга для магазина с ID: {}", shopId);
         try {
             Client client = clientService.getClientById(shopId);
+            model.addAttribute("shop", client);
+
             ClientMappingConfig mapping = new ClientMappingConfig();
             mapping.setClientId(shopId);
-
-            model.addAttribute("shop", client);
+            mapping.setActive(true);
             model.addAttribute("mapping", mapping);
-            return "uploadMapping/add-mapping";
+
+            return "uploadMapping/edit-mapping";
         } catch (Exception e) {
             log.error("Ошибка при создании формы маппинга: {}", e.getMessage(), e);
             model.addAttribute("error", "Ошибка при создании нового маппинга");
@@ -71,18 +73,17 @@ public class ClientMappingController {
     @PostMapping("/create")
     @LogExecution("Создание маппинга")
     public String createMapping(@PathVariable Long shopId,
-                                @ModelAttribute ClientMappingConfig mapping,
+                                @ModelAttribute("mapping") ClientMappingConfig mapping,
                                 RedirectAttributes redirectAttributes) {
         log.debug("Создание нового маппинга для магазина с ID: {}", shopId);
         try {
             mapping.setClientId(shopId);
             mappingConfigService.createMapping(mapping);
-            redirectAttributes.addFlashAttribute("success",
-                    "Настройки маппинга успешно созданы");
+            redirectAttributes.addFlashAttribute("success", "Маппинг успешно создан");
         } catch (Exception e) {
             log.error("Ошибка при создании маппинга: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
-                    "Ошибка при создании настроек маппинга: " + e.getMessage());
+                    "Ошибка при создании маппинга: " + e.getMessage());
         }
         return "redirect:/shops/{shopId}/mapping";
     }
@@ -121,20 +122,18 @@ public class ClientMappingController {
     @LogExecution("Обновление маппинга")
     public String updateMapping(@PathVariable Long shopId,
                                 @PathVariable Long mappingId,
-                                @ModelAttribute ClientMappingConfig mapping,
+                                @ModelAttribute("mapping") ClientMappingConfig mapping,
                                 RedirectAttributes redirectAttributes) {
         log.debug("Обновление маппинга {} для магазина {}", mappingId, shopId);
         try {
             mapping.setId(mappingId);
             mapping.setClientId(shopId);
-
             mappingConfigService.updateMapping(mapping);
-            redirectAttributes.addFlashAttribute("success",
-                    "Настройки маппинга успешно обновлены");
+            redirectAttributes.addFlashAttribute("success", "Маппинг успешно обновлен");
         } catch (Exception e) {
             log.error("Ошибка при обновлении маппинга: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
-                    "Ошибка при обновлении настроек маппинга: " + e.getMessage());
+                    "Ошибка при обновлении маппинга: " + e.getMessage());
         }
         return "redirect:/shops/{shopId}/mapping";
     }

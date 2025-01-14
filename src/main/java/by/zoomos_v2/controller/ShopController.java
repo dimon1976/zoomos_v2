@@ -57,15 +57,19 @@ public class ShopController {
     @LogExecution("Сохранение настроек магазина")
     public String saveShopSettings(@ModelAttribute("shop") Client client,
                                    RedirectAttributes redirectAttributes) {
-        log.debug("Сохранение настроек магазина с ID: {}", client.getId());
+        log.debug("Сохранение настроек магазина: {}", client);
         try {
-            clientService.updateClient(client);
-            redirectAttributes.addFlashAttribute("success",
-                    "Настройки магазина успешно сохранены");
+            if (client.getId() == null) {
+                clientService.createClient(client);
+                redirectAttributes.addFlashAttribute("success", "Магазин успешно создан");
+            } else {
+                clientService.updateClient(client);
+                redirectAttributes.addFlashAttribute("success", "Настройки магазина обновлены");
+            }
         } catch (Exception e) {
-            log.error("Ошибка при сохранении настроек магазина: {}", e.getMessage(), e);
+            log.error("Ошибка при сохранении магазина: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
-                    "Ошибка при сохранении настроек: " + e.getMessage());
+                    "Ошибка при сохранении магазина: " + e.getMessage());
         }
         return "redirect:/shops";
     }
@@ -75,8 +79,10 @@ public class ShopController {
      */
     @GetMapping("/new")
     public String showNewShopForm(Model model) {
-        log.debug("Запрошена форма создания нового магазина");
-        model.addAttribute("shop", new Client());
+        log.debug("Отображение формы создания нового магазина");
+        Client client = new Client();
+        client.setActive(true); // устанавливаем значение по умолчанию
+        model.addAttribute("shop", client);
         return "client/client-settings";
     }
 
