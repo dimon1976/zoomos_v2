@@ -1,8 +1,8 @@
 package by.zoomos_v2.controller;
-
 import by.zoomos_v2.model.FileMetadata;
-import by.zoomos_v2.service.FileProcessingService;
 import by.zoomos_v2.service.FileUploadService;
+import by.zoomos_v2.service.FileProcessingService;
+import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.aspect.LogExecution;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,46 +13,48 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * Контроллер для обработки загрузки и обработки файлов.
- * Обеспечивает функционал загрузки файлов и их последующей обработки
- * в соответствии с настройками маппинга.
+ * Контроллер для управления файлами в интерфейсе магазина
  */
 @Slf4j
 @Controller
 @RequestMapping("/shops/{shopId}/files")
 @RequiredArgsConstructor
-public class FileUploadController {
+public class FileController {
 
     private final FileUploadService fileUploadService;
     private final FileProcessingService fileProcessingService;
+    private final MappingConfigService mappingConfigService;
 
     /**
-     * Отображает страницу загрузки файлов
+     * Страница загрузки файлов
      */
-    @GetMapping("/upload")
-    public String showUploadForm(@PathVariable Long shopId, Model model) {
-        log.debug("Отображение формы загрузки файлов для магазина: {}", shopId);
-        model.addAttribute("shopId", shopId);
-        model.addAttribute("recentFiles", fileUploadService.getRecentFiles(shopId));
+    @GetMapping
+    public String showFileUploadPage(@PathVariable Long shopId, Model model) {
+        log.debug("Отображение страницы загрузки файлов для магазина {}", shopId);
+
+        model.addAttribute("files", fileUploadService.getRecentFiles(shopId));
+        model.addAttribute("mappings", mappingConfigService.getMappingsForClient(shopId));
         return "files/upload";
     }
 
     /**
-     * Обрабатывает загрузку файла
+     * Обработка загрузки файла
      */
     @PostMapping("/upload")
     @LogExecution("Загрузка файла")
     public String handleFileUpload(@PathVariable Long shopId,
                                    @RequestParam("file") MultipartFile file,
-                                   @RequestParam(value = "mappingId", required = false) Long mappingId,
+                                   @RequestParam(required = false) Long mappingId,
                                    RedirectAttributes redirectAttributes) {
         log.debug("Загрузка файла {} для магазина {}", file.getOriginalFilename(), shopId);
 
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Выберите файл для загрузки");
+            return "redirect:/shops/{shopId}/files";
+        }
+
         try {
             FileMetadata metadata = fileUploadService.uploadFile(file, shopId, mappingId);
-            log.info("Файл {} успешно загружен, ID: {}", file.getOriginalFilename(), metadata.getId());
-
-            // Начинаем асинхронную обработку файла
             fileProcessingService.processFileAsync(metadata.getId());
 
             redirectAttributes.addFlashAttribute("success",
@@ -62,40 +64,39 @@ public class FileUploadController {
             log.error("Ошибка при загрузке файла: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при загрузке файла: " + e.getMessage());
-            return "redirect:/shops/{shopId}/files/upload";
+            return "redirect:/shops/{shopId}/files";
         }
     }
 
     /**
-     * Отображает статус обработки файла
+     * Страница со статусом обработки файла
      */
     @GetMapping("/status/{fileId}")
     public String showFileStatus(@PathVariable Long shopId,
                                  @PathVariable Long fileId,
                                  Model model) {
-        log.debug("Проверка статуса файла {} для магазина {}", fileId, shopId);
+        log.debug("Просмотр статуса файла {} для магазина {}", fileId, shopId);
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-
-            // Проверяем, принадлежит ли файл магазину
             if (!metadata.getShopId().equals(shopId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
             }
 
             model.addAttribute("file", metadata);
-            model.addAttribute("processingStatus",
-                    fileProcessingService.getProcessingStatus(fileId));
+            model.addAttribute("processingStatus", fileProcessingService.getProcessingStatus(fileId));
+            model.addAttribute("shopId", shopId);
+
             return "files/status";
         } catch (Exception e) {
             log.error("Ошибка при получении статуса файла: {}", e.getMessage(), e);
-            model.addAttribute("error", "Ошибка при получении статуса файла");
+            model.addAttribute("error", "Ошибка при получении информации о файле");
             return "error";
         }
     }
 
     /**
-     * Отменяет обработку файла
+     * Отмена обработки файла
      */
     @PostMapping("/status/{fileId}/cancel")
     @LogExecution("Отмена обработки файла")
@@ -105,6 +106,11 @@ public class FileUploadController {
         log.debug("Отмена обработки файла {} для магазина {}", fileId, shopId);
 
         try {
+            FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
+            if (!metadata.getShopId().equals(shopId)) {
+                throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
+            }
+
             fileProcessingService.cancelProcessing(fileId);
             redirectAttributes.addFlashAttribute("success", "Обработка файла отменена");
         } catch (Exception e) {
@@ -112,13 +118,14 @@ public class FileUploadController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при отмене обработки файла: " + e.getMessage());
         }
+
         return "redirect:/shops/{shopId}/files/status/" + fileId;
     }
 
     /**
-     * Удаляет файл
+     * Удаление файла
      */
-    @PostMapping("/delete/{fileId}")
+    @PostMapping("/{fileId}/delete")
     @LogExecution("Удаление файла")
     public String deleteFile(@PathVariable Long shopId,
                              @PathVariable Long fileId,
@@ -133,6 +140,33 @@ public class FileUploadController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при удалении файла: " + e.getMessage());
         }
-        return "redirect:/shops/{shopId}/files/upload";
+
+        return "redirect:/shops/{shopId}/files";
+    }
+
+    /**
+     * Получение результатов обработки файла
+     */
+    @GetMapping("/{fileId}/results")
+    public String showFileResults(@PathVariable Long shopId,
+                                  @PathVariable Long fileId,
+                                  Model model) {
+        log.debug("Просмотр результатов обработки файла {} для магазина {}", fileId, shopId);
+
+        try {
+            FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
+            if (!metadata.getShopId().equals(shopId)) {
+                throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
+            }
+
+            model.addAttribute("file", metadata);
+            model.addAttribute("shopId", shopId);
+            return "files/results";
+
+        } catch (Exception e) {
+            log.error("Ошибка при получении результатов обработки: {}", e.getMessage(), e);
+            model.addAttribute("error", "Ошибка при получении результатов обработки");
+            return "error";
+        }
     }
 }

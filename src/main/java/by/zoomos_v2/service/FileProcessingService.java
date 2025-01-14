@@ -1,166 +1,179 @@
 package by.zoomos_v2.service;
 
-import by.zoomos_v2.config.UploadFileException;
-import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.FileMetadata;
-import com.opencsv.CSVParser;
-import com.opencsv.CSVParserBuilder;
-import com.opencsv.CSVReader;
-import com.opencsv.CSVReaderBuilder;
-import com.opencsv.exceptions.CsvValidationException;
-import jakarta.transaction.Transactional;
+import by.zoomos_v2.repository.FileMetadataRepository;
+import by.zoomos_v2.service.processor.FileProcessor;
+import by.zoomos_v2.service.processor.FileProcessorFactory;
+import by.zoomos_v2.util.FileUtils;
+import by.zoomos_v2.util.PathResolver;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.*;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-// Сервис для чтения и записи данных
-@Service
+/**
+ * Сервис для обработки загруженных файлов.
+ * Обеспечивает асинхронную обработку файлов в соответствии с настройками маппинга.
+ * Поддерживает:
+ * - Асинхронную обработку файлов
+ * - Отслеживание прогресса обработки
+ * - Управление статусами обработки
+ * - Отмену обработки файлов
+ */
 @Slf4j
+@Service
+@RequiredArgsConstructor
 public class FileProcessingService {
-    private final FileAnalyzerService fileAnalyzerService;
+
+    private final FileMetadataRepository fileMetadataRepository;
     private final MappingConfigService mappingConfigService;
-    private final DataPersistenceService dataPersistenceService;
+    private final ObjectMapper objectMapper;
+    private final FileProcessorFactory processorFactory;
+    private final FileUtils fileUtils;
+    private final PathResolver pathResolver;
 
-    public FileProcessingService(FileAnalyzerService fileAnalyzerService, MappingConfigService mappingConfigService, DataPersistenceService dataPersistenceService) {
-        this.fileAnalyzerService = fileAnalyzerService;
-        this.mappingConfigService = mappingConfigService;
-        this.dataPersistenceService = dataPersistenceService;
-    }
+    // Хранилище статусов обработки файлов
+    private final ConcurrentHashMap<Long, FileProcessingStatus> processingStatuses = new ConcurrentHashMap<>();
 
-    public List<Map<String, String>> readFile(MultipartFile file, Long mappingConfigId) throws IOException {
-        FileMetadata metadata = fileAnalyzerService.analyzeFile(file);
-        ClientMappingConfig mappingConfig = mappingConfigService.getConfigById(mappingConfigId);
-        Map<String, String> mapping = mappingConfigService.parseMappingJson(mappingConfig.getMappingData());
+    /**
+     * Асинхронно обрабатывает загруженный файл.
+     * Процесс обработки включает:
+     * 1. Загрузку метаданных файла
+     * 2. Обновление статуса обработки
+     * 3. Выбор подходящего процессора
+     * 4. Обработку файла с отслеживанием прогресса
+     * 5. Сохранение результатов обработки
+     *
+     * @param fileId идентификатор файла для обработки
+     * @throws IllegalArgumentException если файл не найден
+     */
+    @Async("fileProcessingExecutor")
+    public void processFileAsync(Long fileId) {
+        log.debug("Начало асинхронной обработки файла с ID: {}", fileId);
 
-        switch (metadata.getFileType()) {
-            case CSV:
-            case TXT:
-                return readTextFile(file, metadata, mapping);
-            case XLS:
-            case XLSX:
-                return readExcelFile(file, metadata, mapping);
-            default:
-                throw new UploadFileException("Неподдерживаемый тип файла");
-        }
-    }
+        try {
+            FileMetadata metadata = fileMetadataRepository.findById(fileId)
+                    .orElseThrow(() -> new IllegalArgumentException("Файл не найден"));
 
-    private List<Map<String, String>> readTextFile(MultipartFile file, FileMetadata metadata,
-                                                   Map<String, String> mapping) throws IOException {
-        List<Map<String, String>> results = new ArrayList<>();
+            updateProcessingStatus(fileId, 0, "Инициализация обработки");
+            updateFileStatus(metadata, "PROCESSING", null);
 
-        // Создаем карту соответствия индексов колонок и заголовков файла
-        Map<Integer, String> headerIndexMap = new HashMap<>();
-        for (int i = 0; i < metadata.getHeaders().size(); i++) {
-            String header = metadata.getHeaders().get(i).replaceAll("^\"|\"$", "").trim();
-            headerIndexMap.put(i, header);
-        }
+            Path filePath = pathResolver.getFilePath(metadata.getShopId(),
+                    metadata.getStoredFilename());
 
-        CSVParser parser = new CSVParserBuilder()
-                .withSeparator(metadata.getDelimiter().charAt(0))
-                .build();
+            FileProcessor processor = processorFactory.getProcessor(metadata);
 
-        try (CSVReader reader = new CSVReaderBuilder(
-                new InputStreamReader(file.getInputStream(), metadata.getCharset()))
-                .withCSVParser(parser)
-                .build()) {
+            Map<String, Object> results = processor.processFile(filePath, metadata,
+                    (progress, message) -> updateProcessingStatus(fileId, progress, message));
 
-            // Пропускаем заголовок
-            reader.readNext();
+            metadata.setProcessingResults(objectMapper.writeValueAsString(results));
+            updateFileStatus(metadata, "COMPLETED", null);
+            updateProcessingStatus(fileId, 100, "Обработка завершена");
 
-            String[] line;
-            while ((line = reader.readNext()) != null) {
-                Map<String, String> rowData = new LinkedHashMap<>();
+            log.info("Файл {} успешно обработан", metadata.getOriginalFilename());
 
-                // Проходим по маппингу (поле сущности -> заголовок файла)
-                for (Map.Entry<String, String> entry : mapping.entrySet()) {
-                    String entityField = entry.getKey();      // поле сущности
-                    String fileHeader = entry.getValue();     // заголовок в файле
+        } catch (Exception e) {
+            log.error("Ошибка при обработке файла {}: {}", fileId, e.getMessage(), e);
+            updateProcessingStatus(fileId, -1, "Ошибка: " + e.getMessage());
 
-                    // Ищем индекс колонки с нужным заголовком
-                    for (Map.Entry<Integer, String> headerEntry : headerIndexMap.entrySet()) {
-                        if (headerEntry.getValue().equals(fileHeader)) {
-                            int columnIndex = headerEntry.getKey();
-                            if (columnIndex < line.length) {
-                                String value = line[columnIndex].trim();
-                                rowData.put(entityField, value);
-                            }
-                        }
-                    }
+            try {
+                FileMetadata metadata = fileMetadataRepository.findById(fileId).orElse(null);
+                if (metadata != null) {
+                    updateFileStatus(metadata, "ERROR", e.getMessage());
                 }
-
-                if (!rowData.isEmpty()) {
-                    results.add(rowData);
-                } else {
-                    log.warn("Empty row found in file");
-                }
-            }
-        } catch (CsvValidationException e) {
-            throw new IOException("Error reading CSV file", e);
-        }
-
-        log.info("Processed {} rows from file", results.size());
-        return results;
-    }
-
-    private List<Map<String, String>> readExcelFile(MultipartFile file, FileMetadata metadata,
-                                                    Map<String, String> mapping) throws IOException {
-        List<Map<String, String>> results = new ArrayList<>();
-
-        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
-            Sheet sheet = workbook.getSheetAt(0);
-
-            // Создаем карту соответствия индексов колонок и заголовков файла
-            Map<Integer, String> headerIndexMap = new HashMap<>();
-            for (int i = 0; i < metadata.getHeaders().size(); i++) {
-                String header = metadata.getHeaders().get(i).replaceAll("^\"|\"$", "").trim();
-                headerIndexMap.put(i, header);
-            }
-
-            // Пропускаем заголовок
-            int firstDataRow = 1;
-
-            for (int rowNum = firstDataRow; rowNum <= sheet.getLastRowNum(); rowNum++) {
-                Row row = sheet.getRow(rowNum);
-                if (row == null) continue;
-
-                Map<String, String> rowData = new LinkedHashMap<>();
-
-                // Проходим по маппингу (поле сущности -> заголовок файла)
-                for (Map.Entry<String, String> entry : mapping.entrySet()) {
-                    String entityField = entry.getKey();      // поле сущности
-                    String fileHeader = entry.getValue();     // заголовок в файле
-
-                    // Ищем индекс колонки с нужным заголовком
-                    for (Map.Entry<Integer, String> headerEntry : headerIndexMap.entrySet()) {
-                        if (headerEntry.getValue().equals(fileHeader)) {
-                            int columnIndex = headerEntry.getKey();
-                            Cell cell = row.getCell(columnIndex);
-                            String cellValue = fileAnalyzerService.getCellValueAsString(cell);
-                            rowData.put(entityField, cellValue);
-                        }
-                    }
-                }
-
-                if (!rowData.isEmpty()) {
-                    results.add(rowData);
-                }
+            } catch (Exception ex) {
+                log.error("Ошибка при обновлении статуса файла: {}", ex.getMessage(), ex);
             }
         }
-
-        return results;
     }
 
-    // Сохранение данных в БД
+    /**
+     * Обновляет статус обработки файла в базе данных.
+     * Также обновляет временные метки начала и завершения обработки.
+     *
+     * @param metadata метаданные файла для обновления
+     * @param status новый статус файла (PROCESSING, COMPLETED, ERROR, CANCELLED)
+     * @param errorMessage сообщение об ошибке (если есть)
+     */
     @Transactional
-    public void saveData(List<Map<String, String>> data, Long clientId, Long mappingId) {
-        ClientMappingConfig mappingConfig = mappingConfigService.getConfigById(mappingId);
-        Map<String, String> mapping = mappingConfigService.parseMappingJson(mappingConfig.getMappingData());
-        dataPersistenceService.saveEntities(data, clientId, mapping);
+    public void updateFileStatus(FileMetadata metadata, String status, String errorMessage) {
+        metadata.setStatus(status);
+        metadata.setErrorMessage(errorMessage);
+
+        if ("PROCESSING".equals(status)) {
+            metadata.setProcessingStartedAt(LocalDateTime.now());
+        } else if ("COMPLETED".equals(status) || "ERROR".equals(status) || "CANCELLED".equals(status)) {
+            metadata.setProcessingCompletedAt(LocalDateTime.now());
+        }
+
+        fileMetadataRepository.save(metadata);
     }
 
+    /**
+     * Возвращает текущий статус обработки файла.
+     * Если статус не найден, возвращает статус по умолчанию.
+     *
+     * @param fileId идентификатор файла
+     * @return объект статуса обработки, содержащий прогресс и сообщение
+     */
+    public FileProcessingStatus getProcessingStatus(Long fileId) {
+        return processingStatuses.getOrDefault(fileId,
+                new FileProcessingStatus(0, "Статус неизвестен"));
+    }
+
+    /**
+     * Отменяет обработку файла.
+     * Обновляет статус файла на CANCELLED и добавляет сообщение об отмене.
+     *
+     * @param fileId идентификатор файла для отмены обработки
+     */
+    @Transactional
+    public void cancelProcessing(Long fileId) {
+        log.debug("Отмена обработки файла: {}", fileId);
+        updateProcessingStatus(fileId, -1, "Обработка отменена");
+
+        FileMetadata metadata = fileMetadataRepository.findById(fileId).orElse(null);
+        if (metadata != null) {
+            updateFileStatus(metadata, "CANCELLED", "Обработка отменена пользователем");
+        }
+    }
+
+    /**
+     * Обновляет статус обработки файла в памяти.
+     * Используется для отслеживания прогресса обработки.
+     *
+     * @param fileId идентификатор файла
+     * @param progress процент выполнения (от 0 до 100, или -1 для ошибки)
+     * @param message текущее сообщение о статусе обработки
+     */
+    private void updateProcessingStatus(Long fileId, int progress, String message) {
+        processingStatuses.put(fileId, new FileProcessingStatus(progress, message));
+    }
+
+    /**
+     * Внутренний класс для хранения информации о статусе обработки файла.
+     * Содержит информацию о прогрессе и текущем состоянии обработки.
+     */
+    @Data
+    @AllArgsConstructor
+    public static class FileProcessingStatus {
+        /**
+         * Прогресс обработки в процентах (от 0 до 100, или -1 для ошибки)
+         */
+        private int progress;
+
+        /**
+         * Текущее сообщение о статусе обработки
+         */
+        private String message;
+    }
 }

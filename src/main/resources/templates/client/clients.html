@@ -1,46 +1,87 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Клиенты</title>
-    <link rel="stylesheet" th:href="@{/css/styles.css}" />
+    <title>Список магазинов</title>
+    <div th:replace="fragments/navbar :: header-css"/>
 </head>
 <body>
+<div th:replace="fragments/navbar :: header"/>
 
-<div th:replace="~{fragments/navbar :: navbar}"></div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col">
+            <h2>Список магазинов</h2>
 
-<h1>Клиенты</h1>
+            <!-- Сообщения об успехе/ошибке -->
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <span th:text="${success}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                <span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
 
-<div class="search-add-row">
-    <form th:action="@{/clients/search}" method="get">
-        <input type="text" name="name" placeholder="Поиск по имени" th:value="${param.name}">
-        <button type="submit">Искать</button>
-    </form>
-    <form th:action="@{/clients/add}" method="post">
-        <input type="text" name="name" placeholder="Имя клиента">
-        <button type="submit">Добавить</button>
-    </form>
+            <!-- Кнопка добавления нового магазина -->
+            <div class="mb-3">
+                <a th:href="@{/shops/new}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Добавить магазин
+                </a>
+            </div>
+
+            <!-- Таблица магазинов -->
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название</th>
+                        <th>URL</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="shop : ${shops}">
+                        <td th:text="${shop.id}"></td>
+                        <td th:text="${shop.name}"></td>
+                        <td th:text="${shop.url}"></td>
+                        <td>
+                                    <span th:class="${shop.active ? 'badge bg-success' : 'badge bg-danger'}"
+                                          th:text="${shop.active ? 'Активен' : 'Неактивен'}">
+                                    </span>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a th:href="@{/shops/settings/{id}(id=${shop.id})}"
+                                   class="btn btn-sm btn-primary"
+                                   title="Настройки">
+                                    <i class="fas fa-cog"></i>
+                                </a>
+                                <form th:action="@{/shops/delete/{id}(id=${shop.id})}"
+                                      method="post"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Вы уверены, что хотите удалить этот магазин?');">
+                                    <button type="submit"
+                                            class="btn btn-sm btn-danger"
+                                            title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(shops)}">
+                        <td colspan="5" class="text-center">Магазины не найдены</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="error-message" th:if="${error}" th:text="${error}"></div>
-
-<table>
-    <thead>
-    <tr>
-        <th>Название</th>
-        <th>Дата создания</th>
-        <th>ID</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="client : ${clients}">
-        <td><a th:href="${'/shop/' + client.name + '/settings'}" th:text="${client.name}"></a></td>
-        <td th:text="${#temporals.format(client.creationDate, 'yyyy-MM-dd HH:mm')} ?: 'Не указана'"></td>
-        <td th:text="${client.id}"></td>
-    </tr>
-    </tbody>
-</table>
-
+<div th:replace="fragments/navbar :: footer"/>
 </body>
 </html>

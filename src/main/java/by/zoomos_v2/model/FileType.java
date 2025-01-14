@@ -4,28 +4,34 @@ import by.zoomos_v2.config.UploadFileException;
 
 import java.util.Arrays;
 
-// Перечисление для поддерживаемых типов файлов
+/**
+ * Перечисление поддерживаемых типов файлов
+ */
 public enum FileType {
-    XLS(".xls"),
-    XLSX(".xlsx"),
-    CSV(".csv"),
-    TXT(".txt");
+    CSV("text/csv"),
+    EXCEL("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    XLS("application/vnd.ms-excel");
 
-    private final String extension;
+    private final String contentType;
 
-    FileType(String extension) {
-        this.extension = extension;
+    FileType(String contentType) {
+        this.contentType = contentType;
     }
 
-    public String getExtension() {
-        return extension;
+    public String getContentType() {
+        return contentType;
     }
 
-    public static FileType fromFileName(String fileName) {
-        String ext = fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
-        return Arrays.stream(FileType.values())
-                .filter(type -> type.getExtension().equals(ext))
-                .findFirst()
-                .orElseThrow(() -> new UploadFileException("Неподдерживаемый тип файла: " + ext));
+    public static FileType fromContentType(String contentType) {
+        for (FileType type : values()) {
+            if (type.contentType.equals(contentType)) {
+                return type;
+            }
+        }
+        return null;
+    }
+
+    public boolean matches(String contentType) {
+        return this.contentType.equals(contentType);
     }
 }

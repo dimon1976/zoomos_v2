@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Результаты обработки файла</title>
+    <div th:replace="fragments/navbar :: header-css"/>
+    <!-- Дополнительные стили для таблицы -->
+    <style>
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 1;
+        }
+        .json-view {
+            max-height: 400px;
+            overflow: auto;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="fragments/navbar :: header"/>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col">
+            <!-- Основная информация -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title h5 mb-0">Результаты обработки файла</h2>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">Имя файла:</dt>
+                        <dd class="col-sm-9" th:text="${file.originalFilename}"></dd>
+
+                        <dt class="col-sm-3">Тип файла:</dt>
+                        <dd class="col-sm-9" th:text="${file.fileType}"></dd>
+
+                        <dt class="col-sm-3">Дата загрузки:</dt>
+                        <dd class="col-sm-9" th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></dd>
+
+                        <dt class="col-sm-3">Дата обработки:</dt>
+                        <dd class="col-sm-9" th:text="${#temporals.format(file.processingCompletedAt, 'dd.MM.yyyy HH:mm')}"></dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Статистика обработки -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title h5 mb-0">Статистика обработки</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row" th:with="results=${T(com.fasterxml.jackson.databind.ObjectMapper).readValue(file.processingResults, T(java.util.Map))}">
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Всего записей</h6>
+                                    <p class="card-text h3" th:text="${results.totalRecords}">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Можно добавить другие статистические показатели -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Таблица с данными -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title h5 mb-0">Данные файла</h3>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="exportToExcel()">
+                        <i class="fas fa-download"></i> Экспорт в Excel
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="table table-striped table-bordered"
+                               th:with="results=${T(com.fasterxml.jackson.databind.ObjectMapper).readValue(file.processingResults, T(java.util.Map))}">
+                            <thead>
+                            <tr>
+                                <th th:each="header : ${results.headers}" th:text="${header}"></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="record : ${results.records}">
+                                <td th:each="header : ${results.headers}"
+                                    th:text="${record.get(header)}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-4">
+                <a th:href="@{/shops/{shopId}/files(shopId=${shopId})}"
+                   class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Назад к списку
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="fragments/navbar :: footer"/>
+
+<!-- Скрипт для экспорта в Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+<script th:inline="javascript">
+    function exportToExcel() {
+        const results = /*[[${T(com.fasterxml.jackson.databind.ObjectMapper).readValue(file.processingResults, T(java.util.Map))}]]*/ {};
+        const filename = /*[[${file.originalFilename}]]*/ 'export.xlsx';
+
+        // Создаем рабочую книгу
+        const wb = XLSX.utils.book_new();
+
+        // Преобразуем данные в формат для Excel
+        const ws = XLSX.utils.json_to_sheet(results.records);
+
+        // Добавляем лист в книгу
+        XLSX.utils.book_append_sheet(wb, ws, "Data");
+
+        // Сохраняем файл
+        XLSX.writeFile(wb, `processed_${filename}.xlsx`);
+    }
+</script>
+</body>
+</html>

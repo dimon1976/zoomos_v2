@@ -2,16 +2,21 @@ package by.zoomos_v2.service;
 
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.repository.ClientRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import by.zoomos_v2.aspect.LogExecution;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 
+/**
+ * Сервис для работы с клиентами.
+ * Реализует бизнес-логику управления данными клиентов.
+ */
+@Slf4j
 @Service
 public class ClientService {
-    private static final Logger logger = LoggerFactory.getLogger(ClientService.class);
 
     private final ClientRepository clientRepository;
 
@@ -19,26 +24,75 @@ public class ClientService {
         this.clientRepository = clientRepository;
     }
 
-    public Client addClient(String name) {
-        if (clientRepository.findByName(name).isPresent()) {
-            logger.warn("Attempt to add existing client: {}", name);
-            throw new IllegalArgumentException("Client with name " + name + " already exists");
-        }
-        Client client = new Client(name, LocalDateTime.now());  // Убедитесь, что дата здесь устанавливается
-        return clientRepository.save(client);
-    }
-
+    /**
+     * Получает список всех клиентов
+     * @return список клиентов
+     */
+    @Transactional(readOnly = true)
     public List<Client> getAllClients() {
+        log.debug("Получение списка всех клиентов");
         return clientRepository.findAll();
     }
 
-    public Client getClientByName(String name) {
-        return clientRepository.findByName(name).orElseThrow(() -> new IllegalArgumentException("Client not found"));
+    /**
+     * Получает клиента по идентификатору
+     * @param id идентификатор клиента
+     * @return объект клиента
+     * @throws EntityNotFoundException если клиент не найден
+     */
+    @Transactional(readOnly = true)
+    public Client getClientById(Long id) {
+        log.debug("Получение клиента по ID: {}", id);
+        return clientRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Клиент с ID {} не найден", id);
+                    return new EntityNotFoundException("Клиент не найден");
+                });
     }
 
-    public Long getClientIdByName(String name) {
-        return clientRepository.findByName(name)
-                .map(Client::getId)
-                .orElseThrow(() -> new IllegalArgumentException("Client with name '" + name + "' not found"));
+    /**
+     * Обновляет данные клиента
+     * @param client объект клиента с обновленными данными
+     * @return обновленный объект клиента
+     */
+    @Transactional
+    @LogExecution("Обновление данных клиента")
+    public Client updateClient(Client client) {
+        log.debug("Обновление данных клиента с ID: {}", client.getId());
+        if (client.getId() == null) {
+            log.warn("Попытка обновить клиента без ID");
+            throw new IllegalArgumentException("ID клиента не может быть null");
+        }
+        return clientRepository.save(client);
+    }
+
+    /**
+     * Создает нового клиента
+     * @param client объект нового клиента
+     * @return созданный объект клиента
+     */
+    @Transactional
+    @LogExecution("Создание нового клиента")
+    public Client createClient(Client client) {
+        log.debug("Создание нового клиента: {}", client);
+        client.setId(null); // Убеждаемся, что создается новый клиент
+        return clientRepository.save(client);
+    }
+
+    /**
+     * Удаляет клиента
+     * @param id идентификатор клиента
+     * @throws EntityNotFoundException если клиент не найден
+     */
+    @Transactional
+    @LogExecution("Удаление клиента")
+    public void deleteClient(Long id) {
+        log.debug("Удаление клиента с ID: {}", id);
+        if (!clientRepository.existsById(id)) {
+            log.error("Попытка удалить несуществующего клиента с ID: {}", id);
+            throw new EntityNotFoundException("Клиент не найден");
+        }
+        clientRepository.deleteById(id);
+        log.info("Клиент с ID: {} успешно удален", id);
     }
 }

@@ -1,46 +1,45 @@
 package by.zoomos_v2.util;
 
-import java.util.HashMap;
-import java.util.Map;
+import by.zoomos_v2.model.FileType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
+import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Утилитарный класс для определения типа загружаемых файлов
+ */
+@Slf4j
+@Component
 public class FileTypeDetector {
 
-    // Карта для хранения типов файлов и их допустимых расширений
-    private static final Map<String, String> FILE_TYPE_MAP = new HashMap<>();
-
-    static {
-        FILE_TYPE_MAP.put("csv", "text/csv");
-        FILE_TYPE_MAP.put("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        FILE_TYPE_MAP.put("xls", "application/vnd.ms-excel");
-        FILE_TYPE_MAP.put("txt", "text/plain");
-        // Добавьте другие типы по необходимости
-    }
-
     /**
-     * Определяет MIME-тип файла на основе его расширения.
-     *
-     * @param fileName Имя файла.
-     * @return MIME-тип файла или null, если расширение неизвестно.
+     * Определяет тип файла на основе его расширения и MIME-типа
      */
-    public static String detectFileType(String fileName) {
-        if (fileName == null || !fileName.contains(".")) {
-            return null;
+    public FileType detectFileType(MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String contentType = file.getContentType();
+
+        log.debug("Определение типа файла. Имя: {}, Content-Type: {}",
+                originalFilename, contentType);
+
+        // Проверяем по расширению
+        if (originalFilename != null) {
+            String extension = originalFilename.toLowerCase();
+            if (extension.endsWith(".csv")) {
+                return FileType.CSV;
+            } else if (extension.endsWith(".xlsx")) {
+                return FileType.EXCEL;
+            } else if (extension.endsWith(".xls")) {
+                return FileType.XLS;
+            }
         }
 
-        // Извлекаем расширение
-        String extension = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+        // Проверяем по MIME-типу
+        if (contentType != null) {
+            return FileType.fromContentType(contentType);
+        }
 
-        // Возвращаем тип файла
-        return FILE_TYPE_MAP.get(extension);
-    }
-
-    /**
-     * Проверяет, является ли файл допустимого типа.
-     *
-     * @param fileName Имя файла.
-     * @return true, если файл поддерживается, иначе false.
-     */
-    public static boolean isSupportedFileType(String fileName) {
-        return detectFileType(fileName) != null;
+        log.warn("Не удалось определить тип файла: {}", originalFilename);
+        return null;
     }
 }
