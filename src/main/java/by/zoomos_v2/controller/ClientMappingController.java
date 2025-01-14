@@ -5,6 +5,9 @@ import by.zoomos_v2.model.Client;
 import by.zoomos_v2.service.ClientService;
 import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.aspect.LogExecution;
+import by.zoomos_v2.util.EntityRegistryService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -24,6 +27,7 @@ public class ClientMappingController {
 
     private final ClientService clientService;
     private final MappingConfigService mappingConfigService;
+    private final EntityRegistryService entityRegistryService;
 
     /**
      * Отображает список настроек маппинга для магазина
@@ -59,6 +63,9 @@ public class ClientMappingController {
             mapping.setActive(true);
             model.addAttribute("mapping", mapping);
 
+            // Добавляем поля для маппинга
+            model.addAttribute("entityFields", entityRegistryService.getFieldsForMapping());
+
             return "uploadMapping/edit-mapping";
         } catch (Exception e) {
             log.error("Ошибка при создании формы маппинга: {}", e.getMessage(), e);
@@ -79,6 +86,12 @@ public class ClientMappingController {
         try {
             mapping.setClientId(shopId);
             mappingConfigService.createMapping(mapping);
+            // Проверяем, что все необходимые поля заполнены
+            validateMappingData(mapping);
+            // Сохраняем маппинг
+            ClientMappingConfig savedMapping = mappingConfigService.createMapping(mapping);
+
+            log.info("Маппинг успешно создан с ID: {}", savedMapping.getId());
             redirectAttributes.addFlashAttribute("success", "Маппинг успешно создан");
         } catch (Exception e) {
             log.error("Ошибка при создании маппинга: {}", e.getMessage(), e);
@@ -86,6 +99,24 @@ public class ClientMappingController {
                     "Ошибка при создании маппинга: " + e.getMessage());
         }
         return "redirect:/shops/{shopId}/mapping";
+    }
+
+    private void validateMappingData(ClientMappingConfig mapping) {
+        if (mapping.getName() == null || mapping.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Название маппинга обязательно для заполнения");
+        }
+        if (mapping.getFileType() == null) {
+            throw new IllegalArgumentException("Тип файла обязателен для заполнения");
+        }
+        if (mapping.getColumnsConfig() == null || mapping.getColumnsConfig().trim().isEmpty()) {
+            throw new IllegalArgumentException("Необходимо настроить маппинг колонок");
+        }
+        try {
+            // Проверяем, что columnsConfig содержит валидный JSON
+            new ObjectMapper().readTree(mapping.getColumnsConfig());
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Неверный формат настройки колонок");
+        }
     }
 
     /**

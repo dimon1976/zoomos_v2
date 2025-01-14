@@ -34,7 +34,11 @@
                     </div>
 
                     <!-- Форма для создания нового маппинга -->
-                    <form th:if="${mapping.id == null}" th:action="@{/shops/{shopId}/mapping/create(shopId=${shop.id})}" method="post">
+                    <form th:if="${mapping.id == null}"
+                          th:action="@{/shops/{shopId}/mapping/create(shopId=${shop.id})}"
+                          method="post"
+                          class="needs-validation"
+                          novalidate>
                         <input type="hidden" name="clientId" th:value="${shop.id}"/>
 
                         <div class="mb-3">
@@ -64,19 +68,30 @@
                             <div id="new-columnsMapping" class="border rounded p-3">
                                 <div class="row mb-2">
                                     <div class="col-5">
-                                        <label class="form-label">Колонка в файле</label>
+                                        <label class="form-label">Название колонки в файле</label>
                                     </div>
                                     <div class="col-5">
-                                        <label class="form-label">Целевая колонка</label>
+                                        <label class="form-label">Поле в системе</label>
                                     </div>
                                     <div class="col-2"></div>
                                 </div>
                                 <div class="row mb-2 mapping-row">
                                     <div class="col-5">
-                                        <input type="text" class="form-control file-column" placeholder="Имя колонки">
+                                        <input type="text" class="form-control file-column"
+                                               placeholder="Название колонки в файле">
                                     </div>
                                     <div class="col-5">
-                                        <input type="text" class="form-control target-column" placeholder="Целевая колонка">
+                                        <select class="form-select target-column">
+                                            <option value="">Выберите поле</option>
+                                            <th:block th:each="group : ${entityFields}">
+                                                <optgroup th:label="${group.entityName}">
+                                                    <option th:each="field : ${group.fields}"
+                                                            th:value="${field.mappingKey}"
+                                                            th:text="${field.description}">
+                                                    </option>
+                                                </optgroup>
+                                            </th:block>
+                                        </select>
                                     </div>
                                     <div class="col-2">
                                         <button type="button" class="btn btn-danger btn-sm remove-mapping">
@@ -104,9 +119,12 @@
                             <button type="submit" class="btn btn-primary">Создать</button>
                         </div>
                     </form>
-
                     <!-- Форма для редактирования существующего маппинга -->
-                    <form th:if="${mapping.id != null}" th:action="@{/shops/{shopId}/mapping/update(shopId=${shop.id})}" method="post">
+                    <form th:if="${mapping.id != null}"
+                          th:action="@{/shops/{shopId}/mapping/update/{mappingId}(shopId=${shop.id},mappingId=${mapping.id})}"
+                          method="post"
+                          class="needs-validation"
+                          novalidate>
                         <input type="hidden" name="id" th:value="${mapping.id}"/>
                         <input type="hidden" name="clientId" th:value="${shop.id}"/>
 
@@ -137,19 +155,30 @@
                             <div id="edit-columnsMapping" class="border rounded p-3">
                                 <div class="row mb-2">
                                     <div class="col-5">
-                                        <label class="form-label">Колонка в файле</label>
+                                        <label class="form-label">Название колонки в файле</label>
                                     </div>
                                     <div class="col-5">
-                                        <label class="form-label">Целевая колонка</label>
+                                        <label class="form-label">Поле в системе</label>
                                     </div>
                                     <div class="col-2"></div>
                                 </div>
                                 <div class="row mb-2 mapping-row">
                                     <div class="col-5">
-                                        <input type="text" class="form-control file-column" placeholder="Имя колонки">
+                                        <input type="text" class="form-control file-column"
+                                               placeholder="Название колонки в файле">
                                     </div>
                                     <div class="col-5">
-                                        <input type="text" class="form-control target-column" placeholder="Целевая колонка">
+                                        <select class="form-select target-column">
+                                            <option value="">Выберите поле</option>
+                                            <th:block th:each="group : ${entityFields}">
+                                                <optgroup th:label="${group.entityName}">
+                                                    <option th:each="field : ${group.fields}"
+                                                            th:value="${field.mappingKey}"
+                                                            th:text="${field.description}">
+                                                    </option>
+                                                </optgroup>
+                                            </th:block>
+                                        </select>
                                     </div>
                                     <div class="col-2">
                                         <button type="button" class="btn btn-danger btn-sm remove-mapping">
@@ -184,6 +213,29 @@
 </div>
 
 <div th:replace="~{fragments/navbar :: footer}"/>
+
+<!-- Скрипт для защиты от двойной отправки формы -->
+<script>
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (this.submitted) {
+                e.preventDefault();
+                return;
+            }
+
+            // Проверяем, есть ли хотя бы одна настроенная колонка
+            const columnsConfig = this.querySelector('[name="columnsConfig"]').value;
+            if (!columnsConfig || columnsConfig === '{}') {
+                e.preventDefault();
+                alert('Добавьте хотя бы одну колонку для маппинга');
+                return;
+            }
+
+            this.submitted = true;
+            this.querySelector('button[type="submit"]').disabled = true;
+        });
+    });
+</script>
 
 <!-- Скрипт для управления маппингом колонок -->
 <script th:inline="javascript">
@@ -230,28 +282,51 @@
 
         function addMappingRow(fileCol = '', targetCol = '') {
             const template = `
-                   <div class="row mb-2 mapping-row">
-                       <div class="col-5">
-                           <input type="text" class="form-control file-column"
-                                  value="${fileCol}" placeholder="Имя колонки">
-                       </div>
-                       <div class="col-5">
-                           <input type="text" class="form-control target-column"
-                                  value="${targetCol}" placeholder="Целевая колонка">
-                       </div>
-                       <div class="col-2">
-                           <button type="button" class="btn btn-danger btn-sm remove-mapping">
-                               <i class="fas fa-times"></i>
-                           </button>
-                       </div>
-                   </div>
-               `;
+                <div class="row mb-2 mapping-row">
+                    <div class="col-5">
+                        <input type="text" class="form-control file-column"
+                               value="${fileCol}" placeholder="Название колонки в файле">
+                    </div>
+                    <div class="col-5">
+                        <select class="form-select target-column">
+                            <option value="">Выберите поле</option>
+                            ${generateOptionsTemplate()}
+                        </select>
+                    </div>
+                    <div class="col-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-mapping">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
             const lastRow = columnsMapping.querySelector('.mapping-row:last-of-type');
             if (lastRow) {
                 lastRow.insertAdjacentHTML('afterend', template);
             } else {
                 addButton.insertAdjacentHTML('beforebegin', template);
             }
+
+            // Если есть targetCol, устанавливаем значение в select
+            if (targetCol) {
+                const newRow = columnsMapping.querySelector('.mapping-row:last-of-type');
+                const select = newRow.querySelector('.target-column');
+                select.value = targetCol;
+            }
+        }
+
+        function generateOptionsTemplate() {
+            return Array.from(document.querySelector('.target-column').options)
+                .map(opt => {
+                    if (opt.parentElement.tagName === 'OPTGROUP') {
+                        return `<option value="${opt.value}"
+                                              data-group="${opt.parentElement.label}">
+                                          ${opt.text}
+                                      </option>`;
+                    }
+                    return `<option value="${opt.value}">${opt.text}</option>`;
+                })
+                .join('');
         }
 
         function updateColumnsConfig() {

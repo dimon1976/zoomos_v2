@@ -1,8 +1,11 @@
 package by.zoomos_v2.model;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Type;
+
 import java.time.LocalDateTime;
 
 /**
@@ -95,7 +98,8 @@ public class FileMetadata {
     /**
      * Результаты обработки файла в формате JSON
      */
-    @Column(name = "processing_results", columnDefinition = "json")
+    @Type(JsonBinaryType.class)
+    @Column(name = "processing_results", columnDefinition = "jsonb")
     private String processingResults;
 
     @PrePersist

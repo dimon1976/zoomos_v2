@@ -1,8 +1,10 @@
 package by.zoomos_v2.mapping;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
 
@@ -53,13 +55,15 @@ public class ClientMappingConfig {
      * Конфигурация колонок в формате JSON
      * Хранит соответствие между колонками файла и полями в системе
      */
-    @Column(name = "columns_config", columnDefinition = "json")
+    @Type(JsonBinaryType.class)
+    @Column(name = "columns_config", columnDefinition = "jsonb")
     private String columnsConfig;
 
     /**
      * Настройки разделителей и других параметров для парсинга файлов
      */
-    @Column(name = "parser_config", columnDefinition = "json")
+    @Type(JsonBinaryType.class)
+    @Column(name = "parser_config", columnDefinition = "jsonb")
     private String parserConfig;
 
     /**

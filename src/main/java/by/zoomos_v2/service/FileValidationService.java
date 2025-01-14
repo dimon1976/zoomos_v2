@@ -21,6 +21,11 @@ public class FileValidationService {
 
     private final Set<String> ALLOWED_CONTENT_TYPES = new HashSet<>(Arrays.asList(
             "text/csv",
+            "application/csv",
+            "text/plain",
+            "text/x-csv",
+            "application/x-csv",
+            "application/octet-stream",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "application/vnd.ms-excel"
     ));

@@ -3,6 +3,9 @@ package by.zoomos_v2.service;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
 import by.zoomos_v2.exception.FileProcessingException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ import java.util.List;
 public class MappingConfigService {
 
     private final ClientMappingConfigRepository mappingRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * Получает все конфигурации маппинга для магазина
@@ -59,10 +63,45 @@ public class MappingConfigService {
      */
     @Transactional
     public ClientMappingConfig createMapping(ClientMappingConfig mapping) {
-        log.debug("Создание новой конфигурации маппинга для магазина: {}", mapping.getClientId());
-        validateMapping(mapping);
-        mapping.setId(null); // Гарантируем создание новой записи
-        return mappingRepository.save(mapping);
+        log.debug("Создание нового маппинга: {}", mapping);
+
+        // Проверяем формат JSON в columnsConfig
+        validateColumnsConfig(mapping.getColumnsConfig());
+
+        // Создаем новый объект маппинга
+        ClientMappingConfig newMapping = new ClientMappingConfig();
+        newMapping.setClientId(mapping.getClientId());
+        newMapping.setName(mapping.getName());
+        newMapping.setFileType(mapping.getFileType());
+        newMapping.setDescription(mapping.getDescription());
+        newMapping.setColumnsConfig(mapping.getColumnsConfig());
+        newMapping.setActive(mapping.isActive());
+
+        // Сохраняем маппинг
+        ClientMappingConfig savedMapping = mappingRepository.save(newMapping);
+        log.info("Создан новый маппинг с ID: {}", savedMapping.getId());
+
+        return savedMapping;
+    }
+
+    private void validateColumnsConfig(String columnsConfig) {
+        try {
+            // Проверяем, что это валидный JSON-объект
+            JsonNode jsonNode = objectMapper.readTree(columnsConfig);
+            if (!jsonNode.isObject()) {
+                throw new IllegalArgumentException("Конфигурация колонок должна быть объектом");
+            }
+
+            // Проверяем, что все значения являются строками
+            jsonNode.fields().forEachRemaining(entry -> {
+                if (!entry.getValue().isTextual()) {
+                    throw new IllegalArgumentException(
+                            "Все значения в конфигурации колонок должны быть строками");
+                }
+            });
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Неверный формат JSON в конфигурации колонок");
+        }
     }
 
     /**
