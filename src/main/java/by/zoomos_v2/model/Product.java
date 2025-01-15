@@ -22,11 +22,9 @@ public class Product {
     private Long clientId;
 
     @FieldDescription("ID товара")
-//    @Column(nullable = false)
     private String productId;
 
     @FieldDescription("Наименование товара")
-//    @Column(nullable = false)
     private String productName;
 
     @FieldDescription("Бренд товара")
@@ -67,6 +65,5 @@ public class Product {
         siteDataList.remove(siteData);
         siteData.setProduct(null);
     }
-    // Другие поля, специфичные для товара
 }
 

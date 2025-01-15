@@ -5,14 +5,15 @@ import by.zoomos_v2.model.Product;
 import by.zoomos_v2.model.RegionData;
 import by.zoomos_v2.model.SiteData;
 import by.zoomos_v2.repository.ProductRepository;
-import by.zoomos_v2.repository.RegionDataRepository;
-import by.zoomos_v2.repository.SiteDataRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,44 +22,72 @@ import java.util.Map;
 @Transactional
 public class DataPersistenceService {
     private final ProductRepository productRepository;
-    private final RegionDataRepository regionDataRepository;
-    private final SiteDataRepository siteDataRepository;
     private static final String PRODUCT_PREFIX = "product";
     private static final String REGION_PREFIX = "regiondata";
     private static final String SITE_PREFIX = "sitedata";
 
-    public DataPersistenceService(ProductRepository productRepository,
-                                  RegionDataRepository regionDataRepository,
-                                  SiteDataRepository siteDataRepository) {
+    public DataPersistenceService(ProductRepository productRepository) {
         this.productRepository = productRepository;
-        this.regionDataRepository = regionDataRepository;
-        this.siteDataRepository = siteDataRepository;
     }
 
-    public void saveEntities(List<Map<String, String>> data, Long clientId, Map<String, String> mapping) {
+    public Map<String, Object> saveEntities(List<Map<String, String>> data, Long clientId, Map<String, String> mapping) {
+        int successCount = 0;
+        int errorCount = 0;
+        List<String> errors = new ArrayList<>(); // Добавляем список для хранения ошибок
+
         for (Map<String, String> row : data) {
             try {
-                // Создаем основную сущность Product
-                Product product = createProduct(row, clientId, mapping);
-                // Создаем и связываем RegionData, если есть соответствующие данные
-                if (hasEntityData(mapping, REGION_PREFIX)) {
-                    RegionData regionData = createRegionData(row, clientId, mapping);
-                    regionData.setProduct(product);                    // устанавливаем связь RegionData -> Product
-                    product.getRegionDataList().add(regionData);      // устанавливаем связь Product -> RegionData
-                }
-                // Создаем и связываем SiteData, если есть соответствующие данные
-                if (hasEntityData(mapping, SITE_PREFIX)) {
-                    SiteData siteData = createSiteData(row, clientId, mapping);
-                    siteData.setProduct(product);                     // устанавливаем связь SiteData -> Product
-                    product.getSiteDataList().add(siteData);          // устанавливаем связь Product -> SiteData
-                }
-
-                productRepository.save(product);
+                saveEntityTransaction(row, clientId, mapping);
+                successCount++;
+                log.debug("Успешно обработана запись {}/{}", successCount, data.size());
             } catch (Exception e) {
-                log.error("Error processing row: {}", row, e);
-                // Решаем, пропускать проблемную запись или прерывать процесс
-                continue;
+                errorCount++;
+                String errorMessage = String.format("Ошибка в строке %d: %s", successCount + errorCount, e.getMessage());
+                errors.add(errorMessage);
+                log.error("Ошибка обработки строки {} ({}/{}): {}",
+                        row, successCount + errorCount, data.size(), e.getMessage());
             }
+        }
+
+        log.info("Обработка завершена. Успешно: {}, Ошибок: {}, Всего записей: {}",
+                successCount, errorCount, data.size());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("successCount", successCount);
+        result.put("errorCount", errorCount);
+        result.put("totalCount", data.size());
+        if (!errors.isEmpty()) {
+            result.put("errors", errors);
+        }
+
+        return result;
+    }
+
+    @Transactional
+    public void saveEntityTransaction(Map<String, String> row, Long clientId, Map<String, String> mapping) {
+        try {
+            // Создаем основную сущность Product
+            Product product = createProduct(row, clientId, mapping);
+
+            // Создаем и связываем RegionData, если есть соответствующие данные
+            if (hasEntityData(mapping, REGION_PREFIX)) {
+                RegionData regionData = createRegionData(row, clientId, mapping);
+                regionData.setProduct(product);
+                product.getRegionDataList().add(regionData);
+            }
+
+            // Создаем и связываем SiteData, если есть соответствующие данные
+            if (hasEntityData(mapping, SITE_PREFIX)) {
+                SiteData siteData = createSiteData(row, clientId, mapping);
+                siteData.setProduct(product);
+                product.getSiteDataList().add(siteData);
+            }
+
+            productRepository.save(product);
+
+        } catch (Exception e) {
+            log.error("Ошибка сохранения записи: {}", e.getMessage());
+            throw new RuntimeException("Ошибка сохранения записи: " + e.getMessage(), e);
         }
     }
 

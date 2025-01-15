@@ -1,9 +1,11 @@
 package by.zoomos_v2.controller;
 import by.zoomos_v2.model.FileMetadata;
+import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.FileUploadService;
 import by.zoomos_v2.service.FileProcessingService;
 import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.aspect.LogExecution;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -11,6 +13,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.io.File;
 
 /**
  * Контроллер для управления файлами в интерфейсе магазина
@@ -24,6 +28,7 @@ public class FileController {
     private final FileUploadService fileUploadService;
     private final FileProcessingService fileProcessingService;
     private final MappingConfigService mappingConfigService;
+    private final FileMetadataRepository fileMetadataRepository;
 
     /**
      * Страница загрузки файлов
@@ -35,6 +40,39 @@ public class FileController {
         model.addAttribute("files", fileUploadService.getRecentFiles(shopId));
         model.addAttribute("mappings", mappingConfigService.getMappingsForClient(shopId));
         return "files/upload";
+    }
+
+    /**
+     * Отображает страницу со статистикой обработки файла.
+     *
+     * @param shopId идентификатор магазина
+     * @param fileId идентификатор файла
+     * @param model модель представления
+     * @return имя представления
+     */
+    @GetMapping("/{fileId}/statistics")
+    public String showFileStatistics(@PathVariable Long shopId,
+                                     @PathVariable Long fileId,
+                                     Model model) {
+        log.debug("Запрошена статистика обработки файла {} для магазина {}", fileId, shopId);
+
+        try {
+            FileMetadata metadata = fileMetadataRepository.findById(fileId)
+                    .orElseThrow(() -> new EntityNotFoundException("Файл не найден"));
+
+            if (!metadata.getShopId().equals(shopId)) {
+                throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
+            }
+
+            model.addAttribute("shopId", shopId);
+            model.addAttribute("file", metadata);
+
+            return "files/statistics";
+        } catch (Exception e) {
+            log.error("Ошибка при получении статистики обработки файла: {}", e.getMessage(), e);
+            model.addAttribute("error", "Ошибка при получении статистики обработки файла");
+            return "error";
+        }
     }
 
     /**

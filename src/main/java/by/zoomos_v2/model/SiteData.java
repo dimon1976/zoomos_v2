@@ -19,7 +19,6 @@ public class SiteData {
     private Long clientId;
 
     @FieldDescription("Название сайта")
-//    @Column(nullable = false)
     private String competitorName;
 
     @FieldDescription("Цена конкурента")
@@ -40,5 +39,4 @@ public class SiteData {
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long version;
 
-    // Другие поля, специфичные для данных с сайта
 }

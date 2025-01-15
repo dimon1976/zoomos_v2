@@ -1,6 +1,6 @@
 package by.zoomos_v2.service;
 
-import by.zoomos_v2.exception.FileProcessingException;
+import by.zoomos_v2.config.FileProcessingException;
 import by.zoomos_v2.model.FileType;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
@@ -27,7 +27,8 @@ public class FileValidationService {
             "application/x-csv",
             "application/octet-stream",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-excel"
+            "application/vnd.ms-excel",
+            "application/x-tika-ooxml"
     ));
 
     private final Tika tika = new Tika();
@@ -44,8 +45,8 @@ public class FileValidationService {
         }
 
         // Проверка размера файла
-        if (file.getSize() > 10 * 1024 * 1024) { // 10 MB
-            throw new FileProcessingException("Размер файла превышает 10 MB");
+        if (file.getSize() > 600 * 1024 * 1024) { // 10 MB
+            throw new FileProcessingException("Размер файла превышает 600 MB");
         }
 
         // Проверка типа файла

@@ -19,7 +19,6 @@ public class RegionData {
     private Long clientId;
 
     @FieldDescription("Регион (город, область)")
-//    @Column(nullable = false)
     private String region;
 
     @FieldDescription("Адрес")
@@ -33,6 +32,4 @@ public class RegionData {
     @Version
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long version;
-
-    // Другие поля, специфичные для региональных данных
 }

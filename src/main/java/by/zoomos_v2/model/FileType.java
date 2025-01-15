@@ -1,9 +1,5 @@
 package by.zoomos_v2.model;
 
-import by.zoomos_v2.config.UploadFileException;
-
-import java.util.Arrays;
-
 /**
  * Перечисление поддерживаемых типов файлов
  */

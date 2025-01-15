@@ -5,7 +5,6 @@ import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.processor.FileProcessor;
 import by.zoomos_v2.service.processor.FileProcessorFactory;
-import by.zoomos_v2.util.FileUtils;
 import by.zoomos_v2.util.PathResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +44,7 @@ public class FileProcessingService {
     private final PathResolver pathResolver;
     private final DataPersistenceService dataPersistenceService;
     private final MappingConfigService mappingConfigService; // добавляем для получения маппинга
+    private static final int BATCH_SIZE = 1000; // размер порции для обработки
 
     // Хранилище статусов обработки файлов
     private final ConcurrentHashMap<Long, FileProcessingStatus> processingStatuses = new ConcurrentHashMap<>();
@@ -87,21 +89,57 @@ public class FileProcessingService {
             List<Map<String, String>> data = (List<Map<String, String>>) results.get("records");
             Map<String, String> columnsMapping = objectMapper.readValue(
                     mapping.getColumnsConfig(),
-                    new TypeReference<Map<String, String>>() {}
+                    new TypeReference<>() {
+                    }
             );
 
-            // Обновляем статус перед сохранением
-            updateProcessingStatus(fileId, 75, "Сохранение данных");
+            log.info("Начало пакетной обработки. Всего записей: {}", data.size());
 
-            // Сохраняем обработанные данные
-            dataPersistenceService.saveEntities(data, metadata.getShopId(), columnsMapping);
+            List<Map<String, String>> currentBatch = new ArrayList<>();
+            Map<String, Object> totalResults = new HashMap<>();
+            totalResults.put("totalCount", data.size());
+            int totalSuccessCount = 0;
+            int totalErrorCount = 0;
 
-            // Сохраняем результаты и обновляем статус
+            for (int i = 0; i < data.size(); i++) {
+                currentBatch.add(data.get(i));
+
+                if (currentBatch.size() >= BATCH_SIZE || i == data.size() - 1) {
+                    // Обрабатываем текущий пакет
+                    updateProcessingStatus(fileId, (i * 100) / data.size(),
+                            String.format("Обработка записей %d-%d из %d",
+                                    i - currentBatch.size() + 1, i + 1, data.size()));
+
+                    Map<String, Object> batchResults = dataPersistenceService.saveEntities(
+                            currentBatch, metadata.getShopId(), columnsMapping);
+
+                    totalSuccessCount += (int) batchResults.get("successCount");
+                    totalErrorCount += (int) batchResults.get("errorCount");
+
+                    currentBatch.clear();
+                }
+            }
+
+            // Формируем итоговые результаты
+            totalResults.put("successCount", totalSuccessCount);
+            totalResults.put("errorCount", totalErrorCount);
+            results.putAll(totalResults);
+
+            // Обновляем статус в зависимости от результатов
+            if (totalErrorCount > 0) {
+                String message = String.format("Обработано с ошибками (%d из %d записей)",
+                        totalErrorCount, data.size());
+                updateFileStatus(metadata, "COMPLETED_WITH_ERRORS", message);
+            } else {
+                updateFileStatus(metadata, "COMPLETED", null);
+            }
+
             metadata.setProcessingResults(objectMapper.writeValueAsString(results));
-            updateFileStatus(metadata, "COMPLETED", null);
+            metadata.updateProcessingStatistics(data.size(), totalSuccessCount, totalErrorCount);
             updateProcessingStatus(fileId, 100, "Обработка завершена");
 
-            log.info("Файл {} успешно обработан", metadata.getOriginalFilename());
+            log.info("Файл {} успешно обработан. Успешно: {}, Ошибок: {}",
+                    metadata.getOriginalFilename(), totalSuccessCount, totalErrorCount);
 
         } catch (Exception e) {
             log.error("Ошибка при обработке файла {}: {}", fileId, e.getMessage(), e);
@@ -117,6 +155,7 @@ public class FileProcessingService {
             }
         }
     }
+
 
     /**
      * Обновляет статус обработки файла в базе данных.

@@ -1,6 +1,6 @@
 package by.zoomos_v2.service;
 
-import by.zoomos_v2.exception.FileProcessingException;
+import by.zoomos_v2.config.FileProcessingException;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
 import by.zoomos_v2.model.TextFileParameters;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -84,6 +85,7 @@ public class FileUploadService {
                 log.info("Определены параметры текстового файла {}: кодировка - {}, разделитель - {}",
                          parameters.getEncoding(), parameters.getDelimiter());
             }
+            metadata.updateProcessingStatistics(0, 0, 0);
             // Сохранение метаданных
             metadata = fileMetadataRepository.save(metadata);
             log.info("Файл {} успешно загружен и сохранен с ID: {}",

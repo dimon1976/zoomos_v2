@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Сущность для хранения метаданных загруженных файлов.
@@ -107,6 +109,59 @@ public class FileMetadata {
     @Type(JsonBinaryType.class)
     @Column(name = "processing_results", columnDefinition = "jsonb")
     private String processingResults;
+
+
+    /**
+     * Общее количество записей в файле
+     */
+    @Column(name = "total_records")
+    private Integer totalRecords;
+
+    /**
+     * Количество успешно обработанных записей
+     */
+    @Column(name = "success_records")
+    private Integer successRecords;
+
+    /**
+     * Количество записей с ошибками
+     */
+    @Column(name = "failed_records")
+    private Integer failedRecords;
+
+    /**
+     * Список ошибок, возникших при обработке файла
+     */
+    @Type(JsonBinaryType.class)
+    @Column(name = "processing_errors", columnDefinition = "jsonb")
+    private List<String> processingErrors;
+
+
+    /**
+     * Добавляет ошибку в список ошибок обработки файла
+     *
+     * @param error текст ошибки
+     */
+    public void addProcessingError(String error) {
+        if (processingErrors == null) {
+            processingErrors = new ArrayList<>();
+        }
+        processingErrors.add(error);
+    }
+
+    /**
+     * Обновляет статистику обработки файла
+     *
+     * @param totalRecords общее количество записей
+     * @param successRecords количество успешно обработанных записей
+     * @param failedRecords количество записей с ошибками
+     */
+    public void updateProcessingStatistics(Integer totalRecords, Integer successRecords,
+                                           Integer failedRecords) {
+        this.totalRecords = totalRecords;
+        this.successRecords = successRecords;
+        this.failedRecords = failedRecords;
+    }
 
     @PrePersist
     protected void onCreate() {
