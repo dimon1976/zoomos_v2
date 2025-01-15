@@ -24,8 +24,8 @@ public class DataPersistenceService {
     private final RegionDataRepository regionDataRepository;
     private final SiteDataRepository siteDataRepository;
     private static final String PRODUCT_PREFIX = "product";
-    private static final String REGION_PREFIX = "region";
-    private static final String SITE_PREFIX = "competitor";
+    private static final String REGION_PREFIX = "regiondata";
+    private static final String SITE_PREFIX = "sitedata";
 
     public DataPersistenceService(ProductRepository productRepository,
                                   RegionDataRepository regionDataRepository,
@@ -97,7 +97,7 @@ public class DataPersistenceService {
                 }
 
                 String fullFieldPath = field.getName();
-                String mappedField = getMappedField(mapping, fullFieldPath);
+                String mappedField = getMappedField(mapping, fullFieldPath, prefix);
 
                 if (mappedField != null && data.containsKey(mappedField)) {
                     field.setAccessible(true);
@@ -114,23 +114,16 @@ public class DataPersistenceService {
     }
 
     private boolean shouldSkipField(Field field) {
-        // Пропускаем системные поля
-//        if (field.getName().equals("id") ||
-//                field.getName().equals("clientId") ||
-//                field.getName().contains("List") ||
-//                field.getName().equals("product")) {
-//            return true;
-//        }
-
         // Проверяем аннотацию FieldDescription
         FieldDescription fieldDesc = field.getAnnotation(FieldDescription.class);
         return fieldDesc != null && fieldDesc.skipMapping();
     }
 
-    private String getMappedField(Map<String, String> mapping, String entityField) {
+    private String getMappedField(Map<String, String> mapping, String entityField, String prefix) {
+        String fullFieldPath = prefix + "." + entityField;
         return mapping.entrySet().stream()
-                .filter(entry -> entry.getKey().equals(entityField))
-                .map(Map.Entry::getKey)
+                .filter(entry -> entry.getValue().equals(fullFieldPath)) // Теперь сравниваем со значением маппинга
+                .map(Map.Entry::getKey) // Возвращаем ключ (заголовок из файла)
                 .findFirst()
                 .orElse(null);
     }
@@ -165,7 +158,7 @@ public class DataPersistenceService {
     }
 
     private boolean hasEntityData(Map<String, String> mapping, String prefix) {
-        return mapping.keySet().stream()
-                .anyMatch(key -> key.startsWith(prefix));
+        return mapping.values().stream()
+                .anyMatch(value -> value.startsWith(prefix));
     }
 }

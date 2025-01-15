@@ -1,11 +1,13 @@
 package by.zoomos_v2.service;
 
+import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.processor.FileProcessor;
 import by.zoomos_v2.service.processor.FileProcessorFactory;
 import by.zoomos_v2.util.FileUtils;
 import by.zoomos_v2.util.PathResolver;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -38,6 +41,8 @@ public class FileProcessingService {
     private final ObjectMapper objectMapper;
     private final FileProcessorFactory processorFactory;
     private final PathResolver pathResolver;
+    private final DataPersistenceService dataPersistenceService;
+    private final MappingConfigService mappingConfigService; // добавляем для получения маппинга
 
     // Хранилище статусов обработки файлов
     private final ConcurrentHashMap<Long, FileProcessingStatus> processingStatuses = new ConcurrentHashMap<>();
@@ -65,14 +70,33 @@ public class FileProcessingService {
             updateProcessingStatus(fileId, 0, "Инициализация обработки");
             updateFileStatus(metadata, "PROCESSING", null);
 
+            // Получаем активный маппинг для клиента
+            ClientMappingConfig mapping = mappingConfigService.getMappingById(metadata.getMappingConfigId());
+
             Path filePath = pathResolver.getFilePath(metadata.getShopId(),
                     metadata.getStoredFilename());
 
             FileProcessor processor = processorFactory.getProcessor(metadata);
 
+            // Обрабатываем файл
             Map<String, Object> results = processor.processFile(filePath, metadata,
                     (progress, message) -> updateProcessingStatus(fileId, progress, message));
 
+            // Получаем данные и маппинг
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> data = (List<Map<String, String>>) results.get("records");
+            Map<String, String> columnsMapping = objectMapper.readValue(
+                    mapping.getColumnsConfig(),
+                    new TypeReference<Map<String, String>>() {}
+            );
+
+            // Обновляем статус перед сохранением
+            updateProcessingStatus(fileId, 75, "Сохранение данных");
+
+            // Сохраняем обработанные данные
+            dataPersistenceService.saveEntities(data, metadata.getShopId(), columnsMapping);
+
+            // Сохраняем результаты и обновляем статус
             metadata.setProcessingResults(objectMapper.writeValueAsString(results));
             updateFileStatus(metadata, "COMPLETED", null);
             updateProcessingStatus(fileId, 100, "Обработка завершена");
