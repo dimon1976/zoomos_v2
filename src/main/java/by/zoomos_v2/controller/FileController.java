@@ -21,7 +21,7 @@ import java.io.File;
  */
 @Slf4j
 @Controller
-@RequestMapping("/shops/{shopId}/files")
+@RequestMapping("/client/{clientId}/files")
 @RequiredArgsConstructor
 public class FileController {
 
@@ -34,37 +34,37 @@ public class FileController {
      * Страница загрузки файлов
      */
     @GetMapping
-    public String showFileUploadPage(@PathVariable Long shopId, Model model) {
-        log.debug("Отображение страницы загрузки файлов для магазина {}", shopId);
+    public String showFileUploadPage(@PathVariable Long clientId, Model model) {
+        log.debug("Отображение страницы загрузки файлов для магазина {}", clientId);
 
-        model.addAttribute("files", fileUploadService.getRecentFiles(shopId));
-        model.addAttribute("mappings", mappingConfigService.getMappingsForClient(shopId));
+        model.addAttribute("files", fileUploadService.getRecentFiles(clientId));
+        model.addAttribute("mappings", mappingConfigService.getMappingsForClient(clientId));
         return "files/upload";
     }
 
     /**
      * Отображает страницу со статистикой обработки файла.
      *
-     * @param shopId идентификатор магазина
+     * @param clientId идентификатор магазина
      * @param fileId идентификатор файла
      * @param model модель представления
      * @return имя представления
      */
     @GetMapping("/{fileId}/statistics")
-    public String showFileStatistics(@PathVariable Long shopId,
+    public String showFileStatistics(@PathVariable Long clientId,
                                      @PathVariable Long fileId,
                                      Model model) {
-        log.debug("Запрошена статистика обработки файла {} для магазина {}", fileId, shopId);
+        log.debug("Запрошена статистика обработки файла {} для магазина {}", fileId, clientId);
 
         try {
             FileMetadata metadata = fileMetadataRepository.findById(fileId)
                     .orElseThrow(() -> new EntityNotFoundException("Файл не найден"));
 
-            if (!metadata.getShopId().equals(shopId)) {
+            if (!metadata.getShopId().equals(clientId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
             }
 
-            model.addAttribute("shopId", shopId);
+            model.addAttribute("clientId", clientId);
             model.addAttribute("file", metadata);
 
             return "files/statistics";
@@ -80,29 +80,29 @@ public class FileController {
      */
     @PostMapping("/upload")
     @LogExecution("Загрузка файла")
-    public String handleFileUpload(@PathVariable Long shopId,
+    public String handleFileUpload(@PathVariable Long clientId,
                                    @RequestParam("file") MultipartFile file,
                                    @RequestParam(required = false) Long mappingId,
                                    RedirectAttributes redirectAttributes) {
-        log.debug("Загрузка файла {} для магазина {}", file.getOriginalFilename(), shopId);
+        log.debug("Загрузка файла {} для магазина {}", file.getOriginalFilename(), clientId);
 
         if (file.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Выберите файл для загрузки");
-            return "redirect:/shops/{shopId}/files";
+            return "redirect:/client/{clientId}/files";
         }
 
         try {
-            FileMetadata metadata = fileUploadService.uploadFile(file, shopId, mappingId);
+            FileMetadata metadata = fileUploadService.uploadFile(file, clientId, mappingId);
             fileProcessingService.processFileAsync(metadata.getId());
 
             redirectAttributes.addFlashAttribute("success",
                     "Файл успешно загружен и поставлен в очередь на обработку");
-            return "redirect:/shops/{shopId}/files/status/" + metadata.getId();
+            return "redirect:/client/{clientId}/files/status/" + metadata.getId();
         } catch (Exception e) {
             log.error("Ошибка при загрузке файла: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при загрузке файла: " + e.getMessage());
-            return "redirect:/shops/{shopId}/files";
+            return "redirect:/client/{clientId}/files";
         }
     }
 
@@ -110,20 +110,20 @@ public class FileController {
      * Страница со статусом обработки файла
      */
     @GetMapping("/status/{fileId}")
-    public String showFileStatus(@PathVariable Long shopId,
+    public String showFileStatus(@PathVariable Long clientId,
                                  @PathVariable Long fileId,
                                  Model model) {
-        log.debug("Просмотр статуса файла {} для магазина {}", fileId, shopId);
+        log.debug("Просмотр статуса файла {} для магазина {}", fileId, clientId);
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            if (!metadata.getShopId().equals(shopId)) {
+            if (!metadata.getShopId().equals(clientId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
             }
 
             model.addAttribute("file", metadata);
             model.addAttribute("processingStatus", fileProcessingService.getProcessingStatus(fileId));
-            model.addAttribute("shopId", shopId);
+            model.addAttribute("clientId", clientId);
 
             return "files/status";
         } catch (Exception e) {
@@ -138,14 +138,14 @@ public class FileController {
      */
     @PostMapping("/status/{fileId}/cancel")
     @LogExecution("Отмена обработки файла")
-    public String cancelProcessing(@PathVariable Long shopId,
+    public String cancelProcessing(@PathVariable Long clientId,
                                    @PathVariable Long fileId,
                                    RedirectAttributes redirectAttributes) {
-        log.debug("Отмена обработки файла {} для магазина {}", fileId, shopId);
+        log.debug("Отмена обработки файла {} для магазина {}", fileId, clientId);
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            if (!metadata.getShopId().equals(shopId)) {
+            if (!metadata.getShopId().equals(clientId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
             }
 
@@ -157,7 +157,7 @@ public class FileController {
                     "Ошибка при отмене обработки файла: " + e.getMessage());
         }
 
-        return "redirect:/shops/{shopId}/files/status/" + fileId;
+        return "redirect:/client/{clientId}/files/status/" + fileId;
     }
 
     /**
@@ -165,13 +165,13 @@ public class FileController {
      */
     @PostMapping("/{fileId}/delete")
     @LogExecution("Удаление файла")
-    public String deleteFile(@PathVariable Long shopId,
+    public String deleteFile(@PathVariable Long clientId,
                              @PathVariable Long fileId,
                              RedirectAttributes redirectAttributes) {
-        log.debug("Удаление файла {} для магазина {}", fileId, shopId);
+        log.debug("Удаление файла {} для магазина {}", fileId, clientId);
 
         try {
-            fileUploadService.deleteFile(fileId, shopId);
+            fileUploadService.deleteFile(fileId, clientId);
             redirectAttributes.addFlashAttribute("success", "Файл успешно удален");
         } catch (Exception e) {
             log.error("Ошибка при удалении файла: {}", e.getMessage(), e);
@@ -179,26 +179,26 @@ public class FileController {
                     "Ошибка при удалении файла: " + e.getMessage());
         }
 
-        return "redirect:/shops/{shopId}/files";
+        return "redirect:/client/{clientId}/files";
     }
 
     /**
      * Получение результатов обработки файла
      */
     @GetMapping("/{fileId}/results")
-    public String showFileResults(@PathVariable Long shopId,
+    public String showFileResults(@PathVariable Long clientId,
                                   @PathVariable Long fileId,
                                   Model model) {
-        log.debug("Просмотр результатов обработки файла {} для магазина {}", fileId, shopId);
+        log.debug("Просмотр результатов обработки файла {} для магазина {}", fileId, clientId);
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            if (!metadata.getShopId().equals(shopId)) {
+            if (!metadata.getShopId().equals(clientId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
             }
 
             model.addAttribute("file", metadata);
-            model.addAttribute("shopId", shopId);
+            model.addAttribute("clientId", clientId);
             return "files/results";
 
         } catch (Exception e) {

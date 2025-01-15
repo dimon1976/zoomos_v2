@@ -13,15 +13,15 @@
         <div class="col-12">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a th:href="@{/shops}">Магазины</a></li>
-                    <li class="breadcrumb-item active" th:text="${shop.name}">Магазин</li>
+                    <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
+                    <li class="breadcrumb-item active" th:text="${client.name}">Магазин</li>
                 </ol>
             </nav>
 
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h2 class="card-title mb-0">Настройки маппинга</h2>
-                    <a th:href="@{/shops/{shopId}/mapping/new(shopId=${shop.id})}" class="btn btn-primary">
+                    <a th:href="@{/client/{clientId}/mapping/new(clientId=${client.id})}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Добавить маппинг
                     </a>
                 </div>
@@ -60,11 +60,11 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a th:href="@{/shops/{shopId}/mapping/edit/{mappingId}(shopId=${shop.id},mappingId=${mapping.id})}"
+                                        <a th:href="@{/client/{clientId}/mapping/edit/{mappingId}(clientId=${client.id},mappingId=${mapping.id})}"
                                            class="btn btn-sm btn-primary" title="Редактировать">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form th:action="@{/shops/{shopId}/mapping/delete/{mappingId}(shopId=${shop.id},mappingId=${mapping.id})}"
+                                        <form th:action="@{/client/{clientId}/mapping/delete/{mappingId}(clientId=${client.id},mappingId=${mapping.id})}"
                                               method="post" class="d-inline"
                                               onsubmit="return confirm('Вы уверены, что хотите удалить этот маппинг?');">
                                             <button type="submit" class="btn btn-sm btn-danger" title="Удалить">

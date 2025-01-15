@@ -29,7 +29,7 @@
                     <h5 class="card-title mb-0">Загрузка нового файла</h5>
                 </div>
                 <div class="card-body">
-                    <form th:action="@{/shops/{shopId}/files/upload(shopId=${shopId})}"
+                    <form th:action="@{/client/{clientId}/files/upload(clientId=${clientId})}"
                           method="post"
                           enctype="multipart/form-data">
 
@@ -92,16 +92,16 @@
                                 <td th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a th:href="@{/shops/{shopId}/files/status/{fileId}(shopId=${shopId},fileId=${file.id})}"
+                                        <a th:href="@{/client/{clientId}/files/status/{fileId}(clientId=${clientId},fileId=${file.id})}"
                                            class="btn btn-sm btn-info" title="Статус">
                                             <i class="fas fa-info-circle"></i>
                                         </a>
                                         <a th:if="${file.status == 'COMPLETED'}"
-                                           th:href="@{/shops/{shopId}/files/{fileId}/statistics(shopId=${shopId},fileId=${file.id})}"
+                                           th:href="@{/client/{clientId}/files/{fileId}/statistics(clientId=${clientId},fileId=${file.id})}"
                                            class="btn btn-sm btn-success" title="Результаты">
                                             <i class="fas fa-chart-bar"></i>
                                         </a>
-                                        <form th:action="@{/shops/{shopId}/files/{fileId}/delete(shopId=${shopId},fileId=${file.id})}"
+                                        <form th:action="@{/client/{clientId}/files/{fileId}/delete(clientId=${clientId},fileId=${file.id})}"
                                               method="post" class="d-inline"
                                               onsubmit="return confirm('Вы уверены, что хотите удалить этот файл?');">
                                             <button type="submit" class="btn btn-sm btn-danger" title="Удалить">

@@ -23,7 +23,7 @@ import java.util.List;
  */
 @Slf4j
 @Controller
-@RequestMapping("/shops/{shopId}/mapping")
+@RequestMapping("/client/{clientId}/mapping")
 @RequiredArgsConstructor
 public class ClientMappingController {
 
@@ -35,12 +35,12 @@ public class ClientMappingController {
      * Отображает список настроек маппинга для магазина
      */
     @GetMapping
-    public String showMappings(@PathVariable Long shopId, Model model) {
-        log.debug("Запрошен список маппингов для магазина с ID: {}", shopId);
+    public String showMappings(@PathVariable Long clientId, Model model) {
+        log.debug("Запрошен список маппингов для магазина с ID: {}", clientId);
         try {
-            Client client = clientService.getClientById(shopId);
-            model.addAttribute("shop", client);
-            model.addAttribute("mappings", mappingConfigService.getMappingsForClient(shopId));
+            Client client = clientService.getClientById(clientId);
+            model.addAttribute("client", client);
+            model.addAttribute("mappings", mappingConfigService.getMappingsForClient(clientId));
             return "uploadMapping/mappings";
         } catch (Exception e) {
             log.error("Ошибка при получении маппингов: {}", e.getMessage(), e);
@@ -54,14 +54,14 @@ public class ClientMappingController {
      */
     @GetMapping("/new")
     @LogExecution("Форма нового маппинга")
-    public String showNewMappingForm(@PathVariable Long shopId, Model model, @RequestParam(value = "active", defaultValue = "true") boolean active) {
-        log.debug("Отображение формы создания маппинга для магазина с ID: {}", shopId);
+    public String showNewMappingForm(@PathVariable Long clientId, Model model, @RequestParam(value = "active", defaultValue = "true") boolean active) {
+        log.debug("Отображение формы создания маппинга для магазина с ID: {}", clientId);
         try {
-            Client client = clientService.getClientById(shopId);
-            model.addAttribute("shop", client);
+            Client client = clientService.getClientById(clientId);
+            model.addAttribute("client", client);
 
             ClientMappingConfig mapping = new ClientMappingConfig();
-            mapping.setClientId(shopId);
+            mapping.setClientId(clientId);
             mapping.setActive(active);
             model.addAttribute("mapping", mapping);
 
@@ -81,14 +81,13 @@ public class ClientMappingController {
      */
     @PostMapping("/create")
     @LogExecution("Создание маппинга")
-    public String createMapping(@PathVariable Long shopId,
+    public String createMapping(@PathVariable Long clientId,
                                 @RequestParam(value = "active", defaultValue = "false") boolean active,
                                 @ModelAttribute("mapping") ClientMappingConfig mapping,
                                 RedirectAttributes redirectAttributes) {
-        log.debug("Создание нового маппинга для магазина с ID: {}", shopId);
+        log.debug("Создание нового маппинга для магазина с ID: {}", clientId);
         try {
-            mapping.setClientId(shopId);
-//            mappingConfigService.createMapping(mapping);
+            mapping.setClientId(clientId);
             // Проверяем, что все необходимые поля заполнены
             validateMappingData(mapping);
             // Сохраняем маппинг
@@ -102,7 +101,7 @@ public class ClientMappingController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при создании маппинга: " + e.getMessage());
         }
-        return "redirect:/shops/{shopId}/mapping";
+        return "redirect:/client/{clientId}/mapping";
     }
 
     private void validateMappingData(ClientMappingConfig mapping) {
@@ -128,22 +127,22 @@ public class ClientMappingController {
      */
     @GetMapping("/edit/{mappingId}")
     @LogExecution("Форма редактирования маппинга")
-    public String showEditForm(@PathVariable Long shopId,
+    public String showEditForm(@PathVariable Long clientId,
                                @PathVariable Long mappingId,
                                Model model) {
-        log.debug("Запрошено редактирование маппинга {} для магазина {}", mappingId, shopId);
+        log.debug("Запрошено редактирование маппинга {} для магазина {}", mappingId, clientId);
         try {
-            Client client = clientService.getClientById(shopId);
+            Client client = clientService.getClientById(clientId);
             ClientMappingConfig mapping = mappingConfigService.getMappingById(mappingId);
 
-            if (!mapping.getClientId().equals(shopId)) {
+            if (!mapping.getClientId().equals(clientId)) {
                 throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
             }
 
             List<EntityRegistryService.EntityFieldGroup> fields = entityRegistryService.getFieldsForMapping();
             log.debug("Получены поля для маппинга: {}", fields); // проверяем получаемые поля
 
-            model.addAttribute("shop", client);
+            model.addAttribute("client", client);
             model.addAttribute("mapping", mapping);
             // Добавляем поля для маппинга
             model.addAttribute("entityFields", fields);
@@ -160,18 +159,18 @@ public class ClientMappingController {
      */
     @PostMapping("/update/{mappingId}")
     @LogExecution("Обновление маппинга")
-    public String updateMapping(@PathVariable Long shopId,
+    public String updateMapping(@PathVariable Long clientId,
                                 @PathVariable Long mappingId,
                                 @RequestParam(value = "active", defaultValue = "false") boolean active,
                                 @ModelAttribute("mapping") ClientMappingConfig mapping,
                                 RedirectAttributes redirectAttributes) {
-        log.debug("Обновление маппинга {} для магазина {}", mappingId, shopId);
+        log.debug("Обновление маппинга {} для магазина {}", mappingId, clientId);
         try {
             mapping.setId(mappingId);
-            mapping.setClientId(shopId);
+            mapping.setClientId(clientId);
             mapping.setActive(active);
             ClientMappingConfig existingMapping = mappingConfigService.getMappingById(mappingId);
-            if (!existingMapping.getClientId().equals(shopId)) {
+            if (!existingMapping.getClientId().equals(clientId)) {
                 throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
             }
             mappingConfigService.updateMapping(mapping);
@@ -181,7 +180,7 @@ public class ClientMappingController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при обновлении маппинга: " + e.getMessage());
         }
-        return "redirect:/shops/{shopId}/mapping";
+        return "redirect:/client/{clientId}/mapping";
     }
 
     /**
@@ -189,13 +188,13 @@ public class ClientMappingController {
      */
     @PostMapping("/delete/{mappingId}")
     @LogExecution("Удаление маппинга")
-    public String deleteMapping(@PathVariable Long shopId,
+    public String deleteMapping(@PathVariable Long clientId,
                                 @PathVariable Long mappingId,
                                 RedirectAttributes redirectAttributes) {
-        log.debug("Удаление маппинга {} для магазина {}", mappingId, shopId);
+        log.debug("Удаление маппинга {} для магазина {}", mappingId, clientId);
         try {
             ClientMappingConfig mapping = mappingConfigService.getMappingById(mappingId);
-            if (!mapping.getClientId().equals(shopId)) {
+            if (!mapping.getClientId().equals(clientId)) {
                 throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
             }
 
@@ -207,6 +206,6 @@ public class ClientMappingController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при удалении настроек маппинга: " + e.getMessage());
         }
-        return "redirect:/shops/{shopId}/mapping";
+        return "redirect:/client/{clientId}/mapping";
     }
 }

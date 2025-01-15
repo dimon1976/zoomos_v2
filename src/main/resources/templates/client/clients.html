@@ -14,7 +14,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h2 class="card-title mb-0">Список магазинов</h2>
-                    <a th:href="@{/shops/new}" class="btn btn-primary">
+                    <a th:href="@{/client/new}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Добавить магазин
                     </a>
                 </div>
@@ -42,33 +42,33 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:each="shop : ${shops}">
-                                <td th:text="${shop.id}"></td>
-                                <td th:text="${shop.name}"></td>
-                                <td th:text="${shop.url}"></td>
+                            <tr th:each="client : ${clients}">
+                                <td th:text="${client.id}"></td>
+                                <td th:text="${client.name}"></td>
+                                <td th:text="${client.url}"></td>
                                 <td>
-                                            <span th:class="${shop.active ? 'badge bg-success' : 'badge bg-danger'}"
-                                                  th:text="${shop.active ? 'Активен' : 'Неактивен'}">
+                                            <span th:class="${client.active ? 'badge bg-success' : 'badge bg-danger'}"
+                                                  th:text="${client.active ? 'Активен' : 'Неактивен'}">
                                             </span>
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a th:href="@{/shops/{id}/files(id=${shop.id})}"
+                                        <a th:href="@{/client/{id}/files(id=${client.id})}"
                                            class="btn btn-sm btn-info" title="Файлы">
                                             <i class="fas fa-file"></i>
                                         </a>
-                                        <a th:href="@{/shops/{id}/mapping(id=${shop.id})}"
+                                        <a th:href="@{/client/{id}/mapping(id=${client.id})}"
                                            class="btn btn-sm btn-warning" title="Маппинг">
                                             <i class="fas fa-cog"></i>
                                         </a>
-                                        <a th:href="@{/shops/settings/{id}(id=${shop.id})}"
+                                        <a th:href="@{/client/{id}/settings(id=${client.id})}"
                                            class="btn btn-sm btn-primary" title="Настройки">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                     </div>
                                 </td>
                             </tr>
-                            <tr th:if="${#lists.isEmpty(shops)}">
+                            <tr th:if="${#lists.isEmpty(clients)}">
                                 <td colspan="5" class="text-center">Нет доступных магазинов</td>
                             </tr>
                             </tbody>

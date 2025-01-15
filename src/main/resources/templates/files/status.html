@@ -75,13 +75,13 @@
 
                     <!-- Кнопки действий -->
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a th:href="@{/shops/{shopId}/files(shopId=${shopId})}"
+                        <a th:href="@{/client/{clientId}/files(clientId=${clientId})}"
                            class="btn btn-secondary me-md-2">
                             <i class="fas fa-arrow-left"></i> Назад к списку
                         </a>
 
                         <form th:if="${file.status == 'PROCESSING'}"
-                              th:action="@{/shops/{shopId}/files/status/{fileId}/cancel(shopId=${shopId},fileId=${file.id})}"
+                              th:action="@{/client/{clientId}/files/status/{fileId}/cancel(clientId=${clientId},fileId=${file.id})}"
                               method="post" class="d-inline">
                             <button type="submit" class="btn btn-warning">
                                 <i class="fas fa-stop-circle"></i> Отменить обработку
@@ -89,7 +89,7 @@
                         </form>
 
                         <a th:if="${file.status == 'COMPLETED'}"
-                           th:href="@{/shops/{shopId}/files/{fileId}/statistics(shopId=${shopId},fileId=${file.id})}"
+                           th:href="@{/client/{clientId}/files/{fileId}/statistics(fileId=${file.id},clientId=${clientId})}"
                            class="btn btn-success">
                             <i class="fas fa-chart-bar"></i> Просмотр результатов
                         </a>
