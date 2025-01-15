@@ -116,11 +116,16 @@ public class MappingConfigService {
         log.debug("Обновление конфигурации маппинга с ID: {}", mapping.getId());
         validateMapping(mapping);
 
-        if (!mappingRepository.existsById(mapping.getId())) {
-            throw new FileProcessingException("Конфигурация маппинга не найдена");
-        }
+        ClientMappingConfig existingMapping = mappingRepository.findById(mapping.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Маппинг не найден"));
 
-        return mappingRepository.save(mapping);
+        existingMapping.setName(mapping.getName());
+        existingMapping.setFileType(mapping.getFileType());
+        existingMapping.setDescription(mapping.getDescription());
+        existingMapping.setColumnsConfig(mapping.getColumnsConfig());
+        existingMapping.setActive(mapping.isActive());
+
+        return mappingRepository.save(existingMapping);
     }
 
     /**

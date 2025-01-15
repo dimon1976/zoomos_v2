@@ -119,6 +119,7 @@
                             <button type="submit" class="btn btn-primary">Создать</button>
                         </div>
                     </form>
+
                     <!-- Форма для редактирования существующего маппинга -->
                     <form th:if="${mapping.id != null}"
                           th:action="@{/shops/{shopId}/mapping/update/{mappingId}(shopId=${shop.id},mappingId=${mapping.id})}"
@@ -168,17 +169,23 @@
                                                placeholder="Название колонки в файле">
                                     </div>
                                     <div class="col-5">
-                                        <select class="form-select target-column">
-                                            <option value="">Выберите поле</option>
-                                            <th:block th:each="group : ${entityFields}">
-                                                <optgroup th:label="${group.entityName}">
-                                                    <option th:each="field : ${group.fields}"
-                                                            th:value="${field.mappingKey}"
-                                                            th:text="${field.description}">
-                                                    </option>
-                                                </optgroup>
-                                            </th:block>
-                                        </select>
+
+                                        <!-- В форме редактирования -->
+                                        <div class="col-5">
+                                            <select class="form-select target-column">
+                                                <option value="">Выберите поле</option>
+                                                <!-- Добавим отладочную информацию -->
+                                                <div th:text="${entityFields}"></div>
+                                                <th:block th:each="group : ${entityFields}">
+                                                    <optgroup th:label="${group.entityName}">
+                                                        <option th:each="field : ${group.fields}"
+                                                                th:value="${field.mappingKey}"
+                                                                th:text="${field.description}">
+                                                        </option>
+                                                    </optgroup>
+                                                </th:block>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div class="col-2">
                                         <button type="button" class="btn btn-danger btn-sm remove-mapping">
@@ -218,21 +225,22 @@
 <script>
     document.querySelectorAll('form').forEach(form => {
         form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Сначала предотвращаем отправку
+
             if (this.submitted) {
-                e.preventDefault();
-                return;
+                return false;
             }
 
             // Проверяем, есть ли хотя бы одна настроенная колонка
             const columnsConfig = this.querySelector('[name="columnsConfig"]').value;
             if (!columnsConfig || columnsConfig === '{}') {
-                e.preventDefault();
                 alert('Добавьте хотя бы одну колонку для маппинга');
-                return;
+                return false;
             }
 
             this.submitted = true;
             this.querySelector('button[type="submit"]').disabled = true;
+            this.submit(); // Программно отправляем форму
         });
     });
 </script>
@@ -240,6 +248,9 @@
 <!-- Скрипт для управления маппингом колонок -->
 <script th:inline="javascript">
     document.addEventListener('DOMContentLoaded', function() {
+        // В начале скрипта
+        console.log('EntityFields available:', document.querySelectorAll('.target-column option').length);
+        console.log('First select content:', document.querySelector('.target-column').innerHTML);
         const isNewForm = /*[[${mapping.id == null}]]*/ false;
         const prefix = isNewForm ? 'new-' : 'edit-';
 
@@ -249,15 +260,18 @@
 
         // Загрузка существующей конфигурации
         const existingConfig = /*[[${mapping.columnsConfig}]]*/ '{}';
-        if (existingConfig) {
-            try {
-                const config = JSON.parse(existingConfig);
-                Object.entries(config).forEach(([fileCol, targetCol]) => {
-                    addMappingRow(fileCol, targetCol);
-                });
-            } catch (e) {
-                console.error('Error parsing existing config:', e);
-            }
+        console.log('Loaded config:', existingConfig);
+
+        try {
+            const config = JSON.parse(existingConfig);
+            console.log('Parsed Config:', config);
+
+            Object.entries(config).forEach(([fileCol, targetCol]) => {
+                console.log('Adding row with:', { fileCol, targetCol });
+                addMappingRow(fileCol, targetCol);
+            });
+        } catch (e) {
+            console.error('Error parsing config:', e);
         }
 
         // Добавление новой строки маппинга
@@ -280,26 +294,27 @@
             }
         });
 
+        // Измененная функция addMappingRow
         function addMappingRow(fileCol = '', targetCol = '') {
             const template = `
-                <div class="row mb-2 mapping-row">
-                    <div class="col-5">
-                        <input type="text" class="form-control file-column"
-                               value="${fileCol}" placeholder="Название колонки в файле">
-                    </div>
-                    <div class="col-5">
-                        <select class="form-select target-column">
-                            <option value="">Выберите поле</option>
-                            ${generateOptionsTemplate()}
-                        </select>
-                    </div>
-                    <div class="col-2">
-                        <button type="button" class="btn btn-danger btn-sm remove-mapping">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
+            <div class="row mb-2 mapping-row">
+                <div class="col-5">
+                    <input type="text" class="form-control file-column"
+                           value="${fileCol}" placeholder="Название колонки в файле">
                 </div>
-            `;
+                <div class="col-5">
+                    <select class="form-select target-column">
+                        ${document.querySelector('.target-column').innerHTML}
+                    </select>
+                </div>
+                <div class="col-2">
+                    <button type="button" class="btn btn-danger btn-sm remove-mapping">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
             const lastRow = columnsMapping.querySelector('.mapping-row:last-of-type');
             if (lastRow) {
                 lastRow.insertAdjacentHTML('afterend', template);
@@ -307,7 +322,7 @@
                 addButton.insertAdjacentHTML('beforebegin', template);
             }
 
-            // Если есть targetCol, устанавливаем значение в select
+            // Устанавливаем значение для select
             if (targetCol) {
                 const newRow = columnsMapping.querySelector('.mapping-row:last-of-type');
                 const select = newRow.querySelector('.target-column');
@@ -315,18 +330,29 @@
             }
         }
 
+
         function generateOptionsTemplate() {
-            return Array.from(document.querySelector('.target-column').options)
-                .map(opt => {
-                    if (opt.parentElement.tagName === 'OPTGROUP') {
-                        return `<option value="${opt.value}"
-                                              data-group="${opt.parentElement.label}">
-                                          ${opt.text}
-                                      </option>`;
-                    }
-                    return `<option value="${opt.value}">${opt.text}</option>`;
-                })
-                .join('');
+            // Получаем первоначальный select с опциями
+            const baseSelect = document.querySelector('.target-column');
+            if (!baseSelect) {
+                console.error('Base select not found');
+                return '';
+            }
+
+            let template = '<option value="">Выберите поле</option>';
+
+            // Проходим по всем optgroup
+            baseSelect.querySelectorAll('optgroup').forEach(group => {
+                template += `<optgroup label="${group.getAttribute('label')}">`;
+                // Проходим по всем option внутри группы
+                group.querySelectorAll('option').forEach(option => {
+                    template += `<option value="${option.value}">${option.textContent}</option>`;
+                });
+                template += '</optgroup>';
+            });
+
+            console.log('Generated template:', template); // для отладки
+            return template;
         }
 
         function updateColumnsConfig() {

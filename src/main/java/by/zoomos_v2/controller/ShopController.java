@@ -56,13 +56,16 @@ public class ShopController {
     @PostMapping("/settings/save")
     @LogExecution("Сохранение настроек магазина")
     public String saveShopSettings(@ModelAttribute("shop") Client client,
+                                   @RequestParam(value = "active", defaultValue = "false") boolean active,
                                    RedirectAttributes redirectAttributes) {
         log.debug("Сохранение настроек магазина: {}", client);
         try {
             if (client.getId() == null) {
+                client.setActive(active);
                 clientService.createClient(client);
                 redirectAttributes.addFlashAttribute("success", "Магазин успешно создан");
             } else {
+                client.setActive(active);
                 clientService.updateClient(client);
                 redirectAttributes.addFlashAttribute("success", "Настройки магазина обновлены");
             }

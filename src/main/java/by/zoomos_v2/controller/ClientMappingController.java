@@ -15,6 +15,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.List;
+
 /**
  * Контроллер для управления настройками маппинга данных магазинов.
  * Обеспечивает функционал настройки соответствия полей при импорте данных.
@@ -52,7 +54,7 @@ public class ClientMappingController {
      */
     @GetMapping("/new")
     @LogExecution("Форма нового маппинга")
-    public String showNewMappingForm(@PathVariable Long shopId, Model model) {
+    public String showNewMappingForm(@PathVariable Long shopId, Model model, @RequestParam(value = "active", defaultValue = "true") boolean active) {
         log.debug("Отображение формы создания маппинга для магазина с ID: {}", shopId);
         try {
             Client client = clientService.getClientById(shopId);
@@ -60,7 +62,7 @@ public class ClientMappingController {
 
             ClientMappingConfig mapping = new ClientMappingConfig();
             mapping.setClientId(shopId);
-            mapping.setActive(true);
+            mapping.setActive(active);
             model.addAttribute("mapping", mapping);
 
             // Добавляем поля для маппинга
@@ -80,15 +82,17 @@ public class ClientMappingController {
     @PostMapping("/create")
     @LogExecution("Создание маппинга")
     public String createMapping(@PathVariable Long shopId,
+                                @RequestParam(value = "active", defaultValue = "false") boolean active,
                                 @ModelAttribute("mapping") ClientMappingConfig mapping,
                                 RedirectAttributes redirectAttributes) {
         log.debug("Создание нового маппинга для магазина с ID: {}", shopId);
         try {
             mapping.setClientId(shopId);
-            mappingConfigService.createMapping(mapping);
+//            mappingConfigService.createMapping(mapping);
             // Проверяем, что все необходимые поля заполнены
             validateMappingData(mapping);
             // Сохраняем маппинг
+            mapping.setActive(active);
             ClientMappingConfig savedMapping = mappingConfigService.createMapping(mapping);
 
             log.info("Маппинг успешно создан с ID: {}", savedMapping.getId());
@@ -136,8 +140,13 @@ public class ClientMappingController {
                 throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
             }
 
+            List<EntityRegistryService.EntityFieldGroup> fields = entityRegistryService.getFieldsForMapping();
+            log.debug("Получены поля для маппинга: {}", fields); // проверяем получаемые поля
+
             model.addAttribute("shop", client);
             model.addAttribute("mapping", mapping);
+            // Добавляем поля для маппинга
+            model.addAttribute("entityFields", fields);
             return "uploadMapping/edit-mapping";
         } catch (Exception e) {
             log.error("Ошибка при загрузке формы редактирования: {}", e.getMessage(), e);
@@ -153,12 +162,18 @@ public class ClientMappingController {
     @LogExecution("Обновление маппинга")
     public String updateMapping(@PathVariable Long shopId,
                                 @PathVariable Long mappingId,
+                                @RequestParam(value = "active", defaultValue = "false") boolean active,
                                 @ModelAttribute("mapping") ClientMappingConfig mapping,
                                 RedirectAttributes redirectAttributes) {
         log.debug("Обновление маппинга {} для магазина {}", mappingId, shopId);
         try {
             mapping.setId(mappingId);
             mapping.setClientId(shopId);
+            mapping.setActive(active);
+            ClientMappingConfig existingMapping = mappingConfigService.getMappingById(mappingId);
+            if (!existingMapping.getClientId().equals(shopId)) {
+                throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
+            }
             mappingConfigService.updateMapping(mapping);
             redirectAttributes.addFlashAttribute("success", "Маппинг успешно обновлен");
         } catch (Exception e) {
