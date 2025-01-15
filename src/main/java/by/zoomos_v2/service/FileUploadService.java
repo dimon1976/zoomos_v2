@@ -3,10 +3,12 @@ package by.zoomos_v2.service;
 import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
+import by.zoomos_v2.model.TextFileParameters;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.util.FileTypeDetector;
 import by.zoomos_v2.util.FileUtils;
 import by.zoomos_v2.util.PathResolver;
+import by.zoomos_v2.util.TextFileAnalyzer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -75,7 +77,13 @@ public class FileUploadService {
             metadata.setContentType(file.getContentType());
             metadata.setMappingConfigId(mappingId);
             metadata.setStatus("PENDING");
-
+            // Анализируем параметры текстового файла
+            if (isTextFile(fileType)) {
+                TextFileParameters parameters = TextFileAnalyzer.analyzeFile(pathResolver.getFilePath(shopId, metadata.getStoredFilename()));
+                metadata.updateTextParameters(parameters);
+                log.info("Определены параметры текстового файла {}: кодировка - {}, разделитель - {}",
+                         parameters.getEncoding(), parameters.getDelimiter());
+            }
             // Сохранение метаданных
             metadata = fileMetadataRepository.save(metadata);
             log.info("Файл {} успешно загружен и сохранен с ID: {}",
@@ -87,6 +95,10 @@ public class FileUploadService {
             log.error("Ошибка при загрузке файла: {}", e.getMessage(), e);
             throw new FileProcessingException("Ошибка при загрузке файла: " + e.getMessage(), e);
         }
+    }
+
+    private boolean isTextFile(FileType fileType) {
+        return FileType.CSV.equals(fileType);
     }
 
     /**

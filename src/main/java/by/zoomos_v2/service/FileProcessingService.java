@@ -35,10 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FileProcessingService {
 
     private final FileMetadataRepository fileMetadataRepository;
-    private final MappingConfigService mappingConfigService;
     private final ObjectMapper objectMapper;
     private final FileProcessorFactory processorFactory;
-    private final FileUtils fileUtils;
     private final PathResolver pathResolver;
 
     // Хранилище статусов обработки файлов

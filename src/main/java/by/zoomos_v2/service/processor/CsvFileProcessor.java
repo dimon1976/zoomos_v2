@@ -10,6 +10,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -34,17 +35,24 @@ public class CsvFileProcessor implements FileProcessor {
         Map<String, Object> results = new HashMap<>();
         List<Map<String, String>> records = new ArrayList<>();
 
-        try (BufferedReader reader = Files.newBufferedReader(filePath);
+        // Получаем кодировку и разделитель из metadata
+        String encoding = metadata.getEncoding() != null ? metadata.getEncoding() : "UTF-8";
+        char delimiter = metadata.getDelimiter() != null && !metadata.getDelimiter().isEmpty()
+                ? metadata.getDelimiter().charAt(0)
+                : ',';
+
+        try (BufferedReader reader = Files.newBufferedReader(filePath, Charset.forName(encoding));
              CSVParser csvParser = CSVFormat.DEFAULT
+                     .withDelimiter(delimiter)
                      .withFirstRecordAsHeader()
                      .withIgnoreHeaderCase()
                      .withTrim()
+                     .withIgnoreEmptyLines()
                      .parse(reader)) {
 
             List<String> headers = csvParser.getHeaderNames();
             results.put("headers", headers);
 
-            // Подсчитываем общее количество записей
             List<CSVRecord> allRecords = csvParser.getRecords();
             int totalRecords = allRecords.size();
 
@@ -53,9 +61,27 @@ public class CsvFileProcessor implements FileProcessor {
                 CSVRecord record = allRecords.get(i);
                 Map<String, String> recordMap = new HashMap<>();
 
+                // Сохраняем все значения по заголовкам
                 for (String header : headers) {
-                    recordMap.put(header, record.get(header));
+                    try {
+                        String value = record.get(header);
+                        recordMap.put(header, value != null ? value.trim() : "");
+                    } catch (IllegalArgumentException e) {
+                        // Если значения для заголовка нет, ставим пустую строку
+                        recordMap.put(header, "");
+                    }
                 }
+
+                // Если в строке больше значений чем заголовков,
+                // сохраняем дополнительные значения с автоматически сгенерированными заголовками
+                for (int j = headers.size(); j < record.size(); j++) {
+                    String extraHeader = "Column_" + (j + 1);
+                    recordMap.put(extraHeader, record.get(j).trim());
+                    if (!headers.contains(extraHeader)) {
+                        headers.add(extraHeader);
+                    }
+                }
+
                 records.add(recordMap);
 
                 // Обновляем прогресс
@@ -66,13 +92,15 @@ public class CsvFileProcessor implements FileProcessor {
 
             results.put("records", records);
             results.put("totalRecords", records.size());
+            results.put("headers", headers); // Обновляем заголовки с учетом дополнительных столбцов
 
-            log.info("CSV файл успешно обработан: {}", metadata.getOriginalFilename());
+            log.info("CSV файл успешно обработан: {}. Всего записей: {}",
+                    metadata.getOriginalFilename(), records.size());
             return results;
 
         } catch (Exception e) {
             log.error("Ошибка при обработке CSV файла: {}", e.getMessage(), e);
-            throw new FileProcessingException("Ошибка при обработке CSV файла", e);
+            throw new FileProcessingException("Ошибка при обработке CSV файла: " + e.getMessage(), e);
         }
     }
 }

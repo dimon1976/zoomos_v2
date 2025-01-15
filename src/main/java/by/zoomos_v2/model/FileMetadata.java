@@ -59,6 +59,12 @@ public class FileMetadata {
     @Column(nullable = false)
     private Long size;
 
+    @Column
+    private String encoding;
+
+    @Column
+    private String delimiter;
+
     /**
      * Статус обработки файла
      */
@@ -108,6 +114,11 @@ public class FileMetadata {
         if (status == null) {
             status = "PENDING";
         }
+    }
+
+    public void updateTextParameters(TextFileParameters parameters) {
+        this.encoding = parameters.getEncoding();
+        this.delimiter = String.valueOf(parameters.getDelimiter());
     }
 
     /**
