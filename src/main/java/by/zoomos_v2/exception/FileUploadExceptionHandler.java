@@ -1,6 +1,5 @@
 package by.zoomos_v2.exception;
 
-import by.zoomos_v2.config.FileProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -12,7 +11,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  */
 @Slf4j
 @ControllerAdvice
-public class FileUploadExceptionHandler {
+public class FileUploadExceptionHandler extends RuntimeException{
+
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public String handleMaxSizeException(MaxUploadSizeExceededException e,

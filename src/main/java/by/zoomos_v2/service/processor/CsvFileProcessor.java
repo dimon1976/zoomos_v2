@@ -1,6 +1,6 @@
 package by.zoomos_v2.service.processor;
 
-import by.zoomos_v2.config.FileProcessingException;
+import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
 import lombok.extern.slf4j.Slf4j;

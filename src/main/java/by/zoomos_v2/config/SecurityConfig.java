@@ -21,9 +21,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+//                .authorizeHttpRequests(auth -> auth
+//                        .requestMatchers("/css/**", "/js/**").permitAll()
+//                        .anyRequest().authenticated()
+//                )
+//                .formLogin(form -> form
+//                        .loginPage("/login")
+//                        .permitAll()
+//                )
+//                .logout(logout -> logout
+//                        .permitAll()
+//                );
+                // Отключаем на время авторизацию
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**", "/js/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/**").permitAll()  // Разрешаем все запросы
                 )
                 .formLogin(form -> form
                         .loginPage("/login")

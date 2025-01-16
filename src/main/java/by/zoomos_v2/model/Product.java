@@ -25,17 +25,29 @@ public class Product {
     private String productId;
 
     @FieldDescription("Наименование товара")
+    @Column(length = 400)
     private String productName;
 
     @FieldDescription("Бренд товара")
     private String productBrand;
 
-    @FieldDescription("Категория товара")
-    private String productCategory;
+    @FieldDescription("Ссылка")
+    @Column(length = 1100)
+    private String productUrl;
 
-    @FieldDescription("Описание товара")
-    @Column(columnDefinition = "TEXT")
-    private String productDescription;
+    @FieldDescription("Категория товара 1")
+    private String productCategory1;
+    @FieldDescription("Категория товара 2")
+    private String productCategory2;
+    @FieldDescription("Категория товара 3")
+    private String productCategory3;
+
+    @FieldDescription("Цена")
+    private Double productPrice;
+
+
+    @FieldDescription("Аналог")
+    private String productAnalog;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @FieldDescription(value = "Региональные данные", skipMapping = true)

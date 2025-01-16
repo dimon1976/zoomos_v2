@@ -25,15 +25,15 @@ public class PathResolver {
     /**
      * Получает директорию для файлов конкретного магазина
      */
-    public Path getShopDirectory(Long shopId) {
-        return getUploadDirectory().resolve(String.valueOf(shopId));
+    public Path getClientDirectory(Long clientId) {
+        return getUploadDirectory().resolve(String.valueOf(clientId));
     }
 
     /**
      * Получает путь к конкретному файлу
      */
-    public Path getFilePath(Long shopId, String filename) {
-        return getShopDirectory(shopId).resolve(filename);
+    public Path getFilePath(Long clientId, String filename) {
+        return getClientDirectory(clientId).resolve(filename);
     }
 
     /**
@@ -53,9 +53,9 @@ public class PathResolver {
     /**
      * Получает путь для архивного файла
      */
-    public Path getArchiveFilePath(Long shopId, String filename) {
+    public Path getArchiveFilePath(Long clientId, String filename) {
         return getArchiveDirectory()
-                .resolve(String.valueOf(shopId))
+                .resolve(String.valueOf(clientId))
                 .resolve(filename);
     }
 }

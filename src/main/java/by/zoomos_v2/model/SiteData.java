@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Setter
 @Getter
 @Entity
@@ -18,17 +20,53 @@ public class SiteData {
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long clientId;
 
-    @FieldDescription("Название сайта")
+    @FieldDescription("Сайт")
+    @Column(length = 400)
     private String competitorName;
 
     @FieldDescription("Цена конкурента")
     private String competitorPrice;
 
+    @FieldDescription("Акционная цена")
+    private String competitorPromotionalPrice;
+
+    @FieldDescription("Время")
+    private String competitorTime;
+
+    @FieldDescription("Дата")
+    private String competitorDate;
+
+    @FieldDescription("Дата:Время")
+    private LocalDateTime competitorLocalDateTime;
+
     @FieldDescription("Статус наличия товара")
     private String competitorStockStatus;
 
-    @FieldDescription("Акционная цена")
-    private String competitorPromotionalPrice;
+    @FieldDescription("Дополнительная цена конкурента")
+    private String competitorAdditionalPrice;
+
+    @FieldDescription("Комментарий")
+    @Column(length = 1000)
+    private String Commentary;
+
+    @FieldDescription("Наименование товара конкурента")
+    @Column(length = 400)
+    private String competitorProductName;
+
+    @FieldDescription("Дополнительное поле")
+    private String competitorAdditional;
+
+    @FieldDescription("Дополнительное поле 2")
+    private String competitorAdditional2;
+
+    @FieldDescription("Ссылка")
+    @Column(length = 1200)
+    private String competitorUrl;
+
+    @FieldDescription("Скриншот")
+    @Column(length = 1200)
+    private String productWebCacheUrl;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")

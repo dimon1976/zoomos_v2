@@ -22,6 +22,7 @@ public class RegionData {
     private String region;
 
     @FieldDescription("Адрес")
+    @Column(length = 400)
     private String regionAddress;
 
     @ManyToOne(fetch = FetchType.LAZY)

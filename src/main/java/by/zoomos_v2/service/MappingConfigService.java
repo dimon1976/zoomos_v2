@@ -2,7 +2,7 @@ package by.zoomos_v2.service;
 
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.repository.ClientMappingConfigRepository;
-import by.zoomos_v2.config.FileProcessingException;
+import by.zoomos_v2.exception.FileProcessingException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
