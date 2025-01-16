@@ -1,10 +1,51 @@
-HELP.md
+### Java ###
+# Compiled class files
+*.class
+
+# Log files
+*.log
+logs/
+*.log.*
+
+# Package Files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Virtual machine crash logs
+hs_err_pid*
+replay_pid*
+
+### Maven ###
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
 
-### STS ###
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.idea_modules/
+out/
+
+### VS Code ###
+.vscode/
+
+### Eclipse ###
 .apt_generated
 .classpath
 .factorypath
@@ -12,12 +53,6 @@ target/
 .settings
 .springBeans
 .sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
 
 ### NetBeans ###
 /nbproject/private/
@@ -29,5 +64,20 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
-.vscode/
+### Project Specific ###
+# Upload directories
+uploads/
+uploads/temp/
+uploads/archive/
+
+# Application properties with sensitive data
+src/main/resources/application-prod.properties
+src/main/resources/application-dev.properties
+
+# Database
+*.db
+*.sqlite
+
+# OS specific
+.DS_Store
+Thumbs.db

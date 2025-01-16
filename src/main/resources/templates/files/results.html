@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Статистика обработки файла</title>
+    <div th:replace="~{fragments/navbar :: header-css}"></div>
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: header}"></div>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col">
+            <h1>Статистика обработки файла</h1>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">Информация о файле</h2>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Имя файла:</dt>
+                        <dd class="col-sm-9" th:text="${file.originalFilename}"></dd>
+
+                        <dt class="col-sm-3">Тип файла:</dt>
+                        <dd class="col-sm-9" th:text="${file.fileType}"></dd>
+
+                        <dt class="col-sm-3">Размер файла:</dt>
+                        <dd class="col-sm-9" th:text="${#numbers.formatDecimal(file.size / 1024.0, 0, 'DEFAULT', 2, 'DEFAULT')} + ' КБ'"></dd>
+
+                        <dt class="col-sm-3">Дата загрузки:</dt>
+                        <dd class="col-sm-9" th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></dd>
+
+                        <dt class="col-sm-3">Статус обработки:</dt>
+                        <dd class="col-sm-9" th:text="${file.processingStatus}"></dd>
+
+                        <dt class="col-sm-3">Дата начала обработки:</dt>
+                        <dd class="col-sm-9" th:text="${#temporals.format(file.processingStartedAt, 'dd.MM.yyyy HH:mm')}"></dd>
+
+                        <dt class="col-sm-3">Дата завершения обработки:</dt>
+                        <dd class="col-sm-9" th:text="${#temporals.format(file.processingCompletedAt, 'dd.MM.yyyy HH:mm')}"></dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">Статистика обработки</h2>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Всего записей:</dt>
+                        <dd class="col-sm-9" th:text="${file.totalRecords}"></dd>
+
+                        <dt class="col-sm-3">Успешно обработано:</dt>
+                        <dd class="col-sm-9" th:text="${file.successfullyProcessed}"></dd>
+
+                        <dt class="col-sm-3">Ошибок обработки:</dt>
+                        <dd class="col-sm-9" th:text="${file.failedRecords}"></dd>
+
+                        <dt class="col-sm-3">Пропущено записей:</dt>
+                        <dd class="col-sm-9" th:text="${file.skippedRecords}"></dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a th:href="@{/client/{clientId}/files(clientId=${clientId})}" class="btn btn-secondary me-md-2">
+                    <i class="fas fa-arrow-left"></i> Назад к списку файлов
+                </a>
+                <a th:href="@{/client/{clientId}/files/{fileId}/results(clientId=${clientId}, fileId=${file.id})}" class="btn btn-primary">
+                    <i class="fas fa-file-alt"></i> Посмотреть результаты обработки
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/navbar :: footer}"></div>
+</body>
+</html>

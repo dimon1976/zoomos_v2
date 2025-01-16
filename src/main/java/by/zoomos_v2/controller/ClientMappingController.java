@@ -2,188 +2,210 @@ package by.zoomos_v2.controller;
 
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
-import by.zoomos_v2.model.ProductEntity;
-import by.zoomos_v2.model.RegionDataEntity;
-import by.zoomos_v2.model.SiteDataEntity;
-import by.zoomos_v2.repository.ClientMappingConfigRepository;
 import by.zoomos_v2.service.ClientService;
 import by.zoomos_v2.service.MappingConfigService;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import org.springframework.beans.factory.annotation.Autowired;
+import by.zoomos_v2.aspect.LogExecution;
+import by.zoomos_v2.util.EntityRegistryService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.Map;
+import java.util.List;
 
+/**
+ * Контроллер для управления настройками маппинга данных магазинов.
+ * Обеспечивает функционал настройки соответствия полей при импорте данных.
+ */
+@Slf4j
 @Controller
-@RequestMapping("/shop/{clientName}/mapping")
+@RequestMapping("/client/{clientId}/mapping")
+@RequiredArgsConstructor
 public class ClientMappingController {
 
-    @Autowired
-    private MappingConfigService mappingConfigService;
-    @Autowired
-    private ClientMappingConfigRepository clientMappingConfigRepository;
-    @Autowired
-    private ClientService clientService;
+    private final ClientService clientService;
+    private final MappingConfigService mappingConfigService;
+    private final EntityRegistryService entityRegistryService;
 
-
-    // Сохранение нового маппинга для клиента
-    @PostMapping("/save")
-    public String saveMapping(@PathVariable String clientName,
-                              @RequestParam String configName,
-                              @RequestParam String entityType,
-                              @RequestParam Map<String, String> mappingHeaders,
-                              Model model) {
-        Client client = clientService.getClientByName(clientName);
-        if (client == null) {
-            model.addAttribute("error", "Клиент не найден");
-            return "error";
-        }
-
-        // Преобразуем Map в JSON
-        String mappingJson = new Gson().toJson(mappingHeaders);
-
+    /**
+     * Отображает список настроек маппинга для магазина
+     */
+    @GetMapping
+    public String showMappings(@PathVariable Long clientId, Model model) {
+        log.debug("Запрошен список маппингов для магазина с ID: {}", clientId);
         try {
-            mappingConfigService.saveMappingConfig(client, configName, entityType, mappingJson);
-            model.addAttribute("success", "Mapping configuration saved successfully.");
-        } catch (IllegalArgumentException e) {
-            model.addAttribute("error", e.getMessage());
-            return "/uploadMapping/add-mapping"; // Возвращаемся к форме с ошибкой
-        }
-
-        return "redirect:/shop/{clientName}/upload";
-    }
-
-    // Переход к редактированию нового маппинга (поле для ввода названия)
-    @PostMapping("/add")
-    public String addMappingConfig(@PathVariable String clientName, @RequestParam String entityType, Model model) {
-        Client client = clientService.getClientByName(clientName);
-        if (client == null) {
-            model.addAttribute("error", "Client not found");
-            return "error";  // Шаблон ошибки
-        }
-        // Определяем класс сущности по переданному типу
-        Class<?> entityClass;
-        switch (entityType) {
-            case "Product":
-                entityClass = ProductEntity.class;
-                break;
-            case "Region":
-                entityClass = RegionDataEntity.class;
-                break;
-            case "Site":
-                entityClass = SiteDataEntity.class;
-                break;
-            default:
-                model.addAttribute("error", "Неизвестный тип сущности");
-                return "error";
-        }
-
-        // Получаем поля сущности и их описания
-        Map<String, String> fieldDescriptions = mappingConfigService.getEntityFieldDescriptions(entityClass);
-
-        // Отправляем форму для ввода данных нового маппинга
-        model.addAttribute("client", client);
-        model.addAttribute("entityType", entityType);
-        model.addAttribute("fieldDescriptions", fieldDescriptions);
-        return "/uploadMapping/add-mapping";  // Шаблон для редактирования конфигурации
-    }
-
-    @GetMapping("/edit/{configId}")
-    public String editMappingConfig(@PathVariable String clientName,
-                                    @RequestParam String entityType,
-                                    @PathVariable Long configId,
-                                    Model model) {
-
-        Client client = clientService.getClientByName(clientName);
-        if (client == null) {
-            model.addAttribute("error", "Client not found");
+            Client client = clientService.getClientById(clientId);
+            model.addAttribute("client", client);
+            model.addAttribute("mappings", mappingConfigService.getMappingsForClient(clientId));
+            return "uploadMapping/mappings";
+        } catch (Exception e) {
+            log.error("Ошибка при получении маппингов: {}", e.getMessage(), e);
+            model.addAttribute("error", "Ошибка при загрузке настроек маппинга");
             return "error";
         }
-
-        // Получаем конфигурацию по ID
-        ClientMappingConfig config = clientMappingConfigRepository.findById(configId)
-                .orElseThrow(() -> new IllegalArgumentException("Mapping config not found"));
-        // Преобразуем строку JSON в Map
-        Gson gson = new Gson();
-        Map<String, String> mappingHeaders = gson.fromJson(config.getMappingData(), new TypeToken<Map<String, String>>() {
-        }.getType());
-
-
-        // Определяем класс сущности по переданному типу
-        Class<?> entityClass;
-        switch (entityType) {
-            case "Product":
-                entityClass = ProductEntity.class;
-                break;
-            case "Region":
-                entityClass = RegionDataEntity.class;
-                break;
-            case "Site":
-                entityClass = SiteDataEntity.class;
-                break;
-            default:
-                model.addAttribute("error", "Unknown entity type");
-                return "error";
-        }
-
-        // Получаем поля сущности и их описания
-        Map<String, String> fieldDescriptions = mappingConfigService.getEntityFieldDescriptions(entityClass);
-
-        // Отправляем форму для ввода данных нового маппинга
-        model.addAttribute("client", client);
-        model.addAttribute("entityType", entityType);
-        model.addAttribute("config", config);  // передаем текущую конфигурацию
-        model.addAttribute("mappingHeaders", mappingHeaders); // передаем данные для отображения
-        model.addAttribute("fieldDescriptions", fieldDescriptions);
-        return "/uploadMapping/edit-mapping";  // Шаблон для редактирования конфигурации
     }
 
-    // Обновление маппинга по ID
-    @PostMapping("/edit/{configId}")
-    public String editMappingConfig(@PathVariable String clientName,
-                                    @RequestParam String configName,
-                                    @PathVariable Long configId,
-                                    @RequestParam Map<String, String> mappingHeaders,
-                                    Model model) {
+    /**
+     * Отображает форму создания нового маппинга
+     */
+    @GetMapping("/new")
+    @LogExecution("Форма нового маппинга")
+    public String showNewMappingForm(@PathVariable Long clientId, Model model, @RequestParam(value = "active", defaultValue = "true") boolean active) {
+        log.debug("Отображение формы создания маппинга для магазина с ID: {}", clientId);
+        try {
+            Client client = clientService.getClientById(clientId);
+            model.addAttribute("client", client);
 
-        Client client = clientService.getClientByName(clientName);
-        if (client == null) {
-            model.addAttribute("error", "Client not found");
+            ClientMappingConfig mapping = new ClientMappingConfig();
+            mapping.setClientId(clientId);
+            mapping.setActive(active);
+            model.addAttribute("mapping", mapping);
+
+            // Добавляем поля для маппинга
+            model.addAttribute("entityFields", entityRegistryService.getFieldsForMapping());
+
+            return "uploadMapping/edit-mapping";
+        } catch (Exception e) {
+            log.error("Ошибка при создании формы маппинга: {}", e.getMessage(), e);
+            model.addAttribute("error", "Ошибка при создании нового маппинга");
             return "error";
         }
-
-        // Получаем конфигурацию по ID
-        ClientMappingConfig config = clientMappingConfigRepository.findById(configId)
-                .orElseThrow(() -> new IllegalArgumentException("Mapping config not found"));
-
-        // Преобразуем Map в JSON
-        String mappingJson = new Gson().toJson(mappingHeaders);
-
-        // Обновляем конфигурацию маппинга
-        config.setMappingData(mappingJson);
-
-        // Сохраняем обновленную конфигурацию
-        clientMappingConfigRepository.save(config);
-
-        model.addAttribute("success", "Mapping configuration updated successfully.");
-        return "redirect:/shop/{clientName}/upload";
     }
 
-    // Удаление маппинга
-    @GetMapping("/delete/{configId}")
-    public String deleteMappingConfig(@PathVariable String clientName, @PathVariable Long configId, Model model) {
-        Client client = clientService.getClientByName(clientName);  // Ищем клиента по имени
+    /**
+     * Обрабатывает создание нового маппинга
+     */
+    @PostMapping("/create")
+    @LogExecution("Создание маппинга")
+    public String createMapping(@PathVariable Long clientId,
+                                @RequestParam(value = "active", defaultValue = "false") boolean active,
+                                @ModelAttribute("mapping") ClientMappingConfig mapping,
+                                RedirectAttributes redirectAttributes) {
+        log.debug("Создание нового маппинга для магазина с ID: {}", clientId);
+        try {
+            mapping.setClientId(clientId);
+            // Проверяем, что все необходимые поля заполнены
+            validateMappingData(mapping);
+            // Сохраняем маппинг
+            mapping.setActive(active);
+            ClientMappingConfig savedMapping = mappingConfigService.createMapping(mapping);
 
-        if (client == null) {
-            model.addAttribute("error", "Client not found");
-            return "error";  // Шаблон ошибки
+            log.info("Маппинг успешно создан с ID: {}", savedMapping.getId());
+            redirectAttributes.addFlashAttribute("success", "Маппинг успешно создан");
+        } catch (Exception e) {
+            log.error("Ошибка при создании маппинга: {}", e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка при создании маппинга: " + e.getMessage());
         }
+        return "redirect:/client/{clientId}/mapping";
+    }
 
-        mappingConfigService.deleteMappingConfig(configId);
-        model.addAttribute("success", "Mapping configuration deleted successfully.");
-        return "redirect:/shop/{clientName}/upload";  // Перенаправление на страницу с маппингами
+    private void validateMappingData(ClientMappingConfig mapping) {
+        if (mapping.getName() == null || mapping.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Название маппинга обязательно для заполнения");
+        }
+        if (mapping.getFileType() == null) {
+            throw new IllegalArgumentException("Тип файла обязателен для заполнения");
+        }
+        if (mapping.getColumnsConfig() == null || mapping.getColumnsConfig().trim().isEmpty()) {
+            throw new IllegalArgumentException("Необходимо настроить маппинг колонок");
+        }
+        try {
+            // Проверяем, что columnsConfig содержит валидный JSON
+            new ObjectMapper().readTree(mapping.getColumnsConfig());
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Неверный формат настройки колонок");
+        }
+    }
+
+    /**
+     * Отображает форму редактирования маппинга
+     */
+    @GetMapping("/edit/{mappingId}")
+    @LogExecution("Форма редактирования маппинга")
+    public String showEditForm(@PathVariable Long clientId,
+                               @PathVariable Long mappingId,
+                               Model model) {
+        log.debug("Запрошено редактирование маппинга {} для магазина {}", mappingId, clientId);
+        try {
+            Client client = clientService.getClientById(clientId);
+            ClientMappingConfig mapping = mappingConfigService.getMappingById(mappingId);
+
+            if (!mapping.getClientId().equals(clientId)) {
+                throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
+            }
+
+            List<EntityRegistryService.EntityFieldGroup> fields = entityRegistryService.getFieldsForMapping();
+            log.debug("Получены поля для маппинга: {}", fields); // проверяем получаемые поля
+
+            model.addAttribute("client", client);
+            model.addAttribute("mapping", mapping);
+            // Добавляем поля для маппинга
+            model.addAttribute("entityFields", fields);
+            return "uploadMapping/edit-mapping";
+        } catch (Exception e) {
+            log.error("Ошибка при загрузке формы редактирования: {}", e.getMessage(), e);
+            model.addAttribute("error", "Ошибка при загрузке настроек маппинга");
+            return "error";
+        }
+    }
+
+    /**
+     * Обрабатывает обновление существующего маппинга
+     */
+    @PostMapping("/update/{mappingId}")
+    @LogExecution("Обновление маппинга")
+    public String updateMapping(@PathVariable Long clientId,
+                                @PathVariable Long mappingId,
+                                @RequestParam(value = "active", defaultValue = "false") boolean active,
+                                @ModelAttribute("mapping") ClientMappingConfig mapping,
+                                RedirectAttributes redirectAttributes) {
+        log.debug("Обновление маппинга {} для магазина {}", mappingId, clientId);
+        try {
+            mapping.setId(mappingId);
+            mapping.setClientId(clientId);
+            mapping.setActive(active);
+            ClientMappingConfig existingMapping = mappingConfigService.getMappingById(mappingId);
+            if (!existingMapping.getClientId().equals(clientId)) {
+                throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
+            }
+            mappingConfigService.updateMapping(mapping);
+            redirectAttributes.addFlashAttribute("success", "Маппинг успешно обновлен");
+        } catch (Exception e) {
+            log.error("Ошибка при обновлении маппинга: {}", e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка при обновлении маппинга: " + e.getMessage());
+        }
+        return "redirect:/client/{clientId}/mapping";
+    }
+
+    /**
+     * Обрабатывает удаление маппинга
+     */
+    @PostMapping("/delete/{mappingId}")
+    @LogExecution("Удаление маппинга")
+    public String deleteMapping(@PathVariable Long clientId,
+                                @PathVariable Long mappingId,
+                                RedirectAttributes redirectAttributes) {
+        log.debug("Удаление маппинга {} для магазина {}", mappingId, clientId);
+        try {
+            ClientMappingConfig mapping = mappingConfigService.getMappingById(mappingId);
+            if (!mapping.getClientId().equals(clientId)) {
+                throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
+            }
+
+            mappingConfigService.deleteMapping(mappingId);
+            redirectAttributes.addFlashAttribute("success",
+                    "Настройки маппинга успешно удалены");
+        } catch (Exception e) {
+            log.error("Ошибка при удалении маппинга: {}", e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Ошибка при удалении настроек маппинга: " + e.getMessage());
+        }
+        return "redirect:/client/{clientId}/mapping";
     }
 }

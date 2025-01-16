@@ -1,30 +1,67 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Настройки клиента</title>
-    <link rel="stylesheet" th:href="@{/css/styles.css}" />
+    <title th:text="${client.id == null ? 'Новый магазин' : 'Настройки магазина'}">Настройки магазина</title>
+    <div th:replace="~{fragments/navbar :: header-css}"></div>
 </head>
 <body>
+<div th:replace="~{fragments/navbar :: header}"></div>
 
-<div th:replace="~{fragments/navbar :: navbar}"></div>
-<div th:replace="~{fragments/navbar :: shop_navbar}"></div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" th:text="${client.id == null ? 'Новый магазин' : 'Настройки магазина'}">
+                        Настройки магазина
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                        <span th:text="${success}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                        <span th:text="${error}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
 
-<div class="client-settings-container" style="padding: 20px;">
-    <h1 th:text="'Настройки клиента: ' + ${client.name}"></h1>
-    <p>ID клиента: <span th:text="${client.id}"></span></p>
-    <p>Дата создания: <span th:text="${#temporals.format(client.creationDate, 'yyyy-MM-dd HH:mm')}"></span></p>
+                    <form th:action="@{/client/settings/save}" method="post">
+                        <input type="hidden" th:field="${client.id}"/>
 
-    <!-- Здесь можно добавить форму для редактирования данных клиента, если это необходимо -->
-    <!-- <form th:action="@{'/clients/' + ${client.name} + '/update'}" method="post">
-        <label for="clientName">Название клиента:</label>
-        <input type="text" id="clientName" name="name" th:value="${client.name}">
-        <button type="submit">Обновить</button>
-    </form> -->
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Название магазина</label>
+                            <input type="text" class="form-control" id="name" name="name" th:value="${client.name}" required/>
+                        </div>
 
-    <a href="/clients">Вернуться к списку клиентов</a>
+                        <div class="mb-3">
+                            <label for="url" class="form-label">URL магазина</label>
+                            <input type="url" class="form-control" id="url" name="url" th:value="${client.url}" required/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="apiKey" class="form-label">API ключ</label>
+                            <input type="text" class="form-control" id="apiKey" name="apiKey" th:value="${client.apiKey}"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="active" name="active" th:checked="${client.active}"/>
+                                <label class="form-check-label" for="active">Активен</label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a th:href="@{/clients}" class="btn btn-secondary me-md-2">Отмена</a>
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
+<div th:replace="~{fragments/navbar :: footer}"></div>
 </body>
 </html>

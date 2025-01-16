@@ -17,5 +17,5 @@ public interface ClientMappingConfigRepository extends JpaRepository<ClientMappi
     Optional<ClientMappingConfig> findById(Long id);
 
     // Или по имени клиента
-    List<ClientMappingConfig> findByClientName(String clientName);
+//    List<ClientMappingConfig> findByClientName(String clientName);
 }
