@@ -1,9 +1,9 @@
 package by.zoomos_v2.service;
+
 import by.zoomos_v2.exception.ValidationException;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.repository.ProductRepository;
-import by.zoomos_v2.service.processor.ProcessingStats;
 import by.zoomos_v2.service.processor.client.ClientDataProcessor;
 import by.zoomos_v2.service.processor.client.ClientDataProcessorFactory;
 import by.zoomos_v2.service.processor.client.ProcessingResult;
