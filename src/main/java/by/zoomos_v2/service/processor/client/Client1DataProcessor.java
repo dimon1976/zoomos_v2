@@ -1,54 +1,63 @@
 package by.zoomos_v2.service.processor.client;
+
+import by.zoomos_v2.model.ExportConfig;
+import by.zoomos_v2.model.ExportField;
+import by.zoomos_v2.service.ExportConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-/**
- * Процессор данных для первого клиента
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class Client1DataProcessor implements ClientDataProcessor{
-    private final List<String> excludedSites; // инжектим через конфигурацию
+    /**
+     * Список сайтов конкурентов, для которых необходимо очищать данные при обработке
+     */
+    private static final List<String> EXCLUDED_COMPETITORS = Arrays.asList(
+            "auchan.ru",
+            "lenta.com",
+            "metro-cc.ru",
+            "myspar.ru",
+            "okeydostavka.ru",
+            "perekrestok.ru",
+            "winelab.ru"
+    );
+
+    private final ExportConfigService exportConfigService;
 
     @Override
     public ProcessingResult processData(List<Map<String, String>> data, Long clientId) {
         ProcessingResult result = new ProcessingResult();
         List<Map<String, String>> processedData = new ArrayList<>();
-        List<String> errors = new ArrayList<>();
 
-        for (Map<String, String> row : data) {
-            try {
-                Map<String, String> processedRow = new HashMap<>(row);
-
-                // Проверяем сайт на исключение
-                String site = row.get("site");
-                if (site != null && excludedSites.contains(site)) {
-                    processedRow.put("screenshotUrl", ""); // очищаем ссылку на скриншот
-                    log.debug("Очищена ссылка на скриншот для исключенного сайта: {}", site);
-                }
-
-                processedData.add(processedRow);
-            } catch (Exception e) {
-                String error = "Ошибка обработки строки: " + e.getMessage();
-                errors.add(error);
-                log.error(error, e);
+        try {
+            // Сначала валидируем данные
+            ValidationResult validationResult = validateData(data);
+            if (!validationResult.isValid()) {
+                result.setSuccess(false);
+                result.setErrors(validationResult.getErrors());
+                return result;
             }
+
+            // Если валидация прошла успешно, обрабатываем данные
+            ExportConfig config = exportConfigService.getDefaultConfig(clientId);
+
+            for (Map<String, String> row : data) {
+                Map<String, String> processedRow = processRow(row, config);
+                processedData.add(processedRow);
+            }
+
+            result.setProcessedData(processedData);
+            result.setSuccess(true);
+
+        } catch (Exception e) {
+            log.error("Ошибка обработки данных для клиента {}: {}", clientId, e.getMessage(), e);
+            result.setSuccess(false);
+            result.getErrors().add(e.getMessage());
         }
-
-        result.setSuccess(errors.isEmpty());
-        result.setProcessedData(processedData);
-        result.setErrors(errors);
-
-        // Добавляем статистику
-        Map<String, Object> statistics = new HashMap<>();
-        statistics.put("totalRows", data.size());
-        statistics.put("processedRows", processedData.size());
-        statistics.put("errorCount", errors.size());
-        result.setStatistics(statistics);
 
         return result;
     }
@@ -58,20 +67,61 @@ public class Client1DataProcessor implements ClientDataProcessor{
         ValidationResult result = new ValidationResult();
         List<String> errors = new ArrayList<>();
 
-        // Проверяем наличие обязательных полей
-        for (int i = 0; i < data.size(); i++) {
-            Map<String, String> row = data.get(i);
-
-            if (!row.containsKey("site")) {
-                errors.add(String.format("Строка %d: отсутствует поле 'site'", i + 1));
+        try {
+            // Проверяем наличие данных
+            if (data == null || data.isEmpty()) {
+                errors.add("Отсутствуют данные для обработки");
+                result.setValid(false);
+                result.setErrors(errors);
+                return result;
             }
-            if (!row.containsKey("screenshotUrl")) {
-                errors.add(String.format("Строка %d: отсутствует поле 'screenshotUrl'", i + 1));
+
+            // Проверяем структуру данных
+            for (int i = 0; i < data.size(); i++) {
+                Map<String, String> row = data.get(i);
+
+                // Проверяем наличие обязательного поля competitorName
+                if (!row.containsKey("competitorName")) {
+                    errors.add(String.format("Строка %d: отсутствует обязательное поле 'competitorName'", i + 1));
+                }
+
+                // Проверяем другие обязательные поля, если они есть
+                // ...
+            }
+
+            result.setValid(errors.isEmpty());
+            result.setErrors(errors);
+
+        } catch (Exception e) {
+            log.error("Ошибка валидации данных: {}", e.getMessage(), e);
+            errors.add("Ошибка валидации: " + e.getMessage());
+            result.setValid(false);
+            result.setErrors(errors);
+        }
+
+        return result;
+    }
+
+
+    private Map<String, String> processRow(Map<String, String> row, ExportConfig config) {
+        Map<String, String> processedRow = new HashMap<>();
+
+        // Обработка competitorName
+        String competitorName = row.get("competitorName");
+        if (competitorName != null && EXCLUDED_COMPETITORS.contains(competitorName.toLowerCase())) {
+            competitorName = "";
+            log.debug("Очищено значение конкурента: {}", competitorName);
+        }
+
+        // Применяем конфигурацию экспорта
+        for (ExportField field : config.getFields()) {
+            if (field.isEnabled()) {
+                String value = field.getSourceField().equals("competitorName") ?
+                        competitorName : row.get(field.getSourceField());
+                processedRow.put(field.getDisplayName(), value != null ? value : "");
             }
         }
 
-        result.setValid(errors.isEmpty());
-        result.setErrors(errors);
-        return result;
+        return processedRow;
     }
 }
