@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long> {
@@ -17,4 +18,10 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long
      * Находит все файлы магазина с указанным статусом
      */
     List<FileMetadata> findByClientIdAndStatus(Long clientId, String status);
+
+    /**
+     * Находит последний успешно обработанный файл клиента
+     */
+    Optional<FileMetadata> findFirstByClientIdAndStatusOrderByProcessingCompletedAtDesc(
+            Long clientId, String status);
 }
