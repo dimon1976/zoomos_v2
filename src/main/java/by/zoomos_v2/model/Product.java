@@ -31,6 +31,12 @@ public class Product {
     @FieldDescription("Бренд товара")
     private String productBrand;
 
+    @FieldDescription("Штрихкод")
+    private String productBar;
+
+    @FieldDescription("Описание")
+    private String productDescription;
+
     @FieldDescription("Ссылка")
     @Column(length = 1100)
     private String productUrl;
@@ -48,6 +54,21 @@ public class Product {
 
     @FieldDescription("Аналог")
     private String productAnalog;
+
+    @FieldDescription("Дополнительное поле 1")
+    private String competitorAdditional1;
+
+    @FieldDescription("Дополнительное поле 2")
+    private String competitorAdditional2;
+
+    @FieldDescription("Дополнительное поле 3")
+    private String competitorAdditional3;
+
+    @FieldDescription("Дополнительное поле 4")
+    private String competitorAdditional4;
+
+    @FieldDescription("Дополнительное поле 5")
+    private String competitorAdditional5;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @FieldDescription(value = "Региональные данные", skipMapping = true)
