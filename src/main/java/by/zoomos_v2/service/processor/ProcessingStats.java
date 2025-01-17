@@ -76,8 +76,8 @@ public class ProcessingStats {
                 .processingTimeSeconds(0)
                 .additionalStats(new HashMap<>())
                 .errors(new ArrayList<>())
-                .errorTypes(new HashMap<>())
-                .processedData(new ArrayList<>());
+                .errorTypes(new HashMap<>());
+//                .processedData(new ArrayList<>());
 
         for (ProcessingStats stat : stats) {
             if (stat == null) continue;
@@ -100,9 +100,9 @@ public class ProcessingStats {
                         builder.errorTypes.merge(key, value, Integer::sum));
             }
 
-            if (stat.processedData != null) {
-                builder.processedData.addAll(stat.processedData);
-            }
+//            if (stat.processedData != null) {
+//                builder.processedData.addAll(stat.processedData);
+//            }
         }
 
         return builder.build();

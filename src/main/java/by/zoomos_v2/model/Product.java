@@ -19,6 +19,9 @@ public class Product {
     private Long id;
 
     @FieldDescription(value = "пропустить", skipMapping = true)
+    private Long fileId;
+
+    @FieldDescription(value = "пропустить", skipMapping = true)
     private Long clientId;
 
     @FieldDescription("ID товара")
@@ -56,19 +59,19 @@ public class Product {
     private String productAnalog;
 
     @FieldDescription("Дополнительное поле 1")
-    private String competitorAdditional1;
+    private String productAdditional1;
 
     @FieldDescription("Дополнительное поле 2")
-    private String competitorAdditional2;
+    private String productAdditional2;
 
     @FieldDescription("Дополнительное поле 3")
-    private String competitorAdditional3;
+    private String productAdditional3;
 
     @FieldDescription("Дополнительное поле 4")
-    private String competitorAdditional4;
+    private String productAdditional4;
 
     @FieldDescription("Дополнительное поле 5")
-    private String competitorAdditional5;
+    private String productAdditional5;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @FieldDescription(value = "Региональные данные", skipMapping = true)
@@ -76,7 +79,7 @@ public class Product {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @FieldDescription(value = "Данные с сайтов", skipMapping = true)
-    private List<SiteData> siteDataList = new ArrayList<>();
+    private List<CompetitorData> competitorDataList = new ArrayList<>();
 
     // Методы для управления связями
     public void addRegionData(RegionData regionData) {
@@ -89,14 +92,14 @@ public class Product {
         regionData.setProduct(null);
     }
 
-    public void addSiteData(SiteData siteData) {
-        siteDataList.add(siteData);
-        siteData.setProduct(this);
+    public void addSiteData(CompetitorData competitorData) {
+        competitorDataList.add(competitorData);
+        competitorData.setProduct(this);
     }
 
-    public void removeSiteData(SiteData siteData) {
-        siteDataList.remove(siteData);
-        siteData.setProduct(null);
+    public void removeSiteData(CompetitorData competitorData) {
+        competitorDataList.remove(competitorData);
+        competitorData.setProduct(null);
     }
 }
 

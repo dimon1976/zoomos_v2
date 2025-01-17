@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Настройка полей экспорта</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <div th:replace="~{fragments/navbar :: header-css}"></div>
+    <style>
+        .drag-handle {
+            cursor: move;
+            padding: 5px;
+            color: #666;
+        }
+        .ui-sortable-helper {
+            display: table;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .position-cell {
+            text-align: center;
+            width: 80px;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: header}"></div>
+
+<div class="container">
+    <h2>Настройка полей экспорта</h2>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <form th:action="@{/client/export/mapping/{clientId}/update(clientId=${clientId})}" method="post" id="exportForm">
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th></th>
+                <th>Включено</th>
+                <th>Название поля</th>
+                <th>Ключ поля</th>
+                <th>Позиция</th>
+            </tr>
+            </thead>
+            <tbody id="sortable">
+            <tr th:each="field : ${config.fields}">
+                <td class="drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </td>
+                <td>
+                    <input type="checkbox"
+                           name="enabledFields"
+                           th:value="${field.sourceField}"
+                           th:checked="${field.enabled}">
+                </td>
+                <td th:text="${field.displayName}"></td>
+                <td th:text="${field.sourceField}">
+                    <input type="hidden" name="fieldIds" th:value="${field.sourceField}">
+                </td>
+                <td class="position-cell">
+                    <input type="hidden" name="positions" th:value="${field.position}" class="position-input">
+                    <span class="position-display" th:text="${field.position}"></span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+
+            <form th:action="@{/client/export/mapping/{clientId}/reset(clientId=${clientId})}"
+                  method="post"
+                  style="display: inline-block;">
+                <button type="submit"
+                        class="btn btn-warning ms-2"
+                        onclick="return confirm('Сбросить настройки к значениям по умолчанию?')">
+                    Сбросить к настройкам по умолчанию
+                </button>
+            </form>
+        </div>
+    </form>
+</div>
+
+<div th:replace="~{fragments/navbar :: footer}"></div>
+
+<script>
+    $(document).ready(function() {
+        $("#sortable").sortable({
+            handle: ".drag-handle",
+            axis: "y",
+            update: function(event, ui) {
+                // Обновляем позиции после перетаскивания
+                $("#sortable tr").each(function(index) {
+                    $(this).find('.position-input').val(index);
+                    $(this).find('.position-display').text(index);
+                });
+            }
+        });
+        $("#sortable").disableSelection();
+
+        // Перед отправкой формы собираем данные о позициях
+        $('#exportForm').submit(function() {
+            var positions = [];
+            $("#sortable tr").each(function(index) {
+                positions.push({
+                    mappingKey: $(this).find('.field-source').val(),
+                    position: index
+                });
+            });
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'positionsJson',
+                value: JSON.stringify(positions)
+            }).appendTo('#exportForm');
+        });
+    });
+</script>
+</body>
+</html>

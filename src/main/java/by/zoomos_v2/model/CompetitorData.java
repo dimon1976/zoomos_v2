@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Getter
 @Entity
 @Table(name = "site_data")
-public class SiteData {
+public class CompetitorData {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @FieldDescription(value = "пропустить", skipMapping = true)
@@ -47,7 +47,7 @@ public class SiteData {
 
     @FieldDescription("Комментарий")
     @Column(length = 1000)
-    private String Commentary;
+    private String competitorCommentary;
 
     @FieldDescription("Наименование товара конкурента")
     @Column(length = 400)
@@ -65,7 +65,7 @@ public class SiteData {
 
     @FieldDescription("Скриншот")
     @Column(length = 1200)
-    private String productWebCacheUrl;
+    private String competitorWebCacheUrl;
 
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -43,7 +43,7 @@ public class Client1DataProcessor implements ClientDataProcessor{
             }
 
             // Если валидация прошла успешно, обрабатываем данные
-            ExportConfig config = exportConfigService.getDefaultConfig(clientId);
+            ExportConfig config = exportConfigService.getConfig(clientId);
 
             for (Map<String, String> row : data) {
                 Map<String, String> processedRow = processRow(row, config);
@@ -121,7 +121,6 @@ public class Client1DataProcessor implements ClientDataProcessor{
                 processedRow.put(field.getDisplayName(), value != null ? value : "");
             }
         }
-
         return processedRow;
     }
 }

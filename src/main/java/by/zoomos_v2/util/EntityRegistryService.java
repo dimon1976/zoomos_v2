@@ -1,14 +1,15 @@
 package by.zoomos_v2.util;
 
 import by.zoomos_v2.annotations.FieldDescription;
+import by.zoomos_v2.model.CompetitorData;
 import by.zoomos_v2.model.Product;
 import by.zoomos_v2.model.RegionData;
-import by.zoomos_v2.model.SiteData;
-import lombok.Data;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @Service
 public class EntityRegistryService {
@@ -16,7 +17,7 @@ public class EntityRegistryService {
     private static final List<Class<?>> ENTITY_CLASSES = Arrays.asList(
             Product.class,
             RegionData.class,
-            SiteData.class
+            CompetitorData.class
     );
 
     /**
@@ -55,18 +56,5 @@ public class EntityRegistryService {
         }
 
         return groups;
-    }
-
-    @Data
-    public static class EntityFieldGroup {
-        private String entityName;
-        private List<EntityField> fields;
-    }
-
-    @Data
-    public static class EntityField {
-        private String fieldName;
-        private String description;
-        private String mappingKey;
     }
 }

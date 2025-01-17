@@ -48,7 +48,7 @@ public class FileProcessingService {
     private final ObjectMapper objectMapper;
     private final PathResolver pathResolver;
 
-    private static final int BATCH_SIZE = 1000;
+    private static final int BATCH_SIZE = 5000;
     private final ConcurrentHashMap<Long, ProcessingStatus> processingStatuses = new ConcurrentHashMap<>();
 
     /**
@@ -254,7 +254,7 @@ public class FileProcessingService {
                         currentIndex + 1,
                         totalSize));
 
-        return dataPersistenceService.saveEntities(batch, metadata.getClientId(), columnsMapping);
+        return dataPersistenceService.saveEntities(batch, metadata.getClientId(), columnsMapping, metadata.getId());
     }
 
     private void updateProcessingStatus(Long fileId, int progress, String message) {

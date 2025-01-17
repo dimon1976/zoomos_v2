@@ -1,0 +1,136 @@
+package by.zoomos_v2.service;
+
+import by.zoomos_v2.model.ExportConfig;
+import by.zoomos_v2.model.ExportField;
+import by.zoomos_v2.repository.ClientRepository;
+import by.zoomos_v2.repository.ExportConfigRepository;
+import by.zoomos_v2.util.EntityField;
+import by.zoomos_v2.util.EntityRegistryService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.text.FieldPosition;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * Сервис для управления настройками полей экспорта
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ExportFieldConfigService {
+
+    private final ExportConfigRepository exportConfigRepository;
+    private final ClientRepository clientRepository;
+    private final EntityRegistryService entityRegistryService;
+
+    /**
+     * Получает или создает конфигурацию для клиента
+     */
+    @Transactional
+    public ExportConfig getOrCreateConfig(Long clientId) {
+        return exportConfigRepository.findByClientIdAndIsDefaultTrue(clientId)
+                .orElseGet(() -> createDefaultConfig(clientId));
+    }
+
+    /**
+     * Создает конфигурацию по умолчанию со стандартным набором полей
+     */
+    @Transactional
+    public ExportConfig createDefaultConfig(Long clientId) {
+        log.debug("Создание стандартной конфигурации для клиента: {}", clientId);
+
+        ExportConfig config = new ExportConfig();
+        config.setClient(clientRepository.getReferenceById(clientId));
+        config.setDefault(true);
+        config.setName("Default");
+
+        // Получаем все доступные поля из сущностей
+        List<EntityField> entityFields = entityRegistryService.getFieldsForMapping().stream()
+                .flatMap(group -> group.getFields().stream())
+                .collect(Collectors.toList());
+
+        // Создаем базовый набор полей
+        List<ExportField> defaultFields = createDefaultFields(entityFields, config);
+        config.setFields(defaultFields);
+
+        return exportConfigRepository.save(config);
+    }
+
+    /**
+     * Обновляет настройки полей (добавляет новые или отключает существующие)
+     */
+    @Transactional
+    public void updateFieldsConfig(Long clientId,
+                                   List<String> enabledFields,
+                                   List<String> disabledFields,
+                                   List<EntityField> positions) {
+        ExportConfig config = getOrCreateConfig(clientId);
+
+        // Обновляем статусы включения/выключения
+        if (enabledFields != null || disabledFields != null) {
+            updateFieldStatuses(config, enabledFields, disabledFields);
+        }
+
+        // Обновляем позиции полей
+        if (positions != null) {
+            updateFieldPositions(config, positions);
+        }
+
+        exportConfigRepository.save(config);
+    }
+
+    private void updateFieldStatuses(ExportConfig config,
+                                     List<String> enabledFields,
+                                     List<String> disabledFields) {
+        // Сначала выключаем все поля
+        config.getFields().forEach(field -> field.setEnabled(false));
+
+        // Затем включаем нужные
+        if (enabledFields != null) {
+            enabledFields.forEach(fieldId ->
+                    config.getFields().stream()
+                            .filter(f -> f.getSourceField().equals(fieldId))
+                            .forEach(f -> f.setEnabled(true))
+            );
+        }
+    }
+
+    private void updateFieldPositions(ExportConfig config, List<EntityField> positions) {
+        Map<String, Integer> positionMap = positions.stream()
+                .collect(Collectors.toMap(
+                        EntityField::getMappingKey,
+                        EntityField::getPosition
+                ));
+
+        config.getFields().forEach(field ->
+                field.setPosition(positionMap.getOrDefault(field.getSourceField(), field.getPosition()))
+        );
+    }
+
+
+    /**
+     * Создает базовый набор полей
+     */
+    private List<ExportField> createDefaultFields(List<EntityField> entityFields, ExportConfig config) {
+        List<ExportField> defaultFields = new ArrayList<>();
+        int position = 0;
+
+        for (EntityField entityField : entityFields) {
+            ExportField field = new ExportField();
+            field.setExportConfig(config);
+            field.setSourceField(entityField.getMappingKey());
+            field.setDisplayName(entityField.getDescription());
+            field.setPosition(position++);
+            field.setEnabled(true);  // По умолчанию все поля активны
+            defaultFields.add(field);
+        }
+
+        return defaultFields;
+    }
+}

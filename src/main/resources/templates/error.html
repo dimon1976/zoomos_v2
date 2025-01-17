@@ -1,19 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ошибка</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <div th:replace="~{fragments/navbar :: header-css}"></div>
 </head>
 <body>
-
-<div th:replace="~{fragments/navbar :: navbar}"></div>
-
-<div class="error-message" style="padding: 20px;">
-    <h1>Ошибка</h1>
-    <p th:text="${error}"></p>
-    <a href="/clients">Вернуться к списку клиентов</a>
+<div th:replace="~{fragments/navbar :: header}"></div>
+<div class="container">
+    <h1>Произошла ошибка</h1>
+    <p th:text="${error}">Error message</p>
+    <a href="/" class="btn btn-primary">На главную</a>
 </div>
-
+<div th:replace="~{fragments/navbar :: footer}"></div>
 </body>
 </html>

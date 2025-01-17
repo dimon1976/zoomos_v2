@@ -19,13 +19,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * @param fileId идентификатор файла
      * @return список записей в виде Map
      */
-    @Query(value = """
-            SELECT 
-                CAST(p.id as string) as id,
-                p.competitor_name as competitorName,
-                -- добавьте другие необходимые поля
-            FROM products p 
-            WHERE p.file_id = :fileId
-            """, nativeQuery = true)
+    @Query("""
+        SELECT 
+            p.productName AS productName,
+            p.productBrand AS productBrand,
+            c.competitorName AS competitorName
+        FROM Product p
+        LEFT JOIN p.regionDataList r
+        LEFT JOIN p.competitorDataList c
+        WHERE p.fileId = :fileId
+        """)
     List<Map<String, String>> findAllByFileId(@Param("fileId") Long fileId);
 }

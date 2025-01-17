@@ -5,6 +5,7 @@ import by.zoomos_v2.model.Client;
 import by.zoomos_v2.service.ClientService;
 import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.aspect.LogExecution;
+import by.zoomos_v2.util.EntityFieldGroup;
 import by.zoomos_v2.util.EntityRegistryService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -139,7 +140,7 @@ public class ClientMappingController {
                 throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
             }
 
-            List<EntityRegistryService.EntityFieldGroup> fields = entityRegistryService.getFieldsForMapping();
+            List<EntityFieldGroup> fields = entityRegistryService.getFieldsForMapping();
             log.debug("Получены поля для маппинга: {}", fields); // проверяем получаемые поля
 
             model.addAttribute("client", client);
