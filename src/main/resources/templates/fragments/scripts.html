@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<script th:fragment="form-scripts" th:inline="javascript">
+    $(document).ready(function() {
+        const fieldNameModal = new bootstrap.Modal(document.getElementById('fieldNameModal'));
+        let currentFieldData = null;
+
+        // Инициализация сортировки
+        $("#sortable").sortable({
+            axis: "y",
+            handle: ".drag-handle",
+            update: function(event, ui) {
+                updatePositions();
+            }
+        });
+
+        // Обработчик кнопки активации поля
+        $('.activate-field').click(function() {
+            currentFieldData = {
+                mappingKey: $(this).data('mapping-key'),
+                defaultName: $(this).data('default-name')
+            };
+
+            $('#fieldMappingKey').val(currentFieldData.mappingKey);
+            $('#fieldDefaultName').val(currentFieldData.defaultName);
+            $('#fieldDisplayName').val(currentFieldData.defaultName);
+
+            fieldNameModal.show();
+        });
+
+        // Обработчик сохранения имени
+        $('#saveFieldName').click(function() {
+            const displayName = $('#fieldDisplayName').val();
+            if (!displayName) {
+                alert('Пожалуйста, введите отображаемое имя');
+                return;
+            }
+
+            // Создаем новую строку
+            const newRow = $(`
+           <tr>
+               <td class="drag-handle">
+                   <i class="fas fa-grip-vertical"></i>
+               </td>
+               <td>
+                   <input type="checkbox"
+                          name="enabledFields"
+                          value="${currentFieldData.mappingKey}"
+                          checked>
+               </td>
+               <td>
+                   <input type="text"
+                          class="form-control field-display-name"
+                          value="${displayName}"
+                          placeholder="Отображаемое имя">
+               </td>
+               <td>
+                   <span>${currentFieldData.mappingKey}</span>
+                   <input type="hidden"
+                          class="field-source"
+                          value="${currentFieldData.mappingKey}">
+               </td>
+               <td class="position-cell">
+                   <span class="position-display"></span>
+               </td>
+           </tr>
+       `);
+
+            // Добавляем строку и обновляем позиции
+            $('#sortable').append(newRow);
+            updatePositions();
+
+            // Скрываем строку в доступных полях
+            $(`button[data-mapping-key="${currentFieldData.mappingKey}"]`).closest('tr').hide();
+
+            fieldNameModal.hide();
+        });
+
+        // Обработка отправки формы
+        $('#exportForm').on('submit', function(e) {
+            var positions = [];
+            $("#sortable tr").each(function(index) {
+                var sourceField = $(this).find('.field-source').val();
+                var displayName = $(this).find('.field-display-name').val();
+
+                if (sourceField) {
+                    positions.push({
+                        mappingKey: sourceField,
+                        position: index,
+                        description: displayName
+                    });
+                }
+            });
+
+            var positionsJson = JSON.stringify(positions);
+            console.log('Positions before send:', positions);
+
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'positionsJson',
+                value: positionsJson
+            }).appendTo(this);
+        });
+
+        // Функция обновления позиций
+        function updatePositions() {
+            $("#sortable tr").each(function(index) {
+                $(this).find('.position-display').text(index);
+            });
+        }
+    });
+</script>
+</body>
+</html>

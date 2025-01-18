@@ -1,21 +1,22 @@
 package by.zoomos_v2.service;
 
 import by.zoomos_v2.exception.FileProcessingException;
-import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportField;
 import by.zoomos_v2.repository.ClientRepository;
 import by.zoomos_v2.repository.ExportConfigRepository;
 import by.zoomos_v2.util.EntityField;
+import by.zoomos_v2.util.EntityFieldGroup;
 import by.zoomos_v2.util.EntityRegistryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.function.Function;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +29,7 @@ public class ExportFieldConfigService {
 
     private final ExportConfigRepository exportConfigRepository;
     private final ClientRepository clientRepository;
+    private final EntityRegistryService entityRegistryService;
 
 
     /**
@@ -41,22 +43,14 @@ public class ExportFieldConfigService {
         log.debug("Получение конфигураций маппинга для магазина: {}", clientId);
         return exportConfigRepository.findByClientId(clientId);
     }
-    /**
-     * Получает или создает конфигурацию для клиента
-     */
-//    @Transactional
-//    public ExportConfig getOrCreateConfig(Long clientId) {
-//        return exportConfigRepository.findByClientIdAndIsDefaultTrue(clientId)
-//                .orElseGet(() -> createDefaultConfig(clientId));
-//    }
 
     /**
      * Получает конфигурацию для клиента по ID
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public ExportConfig getConfigById(Long configId) {
         return exportConfigRepository.findById(configId)
-                .orElseGet(() -> createDefaultConfig(configId));
+                .orElseThrow(() -> new FileProcessingException("Конфигурация не найдена"));
     }
 
     /**
@@ -95,6 +89,65 @@ public class ExportFieldConfigService {
         return exportConfigRepository.save(config);
     }
 
+    @Transactional
+    public ExportConfig createConfig(Long clientId, String name, List<EntityField> fields) {
+        ExportConfig config = new ExportConfig();
+        config.setClient(clientRepository.getReferenceById(clientId));
+        config.setDefault(false);
+        config.setName(name);
+
+        List<ExportField> exportFields = fields.stream()
+                .map(entityField -> {
+                    ExportField field = new ExportField();
+                    field.setExportConfig(config);
+                    field.setSourceField(entityField.getMappingKey());
+                    field.setDisplayName(entityField.getDescription());
+                    field.setPosition(entityField.getPosition());
+                    field.setEnabled(true);
+                    return field;
+                })
+                .collect(Collectors.toList());
+
+        config.setFields(exportFields);
+        return exportConfigRepository.save(config);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsById(Long configId) {
+        return exportConfigRepository.existsById(configId);
+    }
+
+    /**
+     * Создает временную конфигурацию с полями по умолчанию (без сохранения в БД)
+     */
+    public ExportConfig createTemporaryConfig(Long clientId) {
+        log.debug("Создание временной конфигурации для клиента: {}", clientId);
+
+        ExportConfig config = new ExportConfig();
+        config.setClient(clientRepository.getReferenceById(clientId));
+        config.setDefault(true);
+        config.setName("Новая конфигурация");
+
+        // Получаем дефолтный список полей
+        List<EntityField> defaultFields = DefaultExportField.getDefaultFields();
+
+        // Преобразуем в ExportField
+        List<ExportField> exportFields = defaultFields.stream()
+                .map(entityField -> {
+                    ExportField field = new ExportField();
+                    field.setExportConfig(config);
+                    field.setSourceField(entityField.getMappingKey());
+                    field.setDisplayName(entityField.getDescription());
+                    field.setPosition(entityField.getPosition());
+                    field.setEnabled(true);
+                    return field;
+                })
+                .collect(Collectors.toList());
+
+        config.setFields(exportFields);
+        return config; // Не сохраняем в БД
+    }
+
     /**
      * Обновляет настройки полей (добавляет новые или отключает существующие)
      */
@@ -105,23 +158,31 @@ public class ExportFieldConfigService {
                                    List<EntityField> positions,
                                    String configName,
                                    Long mappingId) {
-        log.info("Updating config for client {}: name={}, fields={}, mappingID={}", clientId, configName, positions, mappingId);
         ExportConfig config = getConfigById(mappingId);
 
-        if(enabledFields.size()!=config.getFields().size()){
+        // Проверка принадлежности конфигурации клиенту
+        if (!config.getClient().getId().equals(clientId)) {
+            throw new FileProcessingException("Конфигурация не принадлежит указанному клиенту");
+        }
+
+        // Если это дефолтная конфигурация и меняется набор полей
+        if (config.isDefault() && enabledFields != null &&
+                enabledFields.size() != config.getFields().stream()
+                        .filter(ExportField::isEnabled).count()) {
             config.setDefault(false);
         }
-        // Обновляем имя конфигурации
+
+        // Обновление имени
         if (configName != null && !configName.trim().isEmpty()) {
             config.setName(configName.trim());
         }
 
-        // Обновляем статусы включения/выключения
+        // Обновление статусов полей
         if (enabledFields != null || disabledFields != null) {
             updateFieldStatuses(config, enabledFields);
         }
 
-        // Обновляем позиции полей
+        // Обновление позиций
         if (positions != null) {
             updateFieldPositions(config, positions);
         }
@@ -180,5 +241,60 @@ public class ExportFieldConfigService {
             throw new FileProcessingException("Конфигурация маппинга не найдена");
         }
         exportConfigRepository.deleteById(mappingId);
+    }
+
+    /**
+     * Получает доступные поля для добавления в конфигурацию
+     * @param config текущая конфигурация экспорта
+     * @return список групп с доступными полями
+     */
+    public List<EntityFieldGroup> getAvailableFieldsForConfig(ExportConfig config) {
+        List<EntityFieldGroup> allFields = entityRegistryService.getFieldsForMapping();
+
+        // Получаем список ключей ВСЕХ полей из конфигурации (не только активных)
+        Set<String> configFieldKeys = config.getFields().stream()
+                .map(ExportField::getSourceField)
+                .collect(Collectors.toSet());
+
+        // Фильтруем группы, убирая все поля, которые есть в конфигурации
+        return allFields.stream()
+                .map(group -> filterGroup(group, configFieldKeys))
+                .filter(group -> !group.getFields().isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Фильтрует группу полей, исключая активные поля
+     */
+    private EntityFieldGroup filterGroup(EntityFieldGroup group, Set<String> configFieldKeys) {
+        EntityFieldGroup filteredGroup = new EntityFieldGroup();
+        filteredGroup.setEntityName(group.getEntityName());
+
+        List<EntityField> filteredFields = group.getFields().stream()
+                .filter(field -> !configFieldKeys.contains(field.getMappingKey()))
+                .collect(Collectors.toList());
+
+        filteredGroup.setFields(filteredFields);
+        return filteredGroup;
+    }
+
+    /**
+     * Проверяет, существует ли поле в реестре
+     */
+    public boolean isFieldExists(String mappingKey) {
+        return entityRegistryService.getFieldsForMapping().stream()
+                .flatMap(group -> group.getFields().stream())
+                .anyMatch(field -> field.getMappingKey().equals(mappingKey));
+    }
+
+    /**
+     * Получает описание поля по ключу маппинга
+     */
+    public EntityField getFieldByMappingKey(String mappingKey) {
+        return entityRegistryService.getFieldsForMapping().stream()
+                .flatMap(group -> group.getFields().stream())
+                .filter(field -> field.getMappingKey().equals(mappingKey))
+                .findFirst()
+                .orElse(null);
     }
 }

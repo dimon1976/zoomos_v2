@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Общий фрагмент для форм создания и редактирования -->
+<div th:fragment="form-content">
+  <div class="mb-3">
+    <label for="configName" class="form-label">Название конфигурации</label>
+    <input type="text"
+           class="form-control"
+           id="configName"
+           name="configName"
+           th:value="${config.name}"
+           required>
+  </div>
+
+  <!-- Активные поля -->
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+      <tr>
+        <th></th>
+        <th>Включено</th>
+        <th>Название поля</th>
+        <th>Ключ поля</th>
+        <th>Позиция</th>
+      </tr>
+      </thead>
+      <tbody id="sortable">
+      <tr th:each="field : ${config.fields}" th:if="${field.enabled}">
+        <td class="drag-handle">
+          <i class="fas fa-grip-vertical"></i>
+        </td>
+        <td>
+          <input type="checkbox"
+                 name="enabledFields"
+                 th:value="${field.sourceField}"
+                 th:checked="${field.enabled}">
+        </td>
+        <td>
+          <input type="text"
+                 class="form-control field-display-name"
+                 th:value="${field.displayName}"
+                 placeholder="Отображаемое имя">
+        </td>
+        <td>
+          <span th:text="${field.sourceField}"></span>
+          <input type="hidden"
+                 class="field-source"
+                 th:value="${field.sourceField}">
+        </td>
+        <td class="position-cell">
+          <span class="position-display" th:text="${field.position}"></span>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Отключенные поля из текущей конфигурации -->
+  <h4 class="mt-4">Отключенные поля</h4>
+  <div class="table-responsive">
+    <table class="table table-sm">
+      <thead>
+      <tr>
+        <th>Название поля</th>
+        <th>Ключ поля</th>
+        <th>Действия</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="field : ${config.fields}" th:if="${!field.enabled}">
+        <td th:text="${field.displayName}"></td>
+        <td th:text="${field.sourceField}"></td>
+        <td>
+          <button type="button"
+                  class="btn btn-sm btn-success activate-field"
+                  th:data-mapping-key="${field.sourceField}"
+                  th:data-default-name="${field.displayName}">
+            <i class="fas fa-plus"></i> Добавить
+          </button>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Доступные поля из сущностей -->
+  <h4 class="mt-4">Дополнительные доступные поля</h4>
+  <div class="table-responsive">
+    <table class="table table-sm">
+      <thead>
+      <tr>
+        <th>Название поля</th>
+        <th>Ключ поля</th>
+        <th>Действия</th>
+      </tr>
+      </thead>
+      <tbody>
+      <th:block th:each="group : ${availableFields}">
+        <tr class="table-secondary">
+          <td th:text="${group.entityName}" colspan="3"></td>
+        </tr>
+        <tr th:each="field : ${group.fields}">
+          <td th:text="${field.description}"></td>
+          <td th:text="${field.mappingKey}"></td>
+          <td>
+            <button type="button"
+                    class="btn btn-sm btn-success activate-field"
+                    th:data-mapping-key="${field.mappingKey}"
+                    th:data-default-name="${field.description}">
+              <i class="fas fa-plus"></i> Добавить
+            </button>
+          </td>
+        </tr>
+      </th:block>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>
