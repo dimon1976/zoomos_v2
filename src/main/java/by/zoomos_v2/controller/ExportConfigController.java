@@ -78,6 +78,7 @@ public class ExportConfigController {
             List<EntityField> fields = objectMapper.readValue(positionsJson,
                     new TypeReference<>() {
                     });
+            log.info("Received fields: {}", fields);
 
             exportFieldConfigService.updateFieldsConfig(
                     clientId,

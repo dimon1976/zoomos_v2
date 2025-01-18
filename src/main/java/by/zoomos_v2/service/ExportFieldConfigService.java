@@ -11,8 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.FieldPosition;
-import java.util.ArrayList;
+import java.util.function.Function;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -83,6 +82,7 @@ public class ExportFieldConfigService {
                                    List<String> disabledFields,
                                    List<EntityField> positions,
                                    String configName) {
+        log.info("Updating config for client {}: name={}, fields={}", clientId, configName, positions);
         ExportConfig config = getOrCreateConfig(clientId);
 
         // Обновляем имя конфигурации
@@ -92,7 +92,7 @@ public class ExportFieldConfigService {
 
         // Обновляем статусы включения/выключения
         if (enabledFields != null || disabledFields != null) {
-            updateFieldStatuses(config, enabledFields, disabledFields);
+            updateFieldStatuses(config, enabledFields);
         }
 
         // Обновляем позиции полей
@@ -105,8 +105,7 @@ public class ExportFieldConfigService {
     }
 
     private void updateFieldStatuses(ExportConfig config,
-                                     List<String> enabledFields,
-                                     List<String> disabledFields) {
+                                     List<String> enabledFields) {
         // Сначала выключаем все поля
         config.getFields().forEach(field -> field.setEnabled(false));
 
@@ -121,14 +120,24 @@ public class ExportFieldConfigService {
     }
 
     private void updateFieldPositions(ExportConfig config, List<EntityField> positions) {
-        Map<String, Integer> positionMap = positions.stream()
+        Map<String, EntityField> positionMap = positions.stream()
                 .collect(Collectors.toMap(
                         EntityField::getMappingKey,
-                        EntityField::getPosition
+                        Function.identity()
                 ));
 
-        config.getFields().forEach(field ->
-                field.setPosition(positionMap.getOrDefault(field.getSourceField(), field.getPosition()))
-        );
+        config.getFields().forEach(field -> {
+            EntityField entityField = positionMap.get(field.getSourceField());
+
+            if (entityField != null) {
+                // Обновляем позицию
+                field.setPosition(entityField.getPosition());
+
+                // Обновляем displayName
+                if (entityField.getDescription() != null) {
+                    field.setDisplayName(entityField.getDescription());
+                }
+            }
+        });
     }
 }
