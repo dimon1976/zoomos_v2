@@ -11,11 +11,13 @@
             padding: 5px;
             color: #666;
         }
+
         .ui-sortable-helper {
             display: table;
             background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
+
         .position-cell {
             text-align: center;
             width: 80px;
@@ -31,7 +33,11 @@
     <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form th:action="@{/client/export/mapping/{clientId}/update(clientId=${clientId})}" method="post" id="exportForm">
+
+    <!-- Форма для редактирования существующего маппинга -->
+    <form th:if="${mappingId != null}"
+            th:action="@{/client/{clientId}/exportmapping/edit/{mappingId}(clientId=${clientId},mappingId=${mappingId})}"
+          method="post" id="exportForm">
         <div class="mb-3">
             <label for="configName" class="form-label">Название конфигурации</label>
             <input type="text"
@@ -87,7 +93,7 @@
         <div class="mt-3 mb-3">
             <button type="submit" class="btn btn-primary">Сохранить</button>
 
-            <form th:action="@{/client/export/mapping/{clientId}/reset(clientId=${clientId})}"
+            <form th:action="@{/client/export/exportmapping/{clientId}/reset(clientId=${clientId})}"
                   method="post"
                   style="display: inline-block;">
                 <button type="submit"
@@ -98,6 +104,68 @@
             </form>
         </div>
     </form>
+    <!-- Форма для создания нового маппинга -->
+    <form th:if="${mappingId == null}"
+          th:action="@{/client/{clientId}/exportmapping/create/{mappingId}(clientId=${clientId},mappingId=${config.id})}"
+          method="post" id="exportForm">
+        <div class="mb-3">
+            <label for="configName" class="form-label">Название конфигурации</label>
+            <input type="text"
+                   class="form-control"
+                   id="configName"
+                   name="configName"
+                   th:value="${config.name}"
+                   required>
+        </div>
+        <!-- Активные поля -->
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Включено</th>
+                    <th>Название поля</th>
+                    <th>Ключ поля</th>
+                    <th>Позиция</th>
+                </tr>
+                </thead>
+                <tbody id="sortable">
+                <!-- Существующие активные поля -->
+                <tr th:each="field : ${config.fields}" th:if="${field.enabled}">
+                    <td class="drag-handle">
+                        <i class="fas fa-grip-vertical"></i>
+                    </td>
+                    <td>
+                        <input type="checkbox"
+                               name="enabledFields"
+                               th:value="${field.sourceField}"
+                               th:checked="${field.enabled}">
+                    </td>
+                    <td>
+                        <input type="text"
+                               class="form-control field-display-name"
+                               th:value="${field.displayName}"
+                               placeholder="Отображаемое имя">
+                    </td>
+                    <td>
+                        <span th:text="${field.sourceField}"></span>
+                        <input type="hidden"
+                               class="field-source"
+                               th:value="${field.sourceField}">
+                    </td>
+                    <td class="position-cell">
+                        <span class="position-display" th:text="${field.position}"></span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3 mb-3">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+    </form>
+
+
     <!-- Отключенные и доступные поля -->
     <h3 class="mt-4">Доступные для добавления поля</h3>
     <div class="table-responsive">
@@ -117,7 +185,7 @@
                             class="btn btn-sm btn-success activate-field"
                             th:data-mapping-key="${field.sourceField}"
                             th:data-default-name="${field.displayName}">
-                        <i class="fas fa-plus"></i> Активировать
+                        <i class="fas fa-plus"></i> Добавить
                     </button>
                 </td>
             </tr>
@@ -160,7 +228,7 @@
                                 class="btn btn-sm btn-success activate-field"
                                 th:data-mapping-key="${field.mappingKey}"
                                 th:data-default-name="${field.description}">
-                            <i class="fas fa-plus"></i> Активировать
+                            <i class="fas fa-plus"></i> Добавить
                         </button>
                     </td>
                 </tr>
@@ -172,20 +240,20 @@
 <div th:replace="~{fragments/navbar :: footer}"></div>
 
 <script th:inline="javascript">
-    $(document).ready(function() {
+    $(document).ready(function () {
         const fieldNameModal = new bootstrap.Modal(document.getElementById('fieldNameModal'));
         let currentFieldData = null;
 
         // Инициализация сортировки
         $("#sortable").sortable({
             axis: "y",
-            update: function(event, ui) {
+            update: function (event, ui) {
                 updatePositions();
             }
         });
 
         // Обработчик кнопки активации поля
-        $('.activate-field').click(function() {
+        $('.activate-field').click(function () {
             currentFieldData = {
                 mappingKey: $(this).data('mapping-key'),
                 defaultName: $(this).data('default-name')
@@ -199,7 +267,7 @@
         });
 
         // Обработчик сохранения имени
-        $('#saveFieldName').click(function() {
+        $('#saveFieldName').click(function () {
             const displayName = $('#fieldDisplayName').val();
             if (!displayName) {
                 alert('Пожалуйста, введите отображаемое имя');
@@ -244,9 +312,9 @@
         });
 
         // Обработка отправки формы
-        $('#exportForm').on('submit', function(e) {
+        $('#exportForm').on('submit', function (e) {
             var positions = [];
-            $("#sortable tr").each(function(index) {
+            $("#sortable tr").each(function (index) {
                 var sourceField = $(this).find('.field-source').val();
                 var displayName = $(this).find('.field-display-name').val();
 
@@ -270,7 +338,7 @@
 
         // Функция обновления позиций
         function updatePositions() {
-            $("#sortable tr").each(function(index) {
+            $("#sortable tr").each(function (index) {
                 $(this).find('.position-display').text(index);
             });
         }

@@ -62,7 +62,8 @@ public class DataExportService {
         FileMetadata file = validateAndGetFile(fileId, clientId);
 
         // Получаем конфигурацию полей
-        ExportConfig fieldConfig = exportFieldConfigService.getOrCreateConfig(clientId);
+//        ExportConfig fieldConfig = exportFieldConfigService.getOrCreateConfig(clientId);
+        ExportConfig fieldConfig = exportFieldConfigService.getConfigById(clientId);
 
         // Получаем сырые данные
         List<Map<String, String>> rawData = productRepository.findAllByFileId(fileId);

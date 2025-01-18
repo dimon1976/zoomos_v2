@@ -1,5 +1,7 @@
 package by.zoomos_v2.service;
 
+import by.zoomos_v2.exception.FileProcessingException;
+import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportField;
 import by.zoomos_v2.repository.ClientRepository;
@@ -26,15 +28,35 @@ public class ExportFieldConfigService {
 
     private final ExportConfigRepository exportConfigRepository;
     private final ClientRepository clientRepository;
-    private final EntityRegistryService entityRegistryService;
 
+
+    /**
+     * Получает все конфигурации маппинга для магазина
+     *
+     * @param clientId идентификатор магазина
+     * @return список конфигураций маппинга
+     */
+    @Transactional(readOnly = true)
+    public List<ExportConfig> getMappingsForClient(Long clientId) {
+        log.debug("Получение конфигураций маппинга для магазина: {}", clientId);
+        return exportConfigRepository.findByClientId(clientId);
+    }
     /**
      * Получает или создает конфигурацию для клиента
      */
+//    @Transactional
+//    public ExportConfig getOrCreateConfig(Long clientId) {
+//        return exportConfigRepository.findByClientIdAndIsDefaultTrue(clientId)
+//                .orElseGet(() -> createDefaultConfig(clientId));
+//    }
+
+    /**
+     * Получает конфигурацию для клиента по ID
+     */
     @Transactional
-    public ExportConfig getOrCreateConfig(Long clientId) {
-        return exportConfigRepository.findByClientIdAndIsDefaultTrue(clientId)
-                .orElseGet(() -> createDefaultConfig(clientId));
+    public ExportConfig getConfigById(Long configId) {
+        return exportConfigRepository.findById(configId)
+                .orElseGet(() -> createDefaultConfig(configId));
     }
 
     /**
@@ -81,10 +103,14 @@ public class ExportFieldConfigService {
                                    List<String> enabledFields,
                                    List<String> disabledFields,
                                    List<EntityField> positions,
-                                   String configName) {
-        log.info("Updating config for client {}: name={}, fields={}", clientId, configName, positions);
-        ExportConfig config = getOrCreateConfig(clientId);
+                                   String configName,
+                                   Long mappingId) {
+        log.info("Updating config for client {}: name={}, fields={}, mappingID={}", clientId, configName, positions, mappingId);
+        ExportConfig config = getConfigById(mappingId);
 
+        if(enabledFields.size()!=config.getFields().size()){
+            config.setDefault(false);
+        }
         // Обновляем имя конфигурации
         if (configName != null && !configName.trim().isEmpty()) {
             config.setName(configName.trim());
@@ -139,5 +165,20 @@ public class ExportFieldConfigService {
                 }
             }
         });
+    }
+
+    /**
+     * Удаляет конфигурацию маппинга
+     *
+     * @param mappingId идентификатор конфигурации
+     * @throws FileProcessingException если конфигурация не найдена
+     */
+    @Transactional
+    public void deleteMapping(Long mappingId) {
+        log.debug("Удаление конфигурации маппинга с ID: {}", mappingId);
+        if (!exportConfigRepository.existsById(mappingId)) {
+            throw new FileProcessingException("Конфигурация маппинга не найдена");
+        }
+        exportConfigRepository.deleteById(mappingId);
     }
 }

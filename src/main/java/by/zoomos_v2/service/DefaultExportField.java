@@ -10,16 +10,16 @@ import java.util.stream.Collectors;
  * Перечисление дефолтных полей для экспорта
  */
 public enum DefaultExportField {
-    ID("product.id", "ID", 0),
-    NAME("product.name", "Наименование", 1),
-    PRICE("product.price", "Цена", 2),
-    OLD_PRICE("product.oldPrice", "Старая цена", 3),
-    DISCOUNT("product.discount", "Скидка", 4),
-    BRAND("product.brand", "Бренд", 5),
-    CATEGORY("product.category", "Категория", 6),
-    URL("product.url", "Ссылка", 7),
-    COMPETITOR("competitorData.name", "Конкурент", 8),
-    REGION("regionData.name", "Регион", 9);
+    ID("product.productId", "ID", 0),
+    NAME("product.productName", "Наименование", 1),
+    PRICE("product.productPrice", "Цена", 2),
+    OLD_PRICE("product.productOldPrice", "Старая цена", 3),
+    DISCOUNT("product.productDiscount", "Скидка", 4),
+    BRAND("product.productBrand", "Бренд", 5),
+    CATEGORY("product.productCategory", "Категория", 6),
+    URL("product.productUrl", "Ссылка", 7),
+    COMPETITOR("competitordata.competitorName", "Конкурент", 8),
+    REGION("regiondata.region", "Регион", 9);
 
     private final String mappingKey;
     private final String displayName;

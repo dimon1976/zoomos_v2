@@ -77,15 +77,19 @@
                                     <div class="btn-group" role="group">
                                         <a th:href="@{/client/{id}/files(id=${client.id})}"
                                            class="btn btn-sm btn-info" title="Файлы">
-                                            <i class="fas fa-file"></i>
+                                            <i class="fas fa-file"></i> Файлы
                                         </a>
-                                        <a th:href="@{/client/{id}/mapping(id=${client.id})}"
-                                           class="btn btn-sm btn-warning" title="Маппинг">
-                                            <i class="fas fa-cog"></i>
+                                        <a th:href="@{/client/{id}/uploadmapping(id=${client.id})}"
+                                           class="btn btn-sm btn-warning" title="Маппинг upload">
+                                            <i class="fas fa-cog"></i> Маппинг upload
+                                        </a>
+                                        <a th:href="@{/client/{id}/exportmapping(id=${client.id})}"
+                                           class="btn btn-sm btn-secondary" title="Маппинг export">
+                                            <i class="fas fa-list"></i> Маппинг export
                                         </a>
                                         <a th:href="@{/client/{id}/settings(id=${client.id})}"
                                            class="btn btn-sm btn-primary" title="Настройки">
-                                            <i class="fas fa-edit"></i>
+                                            <i class="fas fa-edit"></i> Настройки
                                         </a>
                                         <button type="button" class="btn btn-sm btn-danger" title="Удалить"
                                                 th:data-client-id="${client.id}"

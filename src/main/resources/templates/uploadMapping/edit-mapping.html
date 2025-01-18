@@ -13,7 +13,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
-                    <li class="breadcrumb-item"><a th:href="@{/client/{id}/mapping(id=${client.id})}" th:text="${client.name}">Магазин</a></li>
+                    <li class="breadcrumb-item"><a th:href="@{/client/{id}/uploadmapping(id=${client.id})}" th:text="${client.name}">Магазин</a></li>
                     <li class="breadcrumb-item active" th:text="${mapping.id == null ? 'Новый маппинг' : 'Редактирование маппинга'}">Маппинг</li>
                 </ol>
             </nav>
@@ -35,7 +35,7 @@
 
                     <!-- Форма для создания нового маппинга -->
                     <form th:if="${mapping.id == null}"
-                          th:action="@{/client/{clientId}/mapping/create(clientId=${client.id})}"
+                          th:action="@{/client/{clientId}/uploadmapping/create(clientId=${client.id})}"
                           method="post"
                           class="needs-validation"
                           novalidate>
@@ -115,14 +115,14 @@
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a th:href="@{/client/{id}/mapping(id=${client.id})}" class="btn btn-secondary me-md-2">Отмена</a>
+                            <a th:href="@{/client/{id}/uploadmapping(id=${client.id})}" class="btn btn-secondary me-md-2">Отмена</a>
                             <button type="submit" class="btn btn-primary">Создать</button>
                         </div>
                     </form>
 
                     <!-- Форма для редактирования существующего маппинга -->
                     <form th:if="${mapping.id != null}"
-                          th:action="@{/client/{clientId}/mapping/update/{mappingId}(clientId=${client.id},mappingId=${mapping.id})}"
+                          th:action="@{/client/{clientId}/uploadmapping/update/{mappingId}(clientId=${client.id},mappingId=${mapping.id})}"
                           method="post"
                           class="needs-validation"
                           novalidate>
@@ -209,7 +209,7 @@
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a th:href="@{/client/{id}/mapping(id=${client.id})}" class="btn btn-secondary me-md-2">Отмена</a>
+                            <a th:href="@{/client/{id}/uploadmapping(id=${client.id})}" class="btn btn-secondary me-md-2">Отмена</a>
                             <button type="submit" class="btn btn-primary">Обновить</button>
                         </div>
                     </form>
