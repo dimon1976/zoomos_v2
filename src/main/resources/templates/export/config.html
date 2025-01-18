@@ -54,18 +54,20 @@
                            th:checked="${field.enabled}">
                 </td>
                 <td th:text="${field.displayName}"></td>
-                <td th:text="${field.sourceField}">
-                    <input type="hidden" name="fieldIds" th:value="${field.sourceField}">
+                <td>
+                    <span th:text="${field.sourceField}"></span>
+                    <input type="hidden"
+                           class="field-source"
+                           th:value="${field.sourceField}">
                 </td>
                 <td class="position-cell">
-                    <input type="hidden" name="positions" th:value="${field.position}" class="position-input">
                     <span class="position-display" th:text="${field.position}"></span>
                 </td>
             </tr>
             </tbody>
         </table>
 
-        <div class="mt-3">
+        <div class="mt-3 mb-3">
             <button type="submit" class="btn btn-primary">Сохранить</button>
 
             <form th:action="@{/client/export/mapping/{clientId}/reset(clientId=${clientId})}"
@@ -89,29 +91,34 @@
             handle: ".drag-handle",
             axis: "y",
             update: function(event, ui) {
-                // Обновляем позиции после перетаскивания
+                // Обновляем отображаемые позиции после перетаскивания
                 $("#sortable tr").each(function(index) {
-                    $(this).find('.position-input').val(index);
                     $(this).find('.position-display').text(index);
                 });
             }
         });
         $("#sortable").disableSelection();
 
-        // Перед отправкой формы собираем данные о позициях
-        $('#exportForm').submit(function() {
+        // Добавляем данные о позициях перед отправкой формы
+        $('#exportForm').on('submit', function(e) {
             var positions = [];
             $("#sortable tr").each(function(index) {
-                positions.push({
-                    mappingKey: $(this).find('.field-source').val(),
-                    position: index
-                });
+                var sourceField = $(this).find('.field-source').val();
+                if (sourceField) {
+                    positions.push({
+                        mappingKey: sourceField,
+                        position: index
+                    });
+                }
             });
+
+            console.log('Positions JSON:', JSON.stringify(positions)); // Для отладки
+
             $('<input>').attr({
                 type: 'hidden',
                 name: 'positionsJson',
                 value: JSON.stringify(positions)
-            }).appendTo('#exportForm');
+            }).appendTo(this);
         });
     });
 </script>

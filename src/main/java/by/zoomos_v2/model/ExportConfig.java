@@ -2,6 +2,8 @@ package by.zoomos_v2.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
+
 import java.util.List;
 
 @Entity
@@ -24,5 +26,6 @@ public class ExportConfig {
 
     @OneToMany(mappedBy = "exportConfig", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position")
+    @ToString.Exclude  // Добавляем эту аннотацию
     private List<ExportField> fields;
 }

@@ -43,21 +43,33 @@ public class ExportFieldConfigService {
      */
     @Transactional
     public ExportConfig createDefaultConfig(Long clientId) {
-        log.debug("Создание стандартной конфигурации для клиента: {}", clientId);
+        log.debug("Создание конфигурации по умолчанию для клиента: {}", clientId);
 
         ExportConfig config = new ExportConfig();
         config.setClient(clientRepository.getReferenceById(clientId));
         config.setDefault(true);
         config.setName("Default");
 
-        // Получаем все доступные поля из сущностей
-        List<EntityField> entityFields = entityRegistryService.getFieldsForMapping().stream()
-                .flatMap(group -> group.getFields().stream())
+        // Получаем дефолтный список полей
+        List<EntityField> defaultFields = DefaultExportField.getDefaultFields();
+
+        // Преобразуем в ExportField
+        List<ExportField> exportFields = defaultFields.stream()
+                .map(entityField -> {
+                    ExportField field = new ExportField();
+                    field.setExportConfig(config);
+                    field.setSourceField(entityField.getMappingKey());
+                    field.setDisplayName(entityField.getDescription());
+                    field.setPosition(entityField.getPosition());
+                    field.setEnabled(true);
+                    return field;
+                })
                 .collect(Collectors.toList());
 
-        // Создаем базовый набор полей
-        List<ExportField> defaultFields = createDefaultFields(entityFields, config);
-        config.setFields(defaultFields);
+        config.setFields(exportFields);
+
+        log.info("Создана конфигурация по умолчанию для клиента: {} с {} полями",
+                clientId, exportFields.size());
 
         return exportConfigRepository.save(config);
     }
