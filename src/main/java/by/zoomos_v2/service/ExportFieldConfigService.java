@@ -48,7 +48,7 @@ public class ExportFieldConfigService {
         ExportConfig config = new ExportConfig();
         config.setClient(clientRepository.getReferenceById(clientId));
         config.setDefault(true);
-        config.setName("Default");
+        config.setName("Конфигурация по умолчанию");
 
         // Получаем дефолтный список полей
         List<EntityField> defaultFields = DefaultExportField.getDefaultFields();
@@ -81,8 +81,14 @@ public class ExportFieldConfigService {
     public void updateFieldsConfig(Long clientId,
                                    List<String> enabledFields,
                                    List<String> disabledFields,
-                                   List<EntityField> positions) {
+                                   List<EntityField> positions,
+                                   String configName) {
         ExportConfig config = getOrCreateConfig(clientId);
+
+        // Обновляем имя конфигурации
+        if (configName != null && !configName.trim().isEmpty()) {
+            config.setName(configName.trim());
+        }
 
         // Обновляем статусы включения/выключения
         if (enabledFields != null || disabledFields != null) {
@@ -95,6 +101,7 @@ public class ExportFieldConfigService {
         }
 
         exportConfigRepository.save(config);
+        log.debug("Конфигурация '{}' успешно обновлена", config.getName());
     }
 
     private void updateFieldStatuses(ExportConfig config,
@@ -123,26 +130,5 @@ public class ExportFieldConfigService {
         config.getFields().forEach(field ->
                 field.setPosition(positionMap.getOrDefault(field.getSourceField(), field.getPosition()))
         );
-    }
-
-
-    /**
-     * Создает базовый набор полей
-     */
-    private List<ExportField> createDefaultFields(List<EntityField> entityFields, ExportConfig config) {
-        List<ExportField> defaultFields = new ArrayList<>();
-        int position = 0;
-
-        for (EntityField entityField : entityFields) {
-            ExportField field = new ExportField();
-            field.setExportConfig(config);
-            field.setSourceField(entityField.getMappingKey());
-            field.setDisplayName(entityField.getDescription());
-            field.setPosition(position++);
-            field.setEnabled(true);  // По умолчанию все поля активны
-            defaultFields.add(field);
-        }
-
-        return defaultFields;
     }
 }

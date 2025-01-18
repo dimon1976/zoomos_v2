@@ -55,16 +55,20 @@ public class ExportConfigController {
             @PathVariable Long clientId,
             @RequestParam(required = false) List<String> enabledFields,
             @RequestParam String positionsJson,
+            @RequestParam String configName,
             RedirectAttributes redirectAttributes) {
 
         try {
-            // Парсим JSON с позициями полей
-            List<EntityField> positions = objectMapper.readValue(positionsJson,
-                    new TypeReference<>() {
-                    });
+            List<EntityField> fields = objectMapper.readValue(positionsJson,
+                    new TypeReference<List<EntityField>>() {});
 
-            // Обновляем конфигурацию
-            exportFieldConfigService.updateFieldsConfig(clientId, enabledFields, null, positions);
+            exportFieldConfigService.updateFieldsConfig(
+                    clientId,
+                    enabledFields,
+                    null,
+                    fields,
+                    configName
+            );
             redirectAttributes.addFlashAttribute("success", "Конфигурация успешно обновлена");
 
         } catch (Exception e) {

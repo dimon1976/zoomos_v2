@@ -32,6 +32,15 @@
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
     <form th:action="@{/client/export/mapping/{clientId}/update(clientId=${clientId})}" method="post" id="exportForm">
+        <div class="mb-3">
+            <label for="configName" class="form-label">Название конфигурации</label>
+            <input type="text"
+                   class="form-control"
+                   id="configName"
+                   name="configName"
+                   th:value="${config.name}"
+                   required>
+        </div>
         <table class="table table-striped">
             <thead>
             <tr>
@@ -53,7 +62,13 @@
                            th:value="${field.sourceField}"
                            th:checked="${field.enabled}">
                 </td>
-                <td th:text="${field.displayName}"></td>
+                <td>
+                    <input type="text"
+                           class="form-control field-display-name"
+                           th:value="${field.displayName}"
+                           name="displayNames"
+                           placeholder="Отображаемое имя">
+                </td>
                 <td>
                     <span th:text="${field.sourceField}"></span>
                     <input type="hidden"
@@ -91,7 +106,6 @@
             handle: ".drag-handle",
             axis: "y",
             update: function(event, ui) {
-                // Обновляем отображаемые позиции после перетаскивания
                 $("#sortable tr").each(function(index) {
                     $(this).find('.position-display').text(index);
                 });
@@ -99,25 +113,29 @@
         });
         $("#sortable").disableSelection();
 
-        // Добавляем данные о позициях перед отправкой формы
         $('#exportForm').on('submit', function(e) {
             var positions = [];
             $("#sortable tr").each(function(index) {
                 var sourceField = $(this).find('.field-source').val();
+                var displayName = $(this).find('.field-display-name').val();
+                console.log('Row data:', { sourceField, displayName, index }); // Отладочный вывод
+
                 if (sourceField) {
                     positions.push({
                         mappingKey: sourceField,
-                        position: index
+                        position: index,
+                        description: displayName  // Изменено с displayName на description
                     });
                 }
             });
 
-            console.log('Positions JSON:', JSON.stringify(positions)); // Для отладки
+            var positionsJson = JSON.stringify(positions);
+            console.log('Sending JSON:', positionsJson); // Отладочный вывод
 
             $('<input>').attr({
                 type: 'hidden',
                 name: 'positionsJson',
-                value: JSON.stringify(positions)
+                value: positionsJson
             }).appendTo(this);
         });
     });
