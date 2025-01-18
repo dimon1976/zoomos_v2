@@ -41,46 +41,32 @@
                    th:value="${config.name}"
                    required>
         </div>
-        <table class="table table-striped">
-            <thead>
-            <tr>
-                <th></th>
-                <th>Включено</th>
-                <th>Название поля</th>
-                <th>Ключ поля</th>
-                <th>Позиция</th>
-            </tr>
-            </thead>
-            <tbody id="sortable">
-            <tr th:each="field : ${config.fields}">
-                <td class="drag-handle">
-                    <i class="fas fa-grip-vertical"></i>
-                </td>
-                <td>
-                    <input type="checkbox"
-                           name="enabledFields"
-                           th:value="${field.sourceField}"
-                           th:checked="${field.enabled}">
-                </td>
-                <td>
-                    <input type="text"
-                           class="form-control field-display-name"
-                           th:value="${field.displayName}"
-                           name="displayNames"
-                           placeholder="Отображаемое имя">
-                </td>
-                <td>
-                    <span th:text="${field.sourceField}"></span>
-                    <input type="hidden"
-                           class="field-source"
-                           th:value="${field.sourceField}">
-                </td>
-                <td class="position-cell">
-                    <span class="position-display" th:text="${field.position}"></span>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+        <!-- Активные поля -->
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Включено</th>
+                    <th>Название поля</th>
+                    <th>Ключ поля</th>
+                    <th>Позиция</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="field : ${config.fields}" th:if="${field.enabled}">
+                    <td>
+                        <input type="checkbox"
+                               name="enabledFields"
+                               th:value="${field.sourceField}"
+                               th:checked="${field.enabled}">
+                    </td>
+                    <td th:text="${field.displayName}"></td>
+                    <td th:text="${field.sourceField}"></td>
+                    <td th:text="${field.position}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
 
         <div class="mt-3 mb-3">
             <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -96,6 +82,40 @@
             </form>
         </div>
     </form>
+    <!-- Отключенные и доступные поля -->
+    <h3 class="mt-4">Доступные для добавления поля</h3>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+            <tr>
+                <th>Название поля</th>
+                <th>Ключ поля</th>
+                <th>Тип</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- Отключенные поля из конфигурации -->
+            <tr th:each="field : ${config.fields}" th:if="${!field.enabled}">
+                <td th:text="${field.displayName}"></td>
+                <td th:text="${field.sourceField}"></td>
+                <td>Отключенное поле</td>
+            </tr>
+            <!-- Поля из сущностей, которых нет в конфигурации -->
+            <th:block th:each="group : ${availableFields}">
+                <!-- Заголовок группы -->
+                <tr class="table-secondary">
+                    <td th:text="${group.entityName}" colspan="3"></td>
+                </tr>
+                <!-- Поля группы -->
+                <tr th:each="field : ${group.fields}">
+                    <td th:text="${field.description}"></td>
+                    <td th:text="${field.mappingKey}"></td>
+                    <td>Доступное поле</td>
+                </tr>
+            </th:block>
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <div th:replace="~{fragments/navbar :: footer}"></div>

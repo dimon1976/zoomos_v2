@@ -1,8 +1,11 @@
 package by.zoomos_v2.controller;
 
 import by.zoomos_v2.model.ExportConfig;
+import by.zoomos_v2.model.ExportField;
 import by.zoomos_v2.service.ExportFieldConfigService;
 import by.zoomos_v2.util.EntityField;
+import by.zoomos_v2.util.EntityFieldGroup;
+import by.zoomos_v2.util.EntityRegistryService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +17,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.text.FieldPosition;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Контроллер для управления настройками полей экспорта
@@ -25,6 +30,7 @@ import java.util.List;
 public class ExportConfigController {
 
     private final ExportFieldConfigService exportFieldConfigService;
+    private final EntityRegistryService entityRegistryService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -35,8 +41,18 @@ public class ExportConfigController {
         log.debug("Отображение страницы конфигурации экспорта для клиента: {}", clientId);
 
         try {
+            // Получаем текущую конфигурацию
             ExportConfig config = exportFieldConfigService.getOrCreateConfig(clientId);
+            // Получаем все доступные поля из сущностей
+            List<EntityFieldGroup> availableFields = entityRegistryService.getFieldsForMapping();
+
+            // Собираем список ключей полей, которые уже есть в конфигурации
+            Set<String> configFieldKeys = config.getFields().stream()
+                    .map(ExportField::getSourceField)
+                    .collect(Collectors.toSet());
             model.addAttribute("config", config);
+            model.addAttribute("availableFields", availableFields);
+            model.addAttribute("configFieldKeys", configFieldKeys);
             model.addAttribute("clientId", clientId);
 
             return "export/config";
@@ -60,7 +76,8 @@ public class ExportConfigController {
 
         try {
             List<EntityField> fields = objectMapper.readValue(positionsJson,
-                    new TypeReference<List<EntityField>>() {});
+                    new TypeReference<>() {
+                    });
 
             exportFieldConfigService.updateFieldsConfig(
                     clientId,
