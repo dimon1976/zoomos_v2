@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.Map;
@@ -90,7 +91,7 @@ public class ExportFieldConfigService {
     }
 
     @Transactional
-    public ExportConfig createConfig(Long clientId, String name, List<EntityField> fields) {
+    public ExportConfig createConfig(Long clientId, String name, List<EntityField> fields, String configDescription) {
         ExportConfig config = new ExportConfig();
         config.setClient(clientRepository.getReferenceById(clientId));
         config.setDefault(false);
@@ -109,6 +110,7 @@ public class ExportFieldConfigService {
                 .collect(Collectors.toList());
 
         config.setFields(exportFields);
+        config.setDescription(configDescription);
         return exportConfigRepository.save(config);
     }
 
@@ -157,7 +159,8 @@ public class ExportFieldConfigService {
                                    List<String> disabledFields,
                                    List<EntityField> positions,
                                    String configName,
-                                   Long mappingId) {
+                                   Long mappingId,
+                                   String configDescription) {
         ExportConfig config = getConfigById(mappingId);
 
         // Проверка принадлежности конфигурации клиенту
@@ -186,7 +189,7 @@ public class ExportFieldConfigService {
         if (positions != null) {
             updateFieldPositions(config, positions);
         }
-
+        config.setDescription(configDescription);
         exportConfigRepository.save(config);
         log.debug("Конфигурация '{}' успешно обновлена", config.getName());
     }
@@ -245,6 +248,7 @@ public class ExportFieldConfigService {
 
     /**
      * Получает доступные поля для добавления в конфигурацию
+     *
      * @param config текущая конфигурация экспорта
      * @return список групп с доступными полями
      */

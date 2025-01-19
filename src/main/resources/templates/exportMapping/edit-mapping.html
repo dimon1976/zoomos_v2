@@ -46,6 +46,14 @@
                    th:value="${config.name}"
                    required>
         </div>
+        <div class="mb-3">
+            <label for="configDescription" class="form-label">Описание</label>
+            <input type="text"
+                   class="form-control"
+                   id="configDescription"
+                   name="configDescription"
+                   th:value="${config.description}">
+        </div>
         <!-- Активные поля -->
         <div class="table-responsive">
             <table class="table table-striped">
@@ -113,6 +121,14 @@
                    name="configName"
                    th:value="${config.name}"
                    required>
+        </div>
+        <div class="mb-3">
+            <label for="configDescription" class="form-label">Описание</label>
+            <input type="text"
+                   class="form-control"
+                   id="configDescription"
+                   name="configDescription"
+                   th:value="${config.description}">
         </div>
         <!-- Активные поля -->
         <div class="table-responsive">

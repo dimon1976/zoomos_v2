@@ -93,12 +93,13 @@ public class ExportConfigController {
             @RequestParam(required = false) List<String> enabledFields,
             @RequestParam String positionsJson,
             @RequestParam String configName,
+            @RequestParam String configDescription,
             RedirectAttributes redirectAttributes) {
 
         log.debug("Создание новой конфигурации для клиента {}", clientId);
         try {
             List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {});
-            ExportConfig config = exportFieldConfigService.createConfig(clientId, configName, fields);
+            exportFieldConfigService.createConfig(clientId, configName, fields, configDescription);
             redirectAttributes.addFlashAttribute("success", "Конфигурация успешно создана");
             return "redirect:/client/{clientId}/exportmapping";
         } catch (Exception e) {
@@ -146,12 +147,13 @@ public class ExportConfigController {
             @RequestParam(required = false) List<String> enabledFields,
             @RequestParam String positionsJson,
             @RequestParam String configName,
+            @RequestParam String configDescription,
             RedirectAttributes redirectAttributes) {
 
         log.debug("Обновление конфигурации {} для клиента {}", mappingId, clientId);
         try {
             List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {});
-            exportFieldConfigService.updateFieldsConfig(clientId, enabledFields, null, fields, configName, mappingId);
+            exportFieldConfigService.updateFieldsConfig(clientId, enabledFields, null, fields, configName, mappingId, configDescription);
             redirectAttributes.addFlashAttribute("success", "Конфигурация успешно обновлена");
         } catch (Exception e) {
             log.error("Ошибка при обновлении конфигурации: {}", e.getMessage(), e);
