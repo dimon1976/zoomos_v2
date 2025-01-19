@@ -5,6 +5,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <div th:replace="~{fragments/navbar :: header-css}"></div>
+    <style>
+        .drag-handle {
+            cursor: move;
+            padding: 5px;
+            color: #666;
+        }
+
+        .ui-sortable-helper {
+            display: table;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .ui-sortable-placeholder {
+            visibility: visible !important;
+            background: #f3f3f3;
+            height: 50px;
+        }
+
+        .table-secondary {
+            cursor: default;
+        }
+
+        #enabledFieldsTable tbody tr:not(.table-secondary):hover {
+            background-color: #f5f5f5;
+        }
+    </style>
 </head>
 <body>
 <div th:replace="~{fragments/navbar :: header}"></div>
@@ -32,6 +59,7 @@
         <table class="table table-striped" id="enabledFieldsTable">
             <thead>
             <tr>
+                <th></th><!-- Колонка для хендлера -->
                 <th>Название поля</th>
                 <th>Ключ поля</th>
                 <th>Позиция</th>
@@ -45,6 +73,7 @@
                 </tr>
                 <th:block th:each="field : ${group.value}">
                     <tr>
+                        <td></td><!-- Сюда будет добавлена иконка -->
                         <td>
                             <input type="text" class="form-control field-display-name" th:value="${field.displayName}" th:attr="name='fields[' + ${field.sourceField} + '].displayName'">
                         </td>
@@ -110,19 +139,102 @@
 
 <script th:inline="javascript">
     $(document).ready(function() {
+        // Инициализация сортировки
+        $('#enabledFieldsTable tbody').sortable({
+            items: 'tr:not(.table-secondary)',
+            handle: 'td:first-child',
+            axis: 'y',
+            helper: function(e, tr) {
+                var $originals = tr.children();
+                var $helper = tr.clone();
+                $helper.children().each(function(index) {
+                    $(this).width($originals.eq(index).width());
+                });
+                return $helper;
+            },
+            update: function(event, ui) {
+                updatePositions();
+            }
+        });
 
-        function updatePositions() {
-            $('#enabledFieldsTable tbody tr').each(function(index) {
-                $(this).find('.position-display').text(index);
-            });
-        }
+        // Добавляем иконку для drag-and-drop
+        $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
+            $(this).find('td:first-child').addClass('drag-handle').prepend(
+                '<i class="fas fa-grip-vertical"></i>'
+            );
+        });
 
+        // Обработчик кнопки добавления поля
+        $(document).on('click', '.add-field', function() {
+            let sourceField = $(this).data('source-field');
+            let displayName = $(this).data('display-name');
+
+            let row = `
+            <tr>
+                <td class="drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </td>
+                <td>
+                    <input type="text" class="form-control field-display-name"
+                           value="${displayName}"
+                           name="fields[${sourceField}].displayName">
+                </td>
+                <td>${sourceField}</td>
+                <td class="position-display">0</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-danger remove-field">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+
+            // Добавляем строку в таблицу активных полей
+            $('#enabledFieldsTable tbody').append(row);
+            // Удаляем строку из таблицы неактивных полей
+            $(this).closest('tr').remove();
+            updatePositions();
+        });
+
+        // Обработчик кнопки удаления поля
+        $(document).on('click', '.remove-field', function() {
+            let sourceField = $(this).closest('tr').find('td:nth-child(3)').text();
+            let displayName = $(this).closest('tr').find('.field-display-name').val();
+
+            let row = `
+            <tr>
+                <td>${displayName}</td>
+                <td>${sourceField}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-success add-field"
+                            data-source-field="${sourceField}"
+                            data-display-name="${displayName}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+
+            // Добавляем строку в таблицу неактивных полей
+            $('#disabledFieldsTable tbody').append(row);
+            // Удаляем строку из таблицы активных полей
+            $(this).closest('tr').remove();
+            updatePositions();
+        });
+
+        // Обработка отправки формы
+        $('#exportForm').on('submit', function() {
+            let allFields = getAllFields();
+            $('#positionsJson').val(JSON.stringify(allFields));
+        });
+
+        // Функция сбора всех полей
         function getAllFields() {
             let allFields = [];
 
             // Собираем включенные поля
             $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function(index) {
-                let sourceField = $(this).find('td:eq(1)').text().trim();
+                let sourceField = $(this).find('td:nth-child(3)').text().trim();
                 if (sourceField) {
                     allFields.push({
                         mappingKey: sourceField,
@@ -135,76 +247,28 @@
 
             // Собираем отключенные поля
             $('#disabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
-                let sourceField = $(this).find('td:eq(1)').text().trim();
+                let sourceField = $(this).find('td:nth-child(2)').text().trim();
                 if (sourceField) {
                     allFields.push({
                         mappingKey: sourceField,
-                        description: $(this).find('td:eq(0)').text(),
+                        description: $(this).find('td:first-child').text(),
                         position: -1,
                         enabled: false
                     });
                 }
             });
 
+            console.log('Collected fields:', allFields); // для отладки
             return allFields;
         }
 
-        // Обработка отправки формы
-        $('#exportForm').on('submit', function(e) {
-            let fields = getAllFields();
-            $('#positionsJson').val(JSON.stringify(fields));
-        });
-
-        $(document).on('click', '.add-field', function() {
-            let sourceField = $(this).data('source-field');
-            let displayName = $(this).data('display-name');
-
-            let row = `
-                <tr>
-                    <td>
-                        <input type="text" class="form-control field-display-name" value="${displayName}" name="fields[${sourceField}].displayName">
-                    </td>
-                    <td>${sourceField}</td>
-                    <td class="position-display"></td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-danger remove-field">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-
-            $('#enabledFieldsTable tbody').append(row);
-            $(this).closest('tr').remove();
-            updatePositions();
-        });
-
-        $(document).on('click', '.remove-field', function() {
-            let sourceField = $(this).closest('tr').find('td:eq(1)').text();
-            let displayName = $(this).closest('tr').find('.field-display-name').val();
-
-            let row = `
-                <tr>
-                    <td>${displayName}</td>
-                    <td>${sourceField}</td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-success add-field" data-source-field="${sourceField}" data-display-name="${displayName}">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-
-            $(this).closest('tr').remove();
-            $('#disabledFieldsTable tbody').append(row);
-            updatePositions();
-        });
-
-        $('#exportForm').on('submit', function() {
-            let enabledFields = getEnabledFields();
-            $('#positionsJson').val(JSON.stringify(enabledFields));
-        });
-
+        // Функция обновления позиций
+        function updatePositions() {
+            var position = 0;
+            $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
+                $(this).find('.position-display').text(position++);
+            });
+        }
     });
 </script>
 </body>
