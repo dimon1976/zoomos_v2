@@ -1,6 +1,6 @@
 package by.zoomos_v2.controller;
 
-import by.zoomos_v2.service.ClientService;
+import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.aspect.LogExecution;
 import lombok.RequiredArgsConstructor;

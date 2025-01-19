@@ -6,6 +6,7 @@ import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @Data
@@ -37,6 +38,13 @@ public class ExportConfig {
     private List<ExportField> fields;
 
     /**
+     * Дополнительные параметры конфигурации экспорта
+     */
+    @OneToMany(mappedBy = "exportConfig", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    private List<ExportConfigParam> params;
+
+    /**
      * Дата создания конфигурации
      */
     @Column(name = "created_at", updatable = false)
@@ -52,6 +60,20 @@ public class ExportConfig {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Получает значение параметра по ключу
+     */
+    public String getParam(String key) {
+        if (params == null) {
+            return null;
+        }
+        return params.stream()
+                .filter(p -> p.getKey().equals(key))
+                .map(ExportConfigParam::getValue)
+                .findFirst()
+                .orElse(null);
     }
 
     @PreUpdate

@@ -1,6 +1,6 @@
 package by.zoomos_v2.controller;
 
-import by.zoomos_v2.service.ClientService;
+import by.zoomos_v2.service.client.ClientService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
