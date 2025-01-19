@@ -1,7 +1,6 @@
 package by.zoomos_v2.controller;
 
 import by.zoomos_v2.aspect.LogExecution;
-import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportField;
@@ -9,8 +8,6 @@ import by.zoomos_v2.service.ClientService;
 import by.zoomos_v2.service.ExportFieldConfigService;
 import by.zoomos_v2.util.EntityField;
 import by.zoomos_v2.util.EntityFieldGroup;
-import by.zoomos_v2.util.EntityRegistryService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +17,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.text.FieldPosition;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -66,16 +62,25 @@ public class ExportConfigController {
     public String newConfig(@PathVariable Long clientId, Model model) {
         log.debug("Создание новой конфигурации для клиента: {}", clientId);
         try {
-            // Создаем временную конфигурацию без сохранения в БД
+            // Создаем временную конфигурацию со всеми полями
             ExportConfig config = exportFieldConfigService.createTemporaryConfig(clientId);
 
-            // Получаем доступные поля
-            List<EntityFieldGroup> availableFields = exportFieldConfigService.getAvailableFieldsForConfig(config);
+            // Группируем поля по источнику и фильтруем по признаку enabled
+            Map<String, List<ExportField>> groupedEnabledFields = config.getFields().stream()
+                    .filter(ExportField::isEnabled)
+                    .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
 
+            Map<String, List<ExportField>> groupedDisabledFields = config.getFields().stream()
+                    .filter(field -> !field.isEnabled())
+                    .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
+
+            // Передаем данные в модель
+            model.addAttribute("groupedEnabledFields", groupedEnabledFields);
+            model.addAttribute("groupedDisabledFields", groupedDisabledFields);
             model.addAttribute("config", config);
-            model.addAttribute("availableFields", availableFields);
             model.addAttribute("clientId", clientId);
             model.addAttribute("mappingId", null);
+
             return "exportMapping/edit-mapping";
         } catch (Exception e) {
             log.error("Ошибка при создании конфигурации: {}", e.getMessage(), e);
@@ -90,7 +95,6 @@ public class ExportConfigController {
     @PostMapping("/create")
     public String createConfig(
             @PathVariable Long clientId,
-            @RequestParam(required = false) List<String> enabledFields,
             @RequestParam String positionsJson,
             @RequestParam String configName,
             @RequestParam String configDescription,
@@ -98,7 +102,8 @@ public class ExportConfigController {
 
         log.debug("Создание новой конфигурации для клиента {}", clientId);
         try {
-            List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {});
+            List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {
+            });
             exportFieldConfigService.createConfig(clientId, configName, fields, configDescription);
             redirectAttributes.addFlashAttribute("success", "Конфигурация успешно создана");
             return "redirect:/client/{clientId}/exportmapping";
@@ -119,14 +124,19 @@ public class ExportConfigController {
         log.debug("Редактирование конфигурации {} для клиента {}", mappingId, clientId);
         try {
             ExportConfig config = exportFieldConfigService.getConfigById(mappingId);
-            if (!config.getClient().getId().equals(clientId)) {
-                throw new IllegalArgumentException("Конфигурация не принадлежит указанному клиенту");
-            }
+            // Группируем поля по источнику и фильтруем по признаку enabled
+            Map<String, List<ExportField>> groupedEnabledFields = config.getFields().stream()
+                    .filter(ExportField::isEnabled)
+                    .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
 
-            List<EntityFieldGroup> availableFields = exportFieldConfigService.getAvailableFieldsForConfig(config);
+            Map<String, List<ExportField>> groupedDisabledFields = config.getFields().stream()
+                    .filter(field -> !field.isEnabled())
+                    .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
 
+            // Передаем данные в модель
+            model.addAttribute("groupedEnabledFields", groupedEnabledFields);
+            model.addAttribute("groupedDisabledFields", groupedDisabledFields);
             model.addAttribute("config", config);
-            model.addAttribute("availableFields", availableFields);
             model.addAttribute("clientId", clientId);
             model.addAttribute("mappingId", mappingId);
             return "exportMapping/edit-mapping";
@@ -144,7 +154,6 @@ public class ExportConfigController {
     public String updateConfig(
             @PathVariable Long clientId,
             @PathVariable Long mappingId,
-            @RequestParam(required = false) List<String> enabledFields,
             @RequestParam String positionsJson,
             @RequestParam String configName,
             @RequestParam String configDescription,
@@ -152,8 +161,15 @@ public class ExportConfigController {
 
         log.debug("Обновление конфигурации {} для клиента {}", mappingId, clientId);
         try {
-            List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {});
-            exportFieldConfigService.updateFieldsConfig(clientId, enabledFields, null, fields, configName, mappingId, configDescription);
+            List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {
+            });
+            exportFieldConfigService.updateFieldsConfig(
+                    clientId,
+                    fields,
+                    configName,
+                    mappingId,
+                    configDescription
+            );
             redirectAttributes.addFlashAttribute("success", "Конфигурация успешно обновлена");
         } catch (Exception e) {
             log.error("Ошибка при обновлении конфигурации: {}", e.getMessage(), e);
