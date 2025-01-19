@@ -69,7 +69,7 @@
             <tbody>
             <th:block th:each="group : ${groupedEnabledFields}">
                 <tr class="table-secondary">
-                    <td colspan="4" th:text="${group.key}"></td>
+                    <td colspan="5" th:text="${group.key}"></td>
                 </tr>
                 <th:block th:each="field : ${group.value}">
                     <tr>
@@ -89,7 +89,16 @@
             </th:block>
             </tbody>
         </table>
-
+        <div class="mt-3 mb-3">
+            <button type="submit" class="btn btn-primary">Сохранить</button>
+            <th:block th:if="${mappingId != null}">
+                <button type="button" class="btn btn-warning ms-2"
+                        onclick="if(confirm('Сбросить настройки к значениям по умолчанию?')) { window.location.href=this.getAttribute('data-reset-url'); }"
+                        th:data-reset-url="@{/client/{clientId}/exportmapping/{mappingId}/reset(clientId=${clientId},mappingId=${mappingId})}">
+                    Сбросить к настройкам по умолчанию
+                </button>
+            </th:block>
+        </div>
         <h3>Неактивные поля</h3>
         <table class="table table-striped" id="disabledFieldsTable">
             <thead>
@@ -119,16 +128,6 @@
             </tbody>
         </table>
 
-        <div class="mt-3 mb-3">
-            <button type="submit" class="btn btn-primary">Сохранить</button>
-            <th:block th:if="${mappingId != null}">
-                <button type="button" class="btn btn-warning ms-2"
-                        onclick="if(confirm('Сбросить настройки к значениям по умолчанию?')) { window.location.href=this.getAttribute('data-reset-url'); }"
-                        th:data-reset-url="@{/client/{clientId}/exportmapping/{mappingId}/reset(clientId=${clientId},mappingId=${mappingId})}">
-                    Сбросить к настройкам по умолчанию
-                </button>
-            </th:block>
-        </div>
         <input type="hidden" name="positionsJson" id="positionsJson">
     </form>
 
