@@ -19,7 +19,7 @@ import java.util.Map;
 @Component
 public class DefaultClientDataProcessor implements ClientDataProcessor {
 
-    @Override
+
     public ProcessingResult processData(List<Map<String, String>> data, ExportConfig config) {
         log.debug("Processing data with default processor for client id: {}",
                 config.getClient().getId());

@@ -4,6 +4,7 @@ import by.zoomos_v2.exception.ValidationException;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.FileMetadata;
+import by.zoomos_v2.repository.ClientRepository;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.FileMetadataService;
@@ -43,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 public class FileProcessingService {
+    private final ClientRepository clientRepository;
 
     private final FileMetadataService fileMetadataService;
     private final FileMetadataRepository fileMetadataRepository;
@@ -120,7 +122,7 @@ public class FileProcessingService {
     }
 
     /**
-     * Обрабатывает данные согласно правилам клиента
+     * Обрабатывает данные согласно правилам клиента при загрузке файла
      */
     private ProcessingStats processForClient(FileMetadata metadata, List<Map<String, String>> data) {
         // Получаем процессор для клиента
@@ -137,31 +139,16 @@ public class FileProcessingService {
                 return stats;
             }
 
-            // Загружаем конфигурацию экспорта для клиента
-            ExportConfig exportConfig = getExportConfig(metadata);
+            // Запускаем обработку файла
+            processor.processFile(metadata, data);
 
-            // Обрабатываем данные
-            ProcessingResult result = processor.processData(data, exportConfig);
-
-            // Обновляем статистику из результата
+            // Обновляем статистику
             stats.setTotalCount(data.size());
-            stats.setSuccessCount(result.getProcessingStats().getSuccessCount());
-            stats.setErrorCount(result.getProcessingStats().getErrorCount());
-            stats.setProcessedData(result.getProcessedData());
+            stats.setSuccessCount(data.size()); // все прошло успешно, если нет исключений
+            stats.setProcessedData(data);
 
-            // Копируем ошибки и их типы
-            if (result.getProcessingStats().getErrors() != null) {
-                stats.getErrors().addAll(result.getProcessingStats().getErrors());
-            }
-            if (result.getProcessingStats().getErrorTypes() != null) {
-                result.getProcessingStats().getErrorTypes().forEach((key, value) ->
-                        stats.getErrorTypes().merge(key, value, Integer::sum));
-            }
-
-            // Копируем дополнительную статистику
-            if (result.getProcessingStats().getAdditionalStats() != null) {
-                stats.getAdditionalStats().putAll(result.getProcessingStats().getAdditionalStats());
-            }
+            // Выполняем пост-обработку
+            processor.afterProcessing(metadata);
 
             return stats;
 

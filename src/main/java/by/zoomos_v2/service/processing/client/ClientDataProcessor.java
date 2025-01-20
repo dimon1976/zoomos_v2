@@ -1,22 +1,18 @@
 package by.zoomos_v2.service.processing.client;
-import by.zoomos_v2.model.*;
 
-import java.util.Map;
+import by.zoomos_v2.model.Client;
+import by.zoomos_v2.model.FileMetadata;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * Интерфейс для обработки данных клиентов
  */
 public interface ClientDataProcessor {
-    /**
-     * Обрабатывает данные для конкретного клиента
-     * @param data список записей для обработки
-     * @return результат обработки
-     */
-    ProcessingResult processData(List<Map<String, String>> data, ExportConfig config);
 
     /**
-     * Проверяет валидность данных для клиента
+     * Проверяет валидность данных из файла
      */
     ValidationResult validateData(List<Map<String, String>> data);
 
@@ -26,12 +22,13 @@ public interface ClientDataProcessor {
     void processFile(FileMetadata fileMetadata, List<Map<String, String>> data);
 
     /**
-     * Выполняет действия после обработки
+     * Выполняет действия после обработки файла
+     * Например, отправка уведомлений, обновление статусов и т.д.
      */
     void afterProcessing(FileMetadata metadata);
 
     /**
-     * Проверяет, поддерживает ли процессор данного клиента
+     * Проверяет, может ли процессор обработать файлы данного клиента
      */
     boolean supports(Client client);
 }

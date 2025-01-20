@@ -31,7 +31,6 @@ public class Client1DataProcessor implements ClientDataProcessor {
             "winelab.ru"
     );
 
-    @Override
     public ProcessingResult processData(List<Map<String, String>> data, ExportConfig config) {
         try {
             // Валидация данных
