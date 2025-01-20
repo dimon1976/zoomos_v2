@@ -1,6 +1,6 @@
 package by.zoomos_v2.service;
 
-import by.zoomos_v2.config.FileProcessingException;
+import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
 import by.zoomos_v2.model.TextFileParameters;
@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -43,14 +42,14 @@ public class FileUploadService {
      * 4. Создание и сохранение метаданных
      *
      * @param file загружаемый файл
-     * @param shopId идентификатор магазина
+     * @param clientId идентификатор магазина
      * @param mappingId идентификатор конфигурации маппинга (опционально)
      * @return метаданные загруженного файла
      * @throws FileProcessingException при ошибках обработки файла
      */
     @Transactional
-    public FileMetadata uploadFile(MultipartFile file, Long shopId, Long mappingId) {
-        log.debug("Начало загрузки файла {} для магазина {}", file.getOriginalFilename(), shopId);
+    public FileMetadata uploadFile(MultipartFile file, Long clientId, Long mappingId) {
+        log.debug("Начало загрузки файла {} для магазина {}", file.getOriginalFilename(), clientId);
 
         try {
             // Валидация файла
@@ -63,14 +62,14 @@ public class FileUploadService {
             }
 
             // Создание директории для магазина если не существует
-            fileUtils.createDirectoryIfNotExists(pathResolver.getShopDirectory(shopId));
+            fileUtils.createDirectoryIfNotExists(pathResolver.getClientDirectory(clientId));
 
             // Сохранение файла
-            String storedFilename = fileUtils.saveFile(file, pathResolver.getShopDirectory(shopId));
+            String storedFilename = fileUtils.saveFile(file, pathResolver.getClientDirectory(clientId));
 
             // Создание метаданных
             FileMetadata metadata = new FileMetadata();
-            metadata.setShopId(shopId);
+            metadata.setClientId(clientId);
             metadata.setOriginalFilename(file.getOriginalFilename());
             metadata.setStoredFilename(storedFilename);
             metadata.setFileType(fileType);
@@ -80,7 +79,7 @@ public class FileUploadService {
             metadata.setStatus("PENDING");
             // Анализируем параметры текстового файла
             if (isTextFile(fileType)) {
-                TextFileParameters parameters = TextFileAnalyzer.analyzeFile(pathResolver.getFilePath(shopId, metadata.getStoredFilename()));
+                TextFileParameters parameters = TextFileAnalyzer.analyzeFile(pathResolver.getFilePath(clientId, metadata.getStoredFilename()));
                 metadata.updateTextParameters(parameters);
                 log.info("Определены параметры текстового файла {}: кодировка - {}, разделитель - {}",
                          parameters.getEncoding(), parameters.getDelimiter());
@@ -122,33 +121,33 @@ public class FileUploadService {
     /**
      * Получает список недавно загруженных файлов для магазина
      *
-     * @param shopId идентификатор магазина
+     * @param clientId идентификатор магазина
      * @return список метаданных файлов
      */
     @Transactional(readOnly = true)
-    public List<FileMetadata> getRecentFiles(Long shopId) {
-        return fileMetadataRepository.findByShopIdOrderByUploadedAtDesc(shopId);
+    public List<FileMetadata> getRecentFiles(Long clientId) {
+        return fileMetadataRepository.findByClientIdOrderByUploadedAtDesc(clientId);
     }
 
     /**
      * Удаляет файл и его метаданные
      *
      * @param fileId идентификатор файла
-     * @param shopId идентификатор магазина
+     * @param clientId идентификатор магазина
      * @throws FileProcessingException при ошибках удаления или если файл не принадлежит магазину
      */
     @Transactional
-    public void deleteFile(Long fileId, Long shopId) {
-        log.debug("Удаление файла {} для магазина {}", fileId, shopId);
+    public void deleteFile(Long fileId, Long clientId) {
+        log.debug("Удаление файла {} для магазина {}", fileId, clientId);
 
         FileMetadata metadata = getFileMetadata(fileId);
-        if (!metadata.getShopId().equals(shopId)) {
+        if (!metadata.getClientId().equals(clientId)) {
             throw new FileProcessingException("Файл не принадлежит указанному магазину");
         }
 
         try {
             // Удаляем физический файл
-            fileUtils.deleteFile(pathResolver.getFilePath(shopId, metadata.getStoredFilename()));
+            fileUtils.deleteFile(pathResolver.getFilePath(clientId, metadata.getStoredFilename()));
 
             // Удаляем метаданные
             fileMetadataRepository.delete(metadata);

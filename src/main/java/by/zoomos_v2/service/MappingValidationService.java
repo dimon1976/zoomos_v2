@@ -1,6 +1,6 @@
 package by.zoomos_v2.service;
 
-import by.zoomos_v2.config.FileProcessingException;
+import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.FileMetadata;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -104,9 +104,9 @@ public class MappingValidationService {
         log.debug("Проверка метаданных файла {} для маппинга {}",
                 metadata.getOriginalFilename(), mapping.getName());
 
-        if (!metadata.getShopId().equals(mapping.getClientId())) {
+        if (!metadata.getClientId().equals(mapping.getClientId())) {
             log.error("Маппинг {} не принадлежит магазину {}",
-                    mapping.getId(), metadata.getShopId());
+                    mapping.getId(), metadata.getClientId());
             throw new FileProcessingException("Указанный маппинг не принадлежит магазину");
         }
 

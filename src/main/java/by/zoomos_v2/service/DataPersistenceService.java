@@ -1,14 +1,14 @@
 package by.zoomos_v2.service;
 
 import by.zoomos_v2.annotations.FieldDescription;
+import by.zoomos_v2.model.CompetitorData;
 import by.zoomos_v2.model.Product;
 import by.zoomos_v2.model.RegionData;
-import by.zoomos_v2.model.SiteData;
+import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.repository.ProductRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -24,20 +24,20 @@ public class DataPersistenceService {
     private final ProductRepository productRepository;
     private static final String PRODUCT_PREFIX = "product";
     private static final String REGION_PREFIX = "regiondata";
-    private static final String SITE_PREFIX = "sitedata";
+    private static final String SITE_PREFIX = "competitordata";
 
     public DataPersistenceService(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }
 
-    public Map<String, Object> saveEntities(List<Map<String, String>> data, Long clientId, Map<String, String> mapping) {
+    public Map<String, Object> saveEntities(List<Map<String, String>> data, Long clientId, Map<String, String> mapping, Long fileId) {
         int successCount = 0;
         int errorCount = 0;
         List<String> errors = new ArrayList<>(); // Добавляем список для хранения ошибок
 
         for (Map<String, String> row : data) {
             try {
-                saveEntityTransaction(row, clientId, mapping);
+                saveEntityTransaction(row, clientId, mapping, fileId);
                 successCount++;
                 log.debug("Успешно обработана запись {}/{}", successCount, data.size());
             } catch (Exception e) {
@@ -64,10 +64,11 @@ public class DataPersistenceService {
     }
 
     @Transactional
-    public void saveEntityTransaction(Map<String, String> row, Long clientId, Map<String, String> mapping) {
+    public void saveEntityTransaction(Map<String, String> row, Long clientId, Map<String, String> mapping, Long fileId) {
+//        FileMetadata fileMetadata = fileMetadataRepository
         try {
             // Создаем основную сущность Product
-            Product product = createProduct(row, clientId, mapping);
+            Product product = createProduct(row, clientId, mapping, fileId);
 
             // Создаем и связываем RegionData, если есть соответствующие данные
             if (hasEntityData(mapping, REGION_PREFIX)) {
@@ -78,9 +79,9 @@ public class DataPersistenceService {
 
             // Создаем и связываем SiteData, если есть соответствующие данные
             if (hasEntityData(mapping, SITE_PREFIX)) {
-                SiteData siteData = createSiteData(row, clientId, mapping);
-                siteData.setProduct(product);
-                product.getSiteDataList().add(siteData);
+                CompetitorData competitorData = createSiteData(row, clientId, mapping);
+                competitorData.setProduct(product);
+                product.getCompetitorDataList().add(competitorData);
             }
 
             productRepository.save(product);
@@ -91,9 +92,10 @@ public class DataPersistenceService {
         }
     }
 
-    private Product createProduct(Map<String, String> data, Long clientId, Map<String, String> mapping) {
+    private Product createProduct(Map<String, String> data, Long clientId, Map<String, String> mapping, Long fileId) {
         Product product = new Product();
         product.setClientId(clientId);
+        product.setFileId(fileId);
 
         setEntityFields(product, data, mapping, PRODUCT_PREFIX);
         return product;
@@ -107,12 +109,12 @@ public class DataPersistenceService {
         return regionData;
     }
 
-    private SiteData createSiteData(Map<String, String> data, Long clientId, Map<String, String> mapping) {
-        SiteData siteData = new SiteData();
-        siteData.setClientId(clientId);
+    private CompetitorData createSiteData(Map<String, String> data, Long clientId, Map<String, String> mapping) {
+        CompetitorData competitorData = new CompetitorData();
+        competitorData.setClientId(clientId);
 
-        setEntityFields(siteData, data, mapping, SITE_PREFIX);
-        return siteData;
+        setEntityFields(competitorData, data, mapping, SITE_PREFIX);
+        return competitorData;
     }
 
     private <T> void setEntityFields(T entity, Map<String, String> data, Map<String, String> mapping, String prefix) {

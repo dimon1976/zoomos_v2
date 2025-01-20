@@ -5,6 +5,7 @@ import by.zoomos_v2.model.Client;
 import by.zoomos_v2.service.ClientService;
 import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.aspect.LogExecution;
+import by.zoomos_v2.util.EntityFieldGroup;
 import by.zoomos_v2.util.EntityRegistryService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @Controller
-@RequestMapping("/client/{clientId}/mapping")
+@RequestMapping("/client/{clientId}/uploadmapping")
 @RequiredArgsConstructor
 public class ClientMappingController {
 
@@ -32,9 +33,10 @@ public class ClientMappingController {
     private final EntityRegistryService entityRegistryService;
 
     /**
-     * Отображает список настроек маппинга для магазина
+     * Отображает список настроек upload маппинга для магазина
      */
     @GetMapping
+    @LogExecution("Форма со списком uploadMappings")
     public String showMappings(@PathVariable Long clientId, Model model) {
         log.debug("Запрошен список маппингов для магазина с ID: {}", clientId);
         try {
@@ -53,7 +55,7 @@ public class ClientMappingController {
      * Отображает форму создания нового маппинга
      */
     @GetMapping("/new")
-    @LogExecution("Форма нового маппинга")
+    @LogExecution("Форма нового upload маппинга")
     public String showNewMappingForm(@PathVariable Long clientId, Model model, @RequestParam(value = "active", defaultValue = "true") boolean active) {
         log.debug("Отображение формы создания маппинга для магазина с ID: {}", clientId);
         try {
@@ -80,7 +82,7 @@ public class ClientMappingController {
      * Обрабатывает создание нового маппинга
      */
     @PostMapping("/create")
-    @LogExecution("Создание маппинга")
+    @LogExecution("Создание upload маппинга")
     public String createMapping(@PathVariable Long clientId,
                                 @RequestParam(value = "active", defaultValue = "false") boolean active,
                                 @ModelAttribute("mapping") ClientMappingConfig mapping,
@@ -101,32 +103,14 @@ public class ClientMappingController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при создании маппинга: " + e.getMessage());
         }
-        return "redirect:/client/{clientId}/mapping";
-    }
-
-    private void validateMappingData(ClientMappingConfig mapping) {
-        if (mapping.getName() == null || mapping.getName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Название маппинга обязательно для заполнения");
-        }
-        if (mapping.getFileType() == null) {
-            throw new IllegalArgumentException("Тип файла обязателен для заполнения");
-        }
-        if (mapping.getColumnsConfig() == null || mapping.getColumnsConfig().trim().isEmpty()) {
-            throw new IllegalArgumentException("Необходимо настроить маппинг колонок");
-        }
-        try {
-            // Проверяем, что columnsConfig содержит валидный JSON
-            new ObjectMapper().readTree(mapping.getColumnsConfig());
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Неверный формат настройки колонок");
-        }
+        return "redirect:/client/{clientId}/uploadmapping";
     }
 
     /**
      * Отображает форму редактирования маппинга
      */
     @GetMapping("/edit/{mappingId}")
-    @LogExecution("Форма редактирования маппинга")
+    @LogExecution("Форма редактирования upload маппинга")
     public String showEditForm(@PathVariable Long clientId,
                                @PathVariable Long mappingId,
                                Model model) {
@@ -139,7 +123,7 @@ public class ClientMappingController {
                 throw new IllegalArgumentException("Маппинг не принадлежит указанному магазину");
             }
 
-            List<EntityRegistryService.EntityFieldGroup> fields = entityRegistryService.getFieldsForMapping();
+            List<EntityFieldGroup> fields = entityRegistryService.getFieldsForMapping();
             log.debug("Получены поля для маппинга: {}", fields); // проверяем получаемые поля
 
             model.addAttribute("client", client);
@@ -158,7 +142,7 @@ public class ClientMappingController {
      * Обрабатывает обновление существующего маппинга
      */
     @PostMapping("/update/{mappingId}")
-    @LogExecution("Обновление маппинга")
+    @LogExecution("Обновление upload маппинга")
     public String updateMapping(@PathVariable Long clientId,
                                 @PathVariable Long mappingId,
                                 @RequestParam(value = "active", defaultValue = "false") boolean active,
@@ -180,14 +164,14 @@ public class ClientMappingController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при обновлении маппинга: " + e.getMessage());
         }
-        return "redirect:/client/{clientId}/mapping";
+        return "redirect:/client/{clientId}/uploadmapping";
     }
 
     /**
      * Обрабатывает удаление маппинга
      */
     @PostMapping("/delete/{mappingId}")
-    @LogExecution("Удаление маппинга")
+    @LogExecution("Удаление upload маппинга")
     public String deleteMapping(@PathVariable Long clientId,
                                 @PathVariable Long mappingId,
                                 RedirectAttributes redirectAttributes) {
@@ -206,6 +190,24 @@ public class ClientMappingController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при удалении настроек маппинга: " + e.getMessage());
         }
-        return "redirect:/client/{clientId}/mapping";
+        return "redirect:/client/{clientId}/uploadmapping";
+    }
+
+    private void validateMappingData(ClientMappingConfig mapping) {
+        if (mapping.getName() == null || mapping.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Название маппинга обязательно для заполнения");
+        }
+        if (mapping.getFileType() == null) {
+            throw new IllegalArgumentException("Тип файла обязателен для заполнения");
+        }
+        if (mapping.getColumnsConfig() == null || mapping.getColumnsConfig().trim().isEmpty()) {
+            throw new IllegalArgumentException("Необходимо настроить маппинг колонок");
+        }
+        try {
+            // Проверяем, что columnsConfig содержит валидный JSON
+            new ObjectMapper().readTree(mapping.getColumnsConfig());
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Неверный формат настройки колонок");
+        }
     }
 }

@@ -1,10 +1,12 @@
 package by.zoomos_v2.controller;
+
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.FileUploadService;
 import by.zoomos_v2.service.FileProcessingService;
 import by.zoomos_v2.service.MappingConfigService;
 import by.zoomos_v2.aspect.LogExecution;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +15,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.fasterxml.jackson.core.type.TypeReference;
 
-import java.io.File;
+import java.time.Duration;
+import java.util.Map;
 
 /**
  * Контроллер для управления файлами в интерфейсе магазина
@@ -29,6 +33,8 @@ public class FileController {
     private final FileProcessingService fileProcessingService;
     private final MappingConfigService mappingConfigService;
     private final FileMetadataRepository fileMetadataRepository;
+    private final ObjectMapper objectMapper;
+
 
     /**
      * Страница загрузки файлов
@@ -46,31 +52,46 @@ public class FileController {
      * Отображает страницу со статистикой обработки файла.
      *
      * @param clientId идентификатор магазина
-     * @param fileId идентификатор файла
-     * @param model модель представления
+     * @param fileId   идентификатор файла
+     * @param model    модель представления
      * @return имя представления
      */
     @GetMapping("/{fileId}/statistics")
     public String showFileStatistics(@PathVariable Long clientId,
                                      @PathVariable Long fileId,
                                      Model model) {
-        log.debug("Запрошена статистика обработки файла {} для магазина {}", fileId, clientId);
+        log.debug("Запрошена статистика обработки файла {} для клиента {}", fileId, clientId);
 
         try {
             FileMetadata metadata = fileMetadataRepository.findById(fileId)
                     .orElseThrow(() -> new EntityNotFoundException("Файл не найден"));
 
-            if (!metadata.getShopId().equals(clientId)) {
-                throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
+            if (!metadata.getClientId().equals(clientId)) {
+                throw new IllegalArgumentException("Файл не принадлежит указанному клиенту");
             }
-
+            // Рассчитываем разницу во времени обработки
+            if (metadata.getProcessingStartedAt() != null && metadata.getProcessingCompletedAt() != null) {
+                Duration duration = Duration.between(metadata.getProcessingStartedAt(), metadata.getProcessingCompletedAt());
+                model.addAttribute("processingDuration", duration.getSeconds()); // разница в секундах
+            }
             model.addAttribute("clientId", clientId);
             model.addAttribute("file", metadata);
+            // Читаем статистику из JSON
+            if (metadata.getProcessingResults() != null) {
+                Map<String, Object> statistics = objectMapper.readValue(
+                        metadata.getProcessingResults(),
+                        new TypeReference<>() {
+                        }
+                );
+
+                log.debug("Loaded statistics: {}", statistics); // добавляем лог
+                model.addAttribute("statistics", statistics);
+
+            }
 
             return "files/statistics";
         } catch (Exception e) {
             log.error("Ошибка при получении статистики обработки файла: {}", e.getMessage(), e);
-            model.addAttribute("error", "Ошибка при получении статистики обработки файла");
             return "error";
         }
     }
@@ -117,7 +138,7 @@ public class FileController {
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            if (!metadata.getShopId().equals(clientId)) {
+            if (!metadata.getClientId().equals(clientId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
             }
 
@@ -145,7 +166,7 @@ public class FileController {
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            if (!metadata.getShopId().equals(clientId)) {
+            if (!metadata.getClientId().equals(clientId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
             }
 
@@ -193,7 +214,7 @@ public class FileController {
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            if (!metadata.getShopId().equals(clientId)) {
+            if (!metadata.getClientId().equals(clientId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному магазину");
             }
 

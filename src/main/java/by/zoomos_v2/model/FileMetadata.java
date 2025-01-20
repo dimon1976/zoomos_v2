@@ -28,7 +28,7 @@ public class FileMetadata {
      * ID магазина, которому принадлежит файл
      */
     @Column(name = "shop_id", nullable = false)
-    private Long shopId;
+    private Long clientId;
 
     /**
      * Оригинальное имя файла
@@ -180,7 +180,7 @@ public class FileMetadata {
      * Проверяет, принадлежит ли файл указанному магазину
      */
     public boolean belongsToShop(Long shopId) {
-        return this.shopId != null && this.shopId.equals(shopId);
+        return this.clientId != null && this.clientId.equals(shopId);
     }
 
     /**
