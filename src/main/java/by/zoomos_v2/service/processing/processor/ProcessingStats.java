@@ -57,8 +57,6 @@ public class ProcessingStats {
     /**
      * Обработанные данные
      */
-
-
     private List<Map<String, String>> processedData;
 
     /**

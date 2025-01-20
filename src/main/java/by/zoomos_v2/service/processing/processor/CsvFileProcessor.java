@@ -13,6 +13,9 @@ import java.io.BufferedReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 /**
@@ -54,7 +57,7 @@ public class CsvFileProcessor implements FileProcessor {
             results.put("headers", headers);
 
             List<CSVRecord> allRecords = csvParser.getRecords();
-            int totalRecords = allRecords.size();
+            int totalCount = allRecords.size();
 
             // Обрабатываем каждую запись
             for (int i = 0; i < allRecords.size(); i++) {
@@ -85,13 +88,14 @@ public class CsvFileProcessor implements FileProcessor {
                 records.add(recordMap);
 
                 // Обновляем прогресс
-                int progress = (int) ((i + 1.0) / totalRecords * 100);
+                int progress = (int) ((i + 1.0) / totalCount * 100);
                 progressCallback.updateProgress(progress,
-                        String.format("Обработано записей: %d из %d", i + 1, totalRecords));
+                        String.format("Обработано записей: %d из %d", i + 1, totalCount));
             }
 
             results.put("records", records);
-            results.put("totalRecords", records.size());
+            results.put("totalCount", records.size());
+            results.put("successCount", records.size());
             results.put("headers", headers); // Обновляем заголовки с учетом дополнительных столбцов
 
             log.info("CSV файл успешно обработан: {}. Всего записей: {}",

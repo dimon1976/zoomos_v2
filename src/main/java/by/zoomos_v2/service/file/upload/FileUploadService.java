@@ -1,5 +1,6 @@
 package by.zoomos_v2.service.file.upload;
 
+import by.zoomos_v2.constant.FileStatus;
 import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
@@ -76,7 +77,7 @@ public class FileUploadService {
             metadata.setSize(file.getSize());
             metadata.setContentType(file.getContentType());
             metadata.setMappingConfigId(mappingId);
-            metadata.setStatus("PENDING");
+            metadata.setStatus(FileStatus.PENDING);
             // Анализируем параметры текстового файла
             if (isTextFile(fileType)) {
                 TextFileParameters parameters = TextFileAnalyzer.analyzeFile(pathResolver.getFilePath(clientId, metadata.getStoredFilename()));

@@ -1,22 +1,19 @@
 package by.zoomos_v2.service.file.upload;
 
-import by.zoomos_v2.exception.ValidationException;
+import by.zoomos_v2.constant.FileStatus;
+import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.mapping.ClientMappingConfig;
-import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.FileMetadata;
-import by.zoomos_v2.repository.ClientRepository;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.FileMetadataService;
-import by.zoomos_v2.service.file.upload.DataPersistenceService;
 import by.zoomos_v2.service.mapping.MappingConfigService;
+import by.zoomos_v2.service.processing.client.ClientDataProcessor;
+import by.zoomos_v2.service.processing.client.ClientDataProcessorFactory;
 import by.zoomos_v2.service.processing.client.ValidationResult;
 import by.zoomos_v2.service.processing.processor.FileProcessor;
 import by.zoomos_v2.service.processing.processor.FileProcessorFactory;
 import by.zoomos_v2.service.processing.processor.ProcessingStats;
-import by.zoomos_v2.service.processing.client.ClientDataProcessor;
-import by.zoomos_v2.service.processing.client.ClientDataProcessorFactory;
-import by.zoomos_v2.service.processing.client.ProcessingResult;
 import by.zoomos_v2.util.PathResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,6 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static by.zoomos_v2.constant.BatchSize.BATCH_SIZE_DATA_SAVE;
+import static by.zoomos_v2.constant.BatchSize.BATCH_SIZE_FILE_RECORD;
+
 /**
  * Сервис для асинхронной обработки файлов.
  * Обеспечивает загрузку, обработку и сохранение данных из файлов.
@@ -44,8 +44,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 public class FileProcessingService {
-    private final ClientRepository clientRepository;
-
     private final FileMetadataService fileMetadataService;
     private final FileMetadataRepository fileMetadataRepository;
     private final DataPersistenceService dataPersistenceService;
@@ -56,7 +54,7 @@ public class FileProcessingService {
     private final ObjectMapper objectMapper;
     private final PathResolver pathResolver;
 
-    private static final int BATCH_SIZE = 5000;
+
     private final ConcurrentHashMap<Long, ProcessingStatus> processingStatuses = new ConcurrentHashMap<>();
 
     /**
@@ -68,9 +66,22 @@ public class FileProcessingService {
         LocalDateTime startTime = LocalDateTime.now();
 
         try {
+
+            // Сначала получаем метаданные без изменения статуса
+            FileMetadata metadata = fileMetadataRepository.findById(fileId)
+                    .orElseThrow(() -> new FileProcessingException("Файл не найден"));
+            // Проверяем статус
+            if (FileStatus.PROCESSING.equals(metadata.getStatus())) {
+                throw new FileProcessingException("Файл уже находится в процессе обработки");
+            }
+
+            if (metadata.isProcessingCompleted()) {
+                throw new FileProcessingException("Файл уже обработан, статус: " + metadata.getStatus());
+            }
             // Инициализация
-            FileMetadata metadata = fileMetadataService.initializeProcessing(fileId);
+            fileMetadataService.initializeProcessing(fileId);
             updateProcessingStatus(fileId, 0, "Инициализация обработки");
+
 
             // Основной процесс обработки
             ProcessingStats stats = processFile(metadata, startTime);
@@ -81,6 +92,9 @@ public class FileProcessingService {
 
         } catch (Exception e) {
             handleProcessingError(fileId, e);
+        } finally {
+            // Очищаем статус обработки из памяти
+            processingStatuses.remove(fileId);
         }
     }
 
@@ -88,37 +102,85 @@ public class FileProcessingService {
      * Выполняет основной процесс обработки файла
      */
     private ProcessingStats processFile(FileMetadata metadata, LocalDateTime startTime) throws Exception {
-        // Базовая обработка файла
-        ProcessingStats fileStats = processRawFile(metadata);
-        log.debug("Базовая обработка файла завершена. Получено записей: {}", fileStats.getTotalCount());
+        try {
+            metadata.updateStatus(FileStatus.PROCESSING, null);
 
-        // Клиентская обработка
-        ProcessingStats clientStats = processForClient(metadata, fileStats.getProcessedData());
-        log.debug("Клиентская обработка завершена. Обработано записей: {}", clientStats.getSuccessCount());
+            // Базовая обработка файла
+            ProcessingStats fileStats = processRawFile(metadata);
+            log.debug("Базовая обработка файла завершена. Получено записей: {}", fileStats.getTotalCount());
 
-        // Сохранение данных
-        ProcessingStats persistenceStats = persistData(metadata, clientStats.getProcessedData());
-        log.debug("Сохранение данных завершено. Сохранено записей: {}", persistenceStats.getSuccessCount());
+            // Клиентская обработка
+//            ProcessingStats clientStats = processForClient(metadata, fileStats.getProcessedData());
+//            log.debug("Клиентская обработка завершена. Обработано записей: {}", clientStats.getSuccessCount());
 
-        // Объединяем статистику и добавляем время обработки
-        ProcessingStats finalStats = ProcessingStats.merge(fileStats, clientStats, persistenceStats);
-        finalStats.setProcessingTimeSeconds(ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()));
+            // Сохранение данных
+            ProcessingStats persistenceStats = persistData(metadata, fileStats.getProcessedData());
+            log.debug("Сохранение данных завершено. Сохранено записей: {}", persistenceStats.getSuccessCount());
 
-        addAdditionalStats(finalStats);
-        return finalStats;
+            // Объединяем статистику и добавляем время обработки
+            ProcessingStats finalStats = ProcessingStats.merge(fileStats, persistenceStats);
+            finalStats.setProcessingTimeSeconds(ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()));
+
+            // Обновляем статус и статистику в метаданных файла
+            metadata.updateStatus(FileStatus.COMPLETED, null);
+            metadata.updateProcessingStatistics(
+                    finalStats.getTotalCount(),
+                    finalStats.getSuccessCount(),
+                    finalStats.getErrorCount()
+            );
+
+            addAdditionalStats(finalStats);
+            return finalStats;
+
+        } catch (Exception e) {
+            log.error("Ошибка при обработке файла {}: {}", metadata.getOriginalFilename(), e.getMessage(), e);
+            metadata.updateStatus(FileStatus.ERROR, e.getMessage());
+            metadata.addProcessingError(e.getMessage());
+            throw e;
+        }
+
     }
 
     /**
      * Выполняет базовую обработку файла
      */
     private ProcessingStats processRawFile(FileMetadata metadata) {
-        Path filePath = pathResolver.getFilePath(metadata.getClientId(), metadata.getStoredFilename());
-        FileProcessor processor = processorFactory.getProcessor(metadata);
+        log.debug("Начало базовой обработки файла: {}", metadata.getOriginalFilename());
+        updateProcessingStatus(metadata.getId(), 10, "Чтение файла");
 
-        Map<String, Object> results = processor.processFile(filePath, metadata,
-                (progress, message) -> updateProcessingStatus(metadata.getId(), progress, message));
+        try {
+            // Получаем путь к файлу
+            Path filePath = pathResolver.getFilePath(metadata.getClientId(), metadata.getStoredFilename());
+            if (!filePath.toFile().exists()) {
+                throw new FileProcessingException("Файл не найден: " + metadata.getOriginalFilename());
+            }
 
-        return convertToProcessingStats(results);
+            // Получаем процессор для типа файла
+            FileProcessor processor = processorFactory.getProcessor(metadata);
+
+            // Обработка файла с отслеживанием прогресса
+            Map<String, Object> results = processor.processFile(filePath, metadata,
+                    (progress, message) -> updateProcessingStatus(
+                            metadata.getId(),
+                            10 + (int)(progress * 0.2), // от 10% до 30% общего прогресса
+                            "Чтение файла: " + message
+                    ));
+
+            // Конвертация результатов
+            ProcessingStats stats = convertToProcessingStats(results);
+
+            if (stats.getTotalCount() == 0) {
+                throw new FileProcessingException("Файл не содержит данных для обработки");
+            }
+
+            log.debug("Базовая обработка файла завершена. Прочитано записей: {}", stats.getTotalCount());
+            return stats;
+
+        } catch (Exception e) {
+            String errorMsg = "Ошибка при чтении файла " + metadata.getOriginalFilename() + ": " + e.getMessage();
+            log.error(errorMsg, e);
+            throw new FileProcessingException(errorMsg, e);
+        }
     }
 
     /**
@@ -130,21 +192,37 @@ public class FileProcessingService {
         ProcessingStats stats = ProcessingStats.createNew();
 
         try {
+            // Устанавливаем общее количество записей
+            stats.setTotalCount(data.size());
+
             // Проверяем валидность данных
             ValidationResult validationResult = processor.validateData(data);
             if (!validationResult.isValid()) {
                 // Если данные не валидны, добавляем ошибки в статистику
                 validationResult.getErrors().forEach(error ->
                         stats.incrementErrorCount(error, "VALIDATION_ERROR"));
+
+                // Обновляем статус файла
+                metadata.updateStatus(FileStatus.ERROR, "Ошибка валидации данных");
+                validationResult.getErrors().forEach(metadata::addProcessingError);
+
                 return stats;
             }
 
             // Запускаем обработку файла
             processor.processFile(metadata, data);
 
-            // Обновляем статистику
-            stats.setTotalCount(data.size());
-            stats.setSuccessCount(data.size()); // все прошло успешно, если нет исключений
+            // Обновляем статистику исходя из результатов обработки файла
+            stats.setSuccessCount(metadata.getSuccessRecords());
+            stats.setErrorCount(metadata.getFailedRecords());
+
+            // Если есть ошибки обработки, добавляем их в статистику
+            if (metadata.getProcessingErrors() != null) {
+                metadata.getProcessingErrors().forEach(error ->
+                        stats.incrementErrorCount(error, "PROCESSING_ERROR"));
+            }
+
+            // Сохраняем обработанные данные
             stats.setProcessedData(data);
 
             // Выполняем пост-обработку
@@ -154,70 +232,119 @@ public class FileProcessingService {
 
         } catch (Exception e) {
             log.error("Ошибка при обработке данных для клиента {}: {}",
-                    clientService.getClientById(metadata.getClientId()).getName(), e.getMessage(), e);
-            stats.incrementErrorCount(e.getMessage(), "PROCESSING_ERROR");
+                    metadata.getClientId(), e.getMessage(), e);
+
+            // Обновляем статус файла
+            metadata.updateStatus(FileStatus.ERROR, e.getMessage());
+            metadata.addProcessingError(e.getMessage());
+
+            // Добавляем ошибку в статистику
+            stats.incrementErrorCount(e.getMessage(), "SYSTEM_ERROR");
+
             return stats;
         }
-    }
-
-    /**
-     * Получает конфигурацию экспорта для файла
-     */
-    private ExportConfig getExportConfig(FileMetadata metadata) {
-        // TODO: Реализовать получение конфигурации экспорта
-        // Например, из сервиса конфигураций или из метаданных файла
-        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     /**
      * Сохраняет обработанные данные в базу данных
      */
     private ProcessingStats persistData(FileMetadata metadata, List<Map<String, String>> data) throws Exception {
+
+        log.debug("Начало сохранения данных для файла: {}", metadata.getOriginalFilename());
         ProcessingStats stats = new ProcessingStats();
         stats.setTotalCount(data.size());
 
-        ClientMappingConfig mapping = mappingConfigService.getMappingById(metadata.getMappingConfigId());
-        Map<String, String> columnsMapping = objectMapper.readValue(
-                mapping.getColumnsConfig(),
-                new TypeReference<>() {}
-        );
-
-        List<Map<String, String>> currentBatch = new ArrayList<>();
-        int successCount = 0;
-        int errorCount = 0;
-
-        for (int i = 0; i < data.size(); i++) {
-            currentBatch.add(data.get(i));
-
-            if (shouldProcessBatch(currentBatch, i, data.size())) {
-                Map<String, Object> batchResults = processBatch(metadata, currentBatch,
-                        columnsMapping, i, data.size());
-
-                successCount += (int) batchResults.get("successCount");
-                errorCount += (int) batchResults.get("errorCount");
-
-                if (batchResults.containsKey("errors")) {
-                    List<String> errors = (List<String>) batchResults.get("errors");
-//                    errors.forEach(error -> stats.addError(error, "Ошибка сохранения"));
-                }
-
-                currentBatch.clear();
+        try {
+            // Получаем и проверяем конфигурацию маппинга
+            if (metadata.getMappingConfigId() == null) {
+                throw new FileProcessingException("Не указана конфигурация маппинга");
             }
+
+            ClientMappingConfig mapping = mappingConfigService.getMappingById(metadata.getMappingConfigId());
+            Map<String, String> columnsMapping = objectMapper.readValue(
+                    mapping.getColumnsConfig(),
+                    new TypeReference<>() {}
+            );
+
+            // Обработка данных батчами
+            List<Map<String, String>> currentBatch = new ArrayList<>();
+            int processedRecords = 0;
+            int totalRecords = data.size();
+            int successCount = 0;
+            int errorCount = 0;
+
+            for (int i = 0; i < totalRecords; i++) {
+                currentBatch.add(data.get(i));
+
+                if (shouldProcessBatch(currentBatch, i, totalRecords)) {
+                    // Обработка батча
+                    Map<String, Object> batchResults = processBatch(
+                            metadata,
+                            currentBatch,
+                            columnsMapping,
+                            processedRecords,
+                            totalRecords
+                    );
+
+                    // Обновление статистики
+                    successCount += (int) batchResults.get("successCount");
+                    errorCount += (int) batchResults.get("errorCount");
+
+                    // Обработка ошибок батча
+                    if (batchResults.containsKey("errors")) {
+                        List<String> errors = (List<String>) batchResults.get("errors");
+                        errors.forEach(error -> {
+                            metadata.addProcessingError(error);
+                            stats.incrementErrorCount(error, "SAVE_ERROR");
+                        });
+                    }
+
+                    processedRecords += currentBatch.size();
+                    currentBatch.clear();
+
+                    // Обновляем прогресс
+                    updateProcessingStatus(metadata.getId(),
+                            70 + (processedRecords * 30 / totalRecords),
+                            String.format("Сохранено %d из %d записей", processedRecords, totalRecords));
+                }
+            }
+
+            // Обновляем итоговую статистику
+            stats.setSuccessCount(successCount);
+            stats.setErrorCount(errorCount);
+
+            log.debug("Сохранение данных завершено. Успешно: {}, Ошибок: {}",
+                    successCount, errorCount);
+            return stats;
+
+        } catch (Exception e) {
+            String errorMsg = "Ошибка при сохранении данных: " + e.getMessage();
+            log.error(errorMsg, e);
+            throw new FileProcessingException(errorMsg, e);
         }
 
-        stats.setSuccessCount(successCount);
-        stats.setErrorCount(errorCount);
-        return stats;
+
     }
 
     /**
      * Добавляет дополнительную статистику к результатам обработки
      */
     private void addAdditionalStats(ProcessingStats stats) {
-        stats.addAdditionalStat("Скорость обработки (записей/сек)", stats.getProcessingSpeed());
-        stats.addAdditionalStat("Размер пакета", BATCH_SIZE);
-        stats.addAdditionalStat("Процент успешных записей",
-                String.format("%.2f%%", (double) stats.getSuccessCount() / stats.getTotalCount() * 100));
+        // Скорость обработки
+        if (stats.getProcessingTimeSeconds() > 0) {
+            double speed = (double) stats.getTotalCount() / stats.getProcessingTimeSeconds();
+            stats.addAdditionalStat("Скорость обработки (записей/сек)", String.format("%.2f", speed));
+        }
+
+        // Размер пакета
+        stats.addAdditionalStat("Размер пакета при загрузке файла", BATCH_SIZE_FILE_RECORD);
+        stats.addAdditionalStat("Размер пакета при сохранении в БД", BATCH_SIZE_DATA_SAVE);
+
+        // Процент успешных записей
+        if (stats.getTotalCount() > 0) {
+            double successRate = (double) stats.getSuccessCount() / stats.getTotalCount() * 100;
+            stats.addAdditionalStat("Процент успешных записей", String.format("%.2f%%", successRate));
+        }
     }
 
     /**
@@ -246,40 +373,66 @@ public class FileProcessingService {
      */
     private ProcessingStats convertToProcessingStats(Map<String, Object> results) {
         ProcessingStats stats = new ProcessingStats();
+
+        // Основные показатели
         stats.setTotalCount((int) results.getOrDefault("totalCount", 0));
         stats.setSuccessCount((int) results.getOrDefault("successCount", 0));
         stats.setErrorCount((int) results.getOrDefault("errorCount", 0));
-        stats.setProcessedData((List<Map<String, String>>) results.get("records"));
 
+        // Обработанные данные
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> records = (List<Map<String, String>>) results.get("records");
+        stats.setProcessedData(records != null ? records : new ArrayList<>());
+
+        // Обработка ошибок
         if (results.containsKey("errors")) {
+            @SuppressWarnings("unchecked")
             List<String> errors = (List<String>) results.get("errors");
-//            errors.forEach(error -> stats.addError(error, "Ошибка обработки"));
+            errors.forEach(error -> stats.incrementErrorCount(error, "PARSE_ERROR"));
         }
 
         return stats;
+
     }
 
     private boolean shouldProcessBatch(List<Map<String, String>> batch, int currentIndex, int totalSize) {
-        return batch.size() >= BATCH_SIZE || currentIndex == totalSize - 1;
+        return batch.size() >= BATCH_SIZE_FILE_RECORD || currentIndex == totalSize - 1;
     }
 
     private Map<String, Object> processBatch(FileMetadata metadata,
                                              List<Map<String, String>> batch,
                                              Map<String, String> columnsMapping,
-                                             int currentIndex,
-                                             int totalSize) {
-        updateProcessingStatus(metadata.getId(),
-                (currentIndex * 100) / totalSize,
-                String.format("Обработка записей %d-%d из %d",
-                        currentIndex - batch.size() + 1,
-                        currentIndex + 1,
-                        totalSize));
+                                             int processedRecords,
+                                             int totalRecords) {
 
-        return dataPersistenceService.saveEntities(batch, metadata.getClientId(), columnsMapping, metadata.getId());
+        log.debug("Обработка батча {} записей (с {} по {}) из {}",
+                batch.size(),
+                processedRecords + 1,
+                processedRecords + batch.size(),
+                totalRecords);
+
+        // Обновляем статус обработки
+        updateProcessingStatus(metadata.getId(),
+                70 + (processedRecords * 30 / totalRecords),
+                String.format("Сохранение записей %d-%d из %d",
+                        processedRecords + 1,
+                        processedRecords + batch.size(),
+                        totalRecords));
+
+        // Сохраняем данные
+        return dataPersistenceService.saveEntities(
+                batch,
+                metadata.getClientId(),
+                columnsMapping,
+                metadata.getId()
+        );
+
     }
 
     private void updateProcessingStatus(Long fileId, int progress, String message) {
-        processingStatuses.put(fileId, new ProcessingStatus(progress, message));
+        ProcessingStatus status = new ProcessingStatus(progress, message);
+        processingStatuses.put(fileId, status);
+        log.debug("Обновлен статус обработки файла {}: {}% - {}", fileId, progress, message);
     }
 
     /**
@@ -316,5 +469,4 @@ public class FileProcessingService {
         private int progress;
         private String message;
     }
-
 }

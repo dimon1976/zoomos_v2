@@ -1,4 +1,5 @@
 package by.zoomos_v2.service.processing.client;
+import by.zoomos_v2.constant.FileStatus;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.FileMetadata;
@@ -20,46 +21,61 @@ import java.util.Map;
 public class DefaultClientDataProcessor implements ClientDataProcessor {
 
 
-    public ProcessingResult processData(List<Map<String, String>> data, ExportConfig config) {
-        log.debug("Processing data with default processor for client id: {}",
-                config.getClient().getId());
-
-        // Создаем статистику
-        ProcessingStats stats = ProcessingStats.createNew();
-        stats.setTotalCount(data.size());
-        stats.setSuccessCount(data.size()); // все записи считаем успешными
-        stats.setProcessedData(data);        // сохраняем данные без изменений
-
-        // Добавляем дополнительную статистику
-        stats.addAdditionalStat("clientId", config.getClient().getId());
-        stats.addAdditionalStat("configName", config.getName());
-
-        // Возвращаем результат
-        return ProcessingResult.success(data, stats);
-    }
-
     @Override
     public ValidationResult validateData(List<Map<String, String>> data) {
         ValidationResult result = new ValidationResult();
+        List<String> errors = new ArrayList<>();
+
+        if (data == null || data.isEmpty()) {
+            errors.add("Файл не содержит данных");
+            result.setValid(false);
+            result.setErrors(errors);
+            return result;
+        }
+
         result.setValid(true);
-        result.setErrors(new ArrayList<>());
+        result.setErrors(errors);
         return result;
     }
 
     @Override
     public void processFile(FileMetadata fileMetadata, List<Map<String, String>> data) {
-        // По умолчанию ничего не делаем с файлом
+        try {
+            log.info("Начало обработки файла {} процессором по умолчанию",
+                    fileMetadata.getOriginalFilename());
+
+            // Обновляем статус
+            fileMetadata.updateStatus(FileStatus.PROCESSING, null);
+
+            // Статистика
+            fileMetadata.updateProcessingStatistics(
+                    data.size(),    // всего записей
+                    data.size(),    // успешных записей (все, т.к. не меняем данные)
+                    0               // ошибок нет
+            );
+
+            // Успешное завершение
+            fileMetadata.updateStatus(FileStatus.COMPLETED, null);
+
+            log.info("Завершение обработки файла {}. Обработано записей: {}",
+                    fileMetadata.getOriginalFilename(), data.size());
+
+        } catch (Exception e) {
+            log.error("Ошибка при обработке файла: {}", e.getMessage(), e);
+            fileMetadata.updateStatus(FileStatus.ERROR, e.getMessage());
+            fileMetadata.addProcessingError(e.getMessage());
+        }
     }
 
     @Override
     public void afterProcessing(FileMetadata metadata) {
-        // По умолчанию нет пост-обработки
+        if (FileStatus.COMPLETED.equals(metadata.getStatus())) {
+            log.info("Завершена обработка файла {}", metadata.getOriginalFilename());
+        }
     }
 
     @Override
     public boolean supports(Client client) {
-        // Этот процессор поддерживает всех клиентов
-        return true;
+        return true; // Поддерживает всех клиентов
     }
-
 }
