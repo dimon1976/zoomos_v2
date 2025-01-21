@@ -11,7 +11,7 @@ import java.util.Optional;
 public interface ExportConfigRepository extends JpaRepository<ExportConfig, Long> {
 
     // Найти все маппинги по ID клиента
-    List<ExportConfig> findByClientId(Long clientId);
+    Optional<List<ExportConfig>> findByClientId(Long clientId);
 
     Optional<ExportConfig> findByClientIdAndIsDefaultTrue(Long clientId);
 

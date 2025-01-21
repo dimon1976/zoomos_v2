@@ -22,8 +22,8 @@ public class AsyncConfig {
         log.info("Создание пула потоков для обработки файлов");
 
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);        // Базовое количество потоков
-        executor.setMaxPoolSize(4);         // Максимальное количество потоков
+        executor.setCorePoolSize(4);        // Базовое количество потоков
+        executor.setMaxPoolSize(8);         // Максимальное количество потоков
         executor.setQueueCapacity(100);     // Размер очереди задач
         executor.setThreadNamePrefix("file-processing-");
         executor.setWaitForTasksToCompleteOnShutdown(true);

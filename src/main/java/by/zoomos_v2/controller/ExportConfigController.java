@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -42,7 +43,7 @@ public class ExportConfigController {
         log.debug("Запрошен список маппингов для магазина с ID: {}", clientId);
         try {
             Client client = clientService.getClientById(clientId);
-            List<ExportConfig> mappings = exportFieldConfigService.getMappingsForClient(clientId);
+            Optional<List<ExportConfig>> mappings = exportFieldConfigService.getMappingsForClient(clientId);
 
             model.addAttribute("client", client);
             model.addAttribute("mappings", mappings);

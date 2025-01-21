@@ -1,5 +1,5 @@
 package by.zoomos_v2.model;
-import by.zoomos_v2.service.processing.processor.ProcessingStats;
+import by.zoomos_v2.service.file.ProcessingStats;
 import lombok.Builder;
 import lombok.Data;
 

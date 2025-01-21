@@ -13,10 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,7 +37,7 @@ public class ExportFieldConfigService {
      * @return список конфигураций маппинга
      */
     @Transactional(readOnly = true)
-    public List<ExportConfig> getMappingsForClient(Long clientId) {
+    public Optional<List<ExportConfig>> getMappingsForClient(Long clientId) {
         log.debug("Получение конфигураций маппинга для магазина: {}", clientId);
         return exportConfigRepository.findByClientId(clientId);
     }

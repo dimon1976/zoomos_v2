@@ -8,6 +8,7 @@ import by.zoomos_v2.repository.ExportConfigRepository;
 import by.zoomos_v2.util.EntityField;
 import by.zoomos_v2.util.EntityFieldGroup;
 import by.zoomos_v2.util.EntityRegistryService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,9 +35,33 @@ public class ExportConfigService {
      * @return конфигурация экспорта
      */
     @Transactional(readOnly = true)
-    public ExportConfig getConfig(Long clientId) {
+    public ExportConfig getConfigByClientId(Long clientId) {
         return exportConfigRepository.findByClientIdAndIsDefaultTrue(clientId)
                 .orElseGet(() -> createConfig(clientId));
+    }
+
+    /**
+     * Получает конфигурации клиента
+     *
+     * @param clientId идентификатор клиента
+     * @return конфигурации экспорта
+     */
+    @Transactional(readOnly = true)
+    public List<ExportConfig> getConfigsByClientId(Long clientId) {
+        return exportConfigRepository.findByClientId(clientId)
+                .orElseThrow(() -> new EntityNotFoundException("ExportConfig not found for clientId: " + clientId));
+    }
+
+    /**
+     * Получает конфигурацию по ID
+     *
+     * @param configId идентификатор конфигурации
+     * @return конфигурация экспорта
+     */
+    @Transactional(readOnly = true)
+    public ExportConfig getConfigById(Long configId) {
+        return exportConfigRepository.findById(configId)
+                .orElseThrow(() -> new EntityNotFoundException("ExportConfig not found: " + configId));
     }
 
     /**
@@ -82,7 +107,7 @@ public class ExportConfigService {
     public ExportConfig updateConfig(Long clientId, List<EntityField> fields) {
         validateFields(fields);
 
-        ExportConfig config = getConfig(clientId);
+        ExportConfig config = getConfigByClientId(clientId);
         updateFields(config, fields);
 
         return exportConfigRepository.save(config);

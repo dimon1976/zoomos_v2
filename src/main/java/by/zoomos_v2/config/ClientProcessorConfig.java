@@ -1,6 +1,6 @@
 package by.zoomos_v2.config;
-import by.zoomos_v2.service.processing.client.ClientDataProcessor;
-import by.zoomos_v2.service.processing.client.Client1DataProcessor;
+import by.zoomos_v2.service.file.input.strategy.ClientDataProcessor;
+import by.zoomos_v2.service.file.input.strategy.Client1DataProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

@@ -2,8 +2,8 @@ package by.zoomos_v2.controller;
 
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.repository.FileMetadataRepository;
-import by.zoomos_v2.service.file.upload.FileUploadService;
-import by.zoomos_v2.service.file.upload.FileProcessingService;
+import by.zoomos_v2.service.file.input.service.FileUploadService;
+import by.zoomos_v2.service.file.input.service.FileProcessingService;
 import by.zoomos_v2.service.mapping.MappingConfigService;
 import by.zoomos_v2.aspect.LogExecution;
 import com.fasterxml.jackson.databind.ObjectMapper;
