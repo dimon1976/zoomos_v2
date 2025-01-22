@@ -16,6 +16,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,7 +44,8 @@ public class ExportConfigController {
         log.debug("Запрошен список маппингов для магазина с ID: {}", clientId);
         try {
             Client client = clientService.getClientById(clientId);
-            Optional<List<ExportConfig>> mappings = exportFieldConfigService.getMappingsForClient(clientId);
+            List<ExportConfig> mappings = exportFieldConfigService.getMappingsForClient(clientId)
+                    .orElse(Collections.emptyList()); // Возвращаем пустой список, если ничего не найдено
 
             model.addAttribute("client", client);
             model.addAttribute("mappings", mappings);
