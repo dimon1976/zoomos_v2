@@ -27,7 +27,7 @@ import java.util.Map;
 @Controller
 @RequestMapping("/client/{clientId}/files")
 @RequiredArgsConstructor
-public class FileController {
+public class UploadFileController {
 
     private final FileUploadService fileUploadService;
     private final FileProcessingService fileProcessingService;

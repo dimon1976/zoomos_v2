@@ -3,7 +3,9 @@ package by.zoomos_v2.service.file.metadata;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.file.ProcessingStats;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,7 +58,12 @@ public class FileMetadataService {
     @Transactional
     public void updateProcessingResults(FileMetadata metadata, ProcessingStats stats) {
         try {
-            metadata.setProcessingResults(objectMapper.writeValueAsString(stats));
+
+            // Исключение из хранения в БД излишних данных в метаданных файла
+            ObjectNode node = objectMapper.valueToTree(stats);
+            node.remove("processedData");
+            String s = objectMapper.writeValueAsString(node);
+            metadata.setProcessingResults(s);
             metadata.updateProcessingStatistics(
                     stats.getTotalCount(),
                     stats.getSuccessCount(),

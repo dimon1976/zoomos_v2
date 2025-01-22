@@ -1,5 +1,6 @@
 package by.zoomos_v2.model;
 
+import by.zoomos_v2.constant.FileStatus;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -187,7 +188,7 @@ public class FileMetadata {
      * Проверяет, завершена ли обработка файла
      */
     public boolean isProcessingCompleted() {
-        return "COMPLETED".equals(status) || "ERROR".equals(status) || "CANCELLED".equals(status);
+        return FileStatus.COMPLETED.equals(status) || FileStatus.ERROR.equals(status) || FileStatus.CANCELLED.equals(status);
     }
 
     /**

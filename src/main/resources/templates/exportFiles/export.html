@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Экспорт данных</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Экспорт данных</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Таблица файлов -->
+                    <div th:if="${files != null && !files.isEmpty()}">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th>Имя файла</th>
+                                <th>Дата загрузки</th>
+                                <th>Количество записей</th>
+                                <th>Действия</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="file : ${files}">
+                                <td th:text="${file.originalFilename}"></td>
+                                <td th:text="${#temporals.format(file.uploadDate, 'dd.MM.yyyy HH:mm')}"></td>
+                                <td th:text="${file.recordCount}"></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm"
+                                            onclick="showExportOptions(this)"
+                                            th:data-file-id="${file.id}">
+                                        Экспортировать
+                                    </button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Форма настроек экспорта (изначально скрыта) -->
+                    <div id="exportOptions" style="display: none;" class="mt-4">
+                        <form id="exportForm">
+                            <input type="hidden" id="selectedFileId" name="fileId"/>
+
+                            <div class="mb-3">
+                                <label for="configId" class="form-label">Конфигурация экспорта</label>
+                                <select class="form-select" id="configId" name="configId" required>
+                                    <option value="">Выберите конфигурацию</option>
+                                    <option th:each="config : ${configs}"
+                                            th:value="${config.id}"
+                                            th:text="${config.name}">
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="fileType" class="form-label">Формат файла</label>
+                                <select class="form-select" id="fileType" name="fileType" required>
+                                    <option value="">Выберите формат</option>
+                                    <option value="CSV">CSV</option>
+                                    <option value="XLSX">XLSX</option>
+                                </select>
+                            </div>
+
+                            <button type="button" class="btn btn-primary" onclick="startExport()">
+                                Скачать файл
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showExportOptions(button) {
+        const fileId = button.getAttribute('data-file-id');
+        document.getElementById('selectedFileId').value = fileId;
+        document.getElementById('exportOptions').style.display = 'block';
+    }
+
+    function startExport() {
+        const form = document.getElementById('exportForm');
+        const fileId = document.getElementById('selectedFileId').value;
+        const configId = document.getElementById('configId').value;
+        const fileType = document.getElementById('fileType').value;
+
+        if (!configId || !fileType) {
+            alert('Пожалуйста, выберите все параметры');
+            return;
+        }
+
+        window.location.href = `/api/export/file/${fileId}?configId=${configId}&fileType=${fileType}`;
+    }
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
