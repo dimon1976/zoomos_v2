@@ -1,4 +1,5 @@
 package by.zoomos_v2.service.file.export.service;
+
 import by.zoomos_v2.annotations.FieldDescription;
 import by.zoomos_v2.model.*;
 import by.zoomos_v2.repository.FileMetadataRepository;
@@ -16,6 +17,7 @@ import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Field;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Сервис для экспорта данных из файлов
@@ -34,9 +36,9 @@ public class FileExportService {
     /**
      * Экспортирует данные из указанного файла
      *
-     * @param fileId ID файла в системе
+     * @param fileId       ID файла в системе
      * @param exportConfig конфигурация экспорта
-     * @param fileType тип файла для экспорта (CSV, XLSX)
+     * @param fileType     тип файла для экспорта (CSV, XLSX)
      * @return результат экспорта
      */
     @Transactional(readOnly = true)
@@ -81,41 +83,92 @@ public class FileExportService {
     /**
      * Получает данные из файла и преобразует их для экспорта
      */
+//    private List<Map<String, Object>> getDataFromFile(FileMetadata fileMetadata) {
+//        log.debug("Получение данных из файла: {}", fileMetadata.getOriginalFilename());
+//
+//        List<Product> products = productRepository.findByFileId(fileMetadata.getId());
+//        List<Map<String, Object>> result = new ArrayList<>();
+//
+//        for (Product product : products) {
+//            // Обрабатываем основные данные продукта
+//            Map<String, Object> productData = extractFieldsWithDescriptions(product);
+//
+//            // Обрабатываем данные регионов
+//            for (RegionData regionData : product.getRegionDataList()) {
+//                Map<String, Object> rowData = new HashMap<>(productData);
+//                rowData.putAll(extractFieldsWithDescriptions(regionData));
+//
+//                // Обрабатываем данные конкурентов
+//                for (CompetitorData competitorData : product.getCompetitorDataList()) {
+//                    Map<String, Object> fullRowData = new HashMap<>(rowData);
+//                    fullRowData.putAll(extractFieldsWithDescriptions(competitorData));
+//                    result.add(fullRowData);
+//                }
+//
+//                // Если нет данных конкурентов, добавляем строку только с данными региона
+//                if (product.getCompetitorDataList().isEmpty()) {
+//                    result.add(rowData);
+//                }
+//            }
+//
+//            // Если нет данных регионов, добавляем строку только с данными продукта
+//            if (product.getRegionDataList().isEmpty()) {
+//                result.add(productData);
+//            }
+//        }
+//
+//        log.debug("Получено {} записей для экспорта", result.size());
+//        return result;
+//    }
     private List<Map<String, Object>> getDataFromFile(FileMetadata fileMetadata) {
-        log.debug("Получение данных из файла: {}", fileMetadata.getOriginalFilename());
-
+        // Получаем базовые данные продуктов
         List<Product> products = productRepository.findByFileId(fileMetadata.getId());
+        List<Long> productIds = products.stream().map(Product::getId).toList();
+
+        // Дозагружаем связанные данные
+        List<Product> productsWithRegions = productRepository.findByIdInWithRegionData(productIds);
+        List<Product> productsWithCompetitors = productRepository.findByIdInWithCompetitorData(productIds);
+
+        // Создаем маппинг для быстрого доступа
+        Map<Long, Product> productWithRegionsMap = productsWithRegions.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+        Map<Long, Product> productWithCompetitorsMap = productsWithCompetitors.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Product product : products) {
-            // Обрабатываем основные данные продукта
+            Product withRegions = productWithRegionsMap.get(product.getId());
+            Product withCompetitors = productWithCompetitorsMap.get(product.getId());
+
             Map<String, Object> productData = extractFieldsWithDescriptions(product);
 
-            // Обрабатываем данные регионов
-            for (RegionData regionData : product.getRegionDataList()) {
-                Map<String, Object> rowData = new HashMap<>(productData);
-                rowData.putAll(extractFieldsWithDescriptions(regionData));
+            if (withRegions != null && !withRegions.getRegionDataList().isEmpty()) {
+                for (RegionData regionData : withRegions.getRegionDataList()) {
+                    Map<String, Object> rowData = new HashMap<>(productData);
+                    rowData.putAll(extractFieldsWithDescriptions(regionData));
 
-                // Обрабатываем данные конкурентов
-                for (CompetitorData competitorData : product.getCompetitorDataList()) {
-                    Map<String, Object> fullRowData = new HashMap<>(rowData);
+                    if (withCompetitors != null && !withCompetitors.getCompetitorDataList().isEmpty()) {
+                        for (CompetitorData competitorData : withCompetitors.getCompetitorDataList()) {
+                            Map<String, Object> fullRowData = new HashMap<>(rowData);
+                            fullRowData.putAll(extractFieldsWithDescriptions(competitorData));
+                            result.add(fullRowData);
+                        }
+                    } else {
+                        result.add(rowData);
+                    }
+                }
+            } else if (withCompetitors != null && !withCompetitors.getCompetitorDataList().isEmpty()) {
+                for (CompetitorData competitorData : withCompetitors.getCompetitorDataList()) {
+                    Map<String, Object> fullRowData = new HashMap<>(productData);
                     fullRowData.putAll(extractFieldsWithDescriptions(competitorData));
                     result.add(fullRowData);
                 }
-
-                // Если нет данных конкурентов, добавляем строку только с данными региона
-                if (product.getCompetitorDataList().isEmpty()) {
-                    result.add(rowData);
-                }
-            }
-
-            // Если нет данных регионов, добавляем строку только с данными продукта
-            if (product.getRegionDataList().isEmpty()) {
+            } else {
                 result.add(productData);
             }
         }
 
-        log.debug("Получено {} записей для экспорта", result.size());
         return result;
     }
 

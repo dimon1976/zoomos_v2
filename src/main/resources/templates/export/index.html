@@ -27,8 +27,8 @@
                             <tbody>
                             <tr th:each="file : ${files}">
                                 <td th:text="${file.originalFilename}"></td>
-                                <td th:text="${#temporals.format(file.uploadDate, 'dd.MM.yyyy HH:mm')}"></td>
-                                <td th:text="${file.recordCount}"></td>
+                                <td th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></td>
+                                <td th:text="${file.totalRecords}"></td>
                                 <td>
                                     <button class="btn btn-primary btn-sm"
                                             onclick="showExportOptions(this)"

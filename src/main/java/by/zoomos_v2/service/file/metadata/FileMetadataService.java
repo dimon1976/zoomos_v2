@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Сервис для работы с метаданными файлов.
@@ -126,4 +127,34 @@ public class FileMetadataService {
         }
     }
 
+    /**
+     * Получает список доступных для экспорта файлов клиента
+     * (только успешно обработанные файлы)
+     */
+    @Transactional(readOnly = true)
+    public List<FileMetadata> getFilesByClientId(Long clientId) {
+        return fileMetadataRepository.findByClientIdAndStatusOrderByUploadedAtDesc(clientId, "COMPLETED");
+    }
+
+    /**
+     * Получает информацию о конкретном файле
+     *
+     * @param fileId идентификатор файла
+     * @return метаданные файла или null, если файл не найден
+     */
+    @Transactional(readOnly = true)
+    public FileMetadata getFileById(Long fileId) {
+        return fileMetadataRepository.findById(fileId).orElse(null);
+    }
+
+    /**
+     * Проверяет доступность файла для экспорта
+     */
+    @Transactional(readOnly = true)
+    public boolean isFileAvailableForExport(Long fileId, Long clientId) {
+        FileMetadata metadata = fileMetadataRepository.findById(fileId).orElse(null);
+        return metadata != null &&
+                metadata.belongsToShop(clientId) &&
+                "COMPLETED".equals(metadata.getStatus());
+    }
 }

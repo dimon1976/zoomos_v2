@@ -18,9 +18,9 @@ public class ExportViewController {
     @GetMapping
     public String showExportPage(Model model) {
         // TODO: получать clientId из сессии
-        Long clientId = 1L;
+        Long clientId = 5L;
 
-//        model.addAttribute("files", fileMetadataService.getFilesByClientId(clientId));
+        model.addAttribute("files", fileMetadataService.getFilesByClientId(clientId));
         model.addAttribute("configs", exportConfigService.getConfigsByClientId(clientId));
 
         return "export/index";

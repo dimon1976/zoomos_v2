@@ -24,4 +24,12 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long
      */
     Optional<FileMetadata> findFirstByClientIdAndStatusOrderByProcessingCompletedAtDesc(
             Long clientId, String status);
+
+    /**
+     * Находит все файлы клиента, отсортированные по дате загрузки в обратном порядке
+     *
+     * @param clientId идентификатор клиента
+     * @return список метаданных файлов
+     */
+    List<FileMetadata> findByClientIdAndStatusOrderByUploadedAtDesc(Long clientId, String status);
 }
