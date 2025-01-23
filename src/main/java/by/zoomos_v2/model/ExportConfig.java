@@ -1,5 +1,6 @@
 package by.zoomos_v2.model;
 
+import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.ToString;
@@ -30,6 +31,10 @@ public class ExportConfig {
 
     @Column(name = "is_default")
     private boolean isDefault;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "strategy_type")
+    private ProcessingStrategyType strategyType = ProcessingStrategyType.DEFAULT;
 
     @OneToMany(mappedBy = "exportConfig", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position")

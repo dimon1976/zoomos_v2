@@ -52,10 +52,12 @@ public class Client1ProcessingStrategy implements DataProcessingStrategy{
 
     @Override
     public boolean supports(ExportConfig exportConfig) {
-        if (exportConfig == null || exportConfig.getClient() == null) {
-            return false;
-        }
-        Client client = exportConfig.getClient();
-        return CLIENT_ID.equals(client.getId().toString());
+        return CLIENT_ID.equals(exportConfig.getClient().getId()) &&
+                ProcessingStrategyType.DEFAULT.equals(exportConfig.getStrategyType());
+    }
+
+    @Override
+    public ProcessingStrategyType getStrategyType() {
+        return ProcessingStrategyType.DEFAULT;
     }
 }

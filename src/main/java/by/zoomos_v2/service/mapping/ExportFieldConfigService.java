@@ -5,6 +5,7 @@ import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportField;
 import by.zoomos_v2.repository.ClientRepository;
 import by.zoomos_v2.repository.ExportConfigRepository;
+import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
 import by.zoomos_v2.util.EntityField;
 import by.zoomos_v2.util.EntityFieldGroup;
 import by.zoomos_v2.util.EntityRegistryService;
@@ -88,11 +89,12 @@ public class ExportFieldConfigService {
     }
 
     @Transactional
-    public ExportConfig createConfig(Long clientId, String name, List<EntityField> fields, String configDescription) {
+    public ExportConfig createConfig(Long clientId, String name, List<EntityField> fields, String configDescription, ProcessingStrategyType strategyType) {
         ExportConfig config = new ExportConfig();
         config.setClient(clientRepository.getReferenceById(clientId));
         config.setDefault(false);
         config.setName(name);
+        config.setStrategyType(strategyType);
 
         List<ExportField> exportFields = new ArrayList<>();
         for (EntityField entityField : fields) {
@@ -180,7 +182,8 @@ public class ExportFieldConfigService {
                                    List<EntityField> fields,
                                    String configName,
                                    Long mappingId,
-                                   String configDescription) {
+                                   String configDescription,
+                                   ProcessingStrategyType strategyType) {
         ExportConfig config = getConfigById(mappingId);
 
         // Проверка принадлежности конфигурации клиенту
@@ -193,6 +196,7 @@ public class ExportFieldConfigService {
             config.setName(configName.trim());
         }
         config.setDescription(configDescription);
+        config.setStrategyType(strategyType);
 
         // Обновляем все поля
         Map<String, EntityField> updateMap = fields.stream()

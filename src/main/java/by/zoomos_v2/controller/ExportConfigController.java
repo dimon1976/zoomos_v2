@@ -5,12 +5,15 @@ import by.zoomos_v2.model.Client;
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportField;
 import by.zoomos_v2.service.client.ClientService;
+import by.zoomos_v2.service.file.export.service.ProcessingStrategyService;
+import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
 import by.zoomos_v2.service.mapping.ExportFieldConfigService;
 import by.zoomos_v2.util.EntityField;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -30,7 +33,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/client/{clientId}/exportmapping")
 @RequiredArgsConstructor
 public class ExportConfigController {
-
+    @Autowired
+    private ProcessingStrategyService processingStrategyService;
     private final ExportFieldConfigService exportFieldConfigService;
     private final ObjectMapper objectMapper;
     private final ClientService clientService;
@@ -75,8 +79,11 @@ public class ExportConfigController {
             Map<String, List<ExportField>> groupedDisabledFields = config.getFields().stream()
                     .filter(field -> !field.isEnabled())
                     .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
-
+            // Добавляем список доступных стратегий
+            List<ProcessingStrategyType> availableStrategies =
+                    processingStrategyService.getAvailableStrategies(clientId);
             // Передаем данные в модель
+            model.addAttribute("strategies", availableStrategies);
             model.addAttribute("groupedEnabledFields", groupedEnabledFields);
             model.addAttribute("groupedDisabledFields", groupedDisabledFields);
             model.addAttribute("config", config);
@@ -100,13 +107,13 @@ public class ExportConfigController {
             @RequestParam String positionsJson,
             @RequestParam String configName,
             @RequestParam String configDescription,
+            @RequestParam ProcessingStrategyType strategyType,
             RedirectAttributes redirectAttributes) {
 
         log.debug("Создание новой конфигурации для клиента {}", clientId);
         try {
-            List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {
-            });
-            exportFieldConfigService.createConfig(clientId, configName, fields, configDescription);
+            List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {});
+            exportFieldConfigService.createConfig(clientId, configName, fields, configDescription, strategyType);
             redirectAttributes.addFlashAttribute("success", "Конфигурация успешно создана");
             return "redirect:/client/{clientId}/exportmapping";
         } catch (Exception e) {
@@ -134,8 +141,11 @@ public class ExportConfigController {
             Map<String, List<ExportField>> groupedDisabledFields = config.getFields().stream()
                     .filter(field -> !field.isEnabled())
                     .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
-
+            // Добавляем список доступных стратегий
+            List<ProcessingStrategyType> availableStrategies =
+                    processingStrategyService.getAvailableStrategies(clientId);
             // Передаем данные в модель
+            model.addAttribute("strategies", availableStrategies);
             model.addAttribute("groupedEnabledFields", groupedEnabledFields);
             model.addAttribute("groupedDisabledFields", groupedDisabledFields);
             model.addAttribute("config", config);
@@ -159,6 +169,7 @@ public class ExportConfigController {
             @RequestParam String positionsJson,
             @RequestParam String configName,
             @RequestParam String configDescription,
+            @RequestParam ProcessingStrategyType strategyType,
             RedirectAttributes redirectAttributes) {
 
         log.debug("Обновление конфигурации {} для клиента {}", mappingId, clientId);
@@ -170,7 +181,8 @@ public class ExportConfigController {
                     fields,
                     configName,
                     mappingId,
-                    configDescription
+                    configDescription,
+                    strategyType
             );
             redirectAttributes.addFlashAttribute("success", "Конфигурация успешно обновлена");
         } catch (Exception e) {

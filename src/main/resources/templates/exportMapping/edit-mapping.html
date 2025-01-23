@@ -55,6 +55,21 @@
             <input type="text" class="form-control" id="configDescription" name="configDescription" th:value="${config.description}">
         </div>
 
+        <!-- Добавляем выбор стратегии -->
+        <div class="mb-3">
+            <label for="strategyType" class="form-label">Стратегия обработки данных</label>
+            <select class="form-control" id="strategyType" name="strategyType" required>
+                <option value="">Выберите стратегию</option>
+                <option th:each="strategy : ${strategies}"
+                        th:value="${strategy}"
+                        th:text="${strategy.displayName}"
+                        th:title="${strategy.description}"
+                        th:selected="${config.strategyType == strategy}">
+                </option>
+            </select>
+            <small class="form-text text-muted">Выберите стратегию обработки данных перед экспортом</small>
+        </div>
+
         <h3>Активные поля</h3>
         <table class="table table-striped" id="enabledFieldsTable">
             <thead>
@@ -137,6 +152,12 @@
 <div th:replace="~{fragments/navbar :: footer}"></div>
 
 <script th:inline="javascript">
+    document.getElementById('strategyType').addEventListener('change', function() {
+        const strategies = /*[[${strategies}]]*/ [];
+        const selectedStrategy = this.value;
+        const description = strategies.find(s => s.name === selectedStrategy)?.description || '';
+        document.getElementById('strategyDescription').textContent = description;
+    });
     $(document).ready(function() {
         // Инициализация сортировки
         $('#enabledFieldsTable tbody').sortable({

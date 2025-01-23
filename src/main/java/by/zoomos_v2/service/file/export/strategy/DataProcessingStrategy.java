@@ -31,4 +31,6 @@ public interface DataProcessingStrategy {
      * @return true если стратегия применима
      */
     boolean supports(ExportConfig exportConfig);
+
+    ProcessingStrategyType getStrategyType();
 }
