@@ -121,15 +121,12 @@ public class FileExportService {
 //        return result;
 //    }
     private List<Map<String, Object>> getDataFromFile(FileMetadata fileMetadata) {
-        // Получаем базовые данные продуктов
         List<Product> products = productRepository.findByFileId(fileMetadata.getId());
         List<Long> productIds = products.stream().map(Product::getId).toList();
 
-        // Дозагружаем связанные данные
         List<Product> productsWithRegions = productRepository.findByIdInWithRegionData(productIds);
         List<Product> productsWithCompetitors = productRepository.findByIdInWithCompetitorData(productIds);
 
-        // Создаем маппинг для быстрого доступа
         Map<Long, Product> productWithRegionsMap = productsWithRegions.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p));
         Map<Long, Product> productWithCompetitorsMap = productsWithCompetitors.stream()
@@ -141,17 +138,17 @@ public class FileExportService {
             Product withRegions = productWithRegionsMap.get(product.getId());
             Product withCompetitors = productWithCompetitorsMap.get(product.getId());
 
-            Map<String, Object> productData = extractFieldsWithDescriptions(product);
+            Map<String, Object> productData = extractFieldsWithDescriptions(product, "product");
 
             if (withRegions != null && !withRegions.getRegionDataList().isEmpty()) {
                 for (RegionData regionData : withRegions.getRegionDataList()) {
                     Map<String, Object> rowData = new HashMap<>(productData);
-                    rowData.putAll(extractFieldsWithDescriptions(regionData));
+                    rowData.putAll(extractFieldsWithDescriptions(regionData, "regiondata"));
 
                     if (withCompetitors != null && !withCompetitors.getCompetitorDataList().isEmpty()) {
                         for (CompetitorData competitorData : withCompetitors.getCompetitorDataList()) {
                             Map<String, Object> fullRowData = new HashMap<>(rowData);
-                            fullRowData.putAll(extractFieldsWithDescriptions(competitorData));
+                            fullRowData.putAll(extractFieldsWithDescriptions(competitorData, "competitordata"));
                             result.add(fullRowData);
                         }
                     } else {
@@ -161,7 +158,7 @@ public class FileExportService {
             } else if (withCompetitors != null && !withCompetitors.getCompetitorDataList().isEmpty()) {
                 for (CompetitorData competitorData : withCompetitors.getCompetitorDataList()) {
                     Map<String, Object> fullRowData = new HashMap<>(productData);
-                    fullRowData.putAll(extractFieldsWithDescriptions(competitorData));
+                    fullRowData.putAll(extractFieldsWithDescriptions(competitorData, "competitordata"));
                     result.add(fullRowData);
                 }
             } else {
@@ -175,9 +172,8 @@ public class FileExportService {
     /**
      * Извлекает значения полей с аннотациями FieldDescription
      */
-    private Map<String, Object> extractFieldsWithDescriptions(Object object) {
+    private Map<String, Object> extractFieldsWithDescriptions(Object object, String prefix) {
         Map<String, Object> fields = new HashMap<>();
-
         for (Field field : object.getClass().getDeclaredFields()) {
             FieldDescription description = field.getAnnotation(FieldDescription.class);
             if (description != null && !description.skipMapping()) {
@@ -185,18 +181,13 @@ public class FileExportService {
                     field.setAccessible(true);
                     Object value = field.get(object);
                     if (value != null) {
-                        // Форматируем значение в зависимости от типа
-                        if (value instanceof Date) {
-                            value = DATE_TIME_FORMATTER.format(((Date) value).toInstant());
-                        }
-                        fields.put(field.getName(), value);
+                        fields.put(prefix + "." + field.getName(), value);
                     }
                 } catch (IllegalAccessException e) {
                     log.error("Ошибка при получении значения поля: {}", field.getName(), e);
                 }
             }
         }
-
         return fields;
     }
 

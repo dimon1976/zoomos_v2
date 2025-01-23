@@ -23,7 +23,7 @@ public class Client1ProcessingStrategy implements DataProcessingStrategy{
             "okeydostavka.ru", "perekrestok.ru", "winelab.ru"
     );
 
-    private static final String CLIENT_ID = "1"; // ID клиента в системе
+    private static final String CLIENT_ID = "5"; // ID клиента в системе
 
     @Override
     public List<Map<String, Object>> processData(List<Map<String, Object>> data,

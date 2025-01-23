@@ -33,7 +33,7 @@ public class ExportConfig {
 
     @OneToMany(mappedBy = "exportConfig", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position")
-    @ToString.Exclude  // Добавляем эту аннотацию
+    @ToString.Exclude
     private List<ExportField> fields;
 
     /**
