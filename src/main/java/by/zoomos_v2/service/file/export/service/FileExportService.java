@@ -8,6 +8,7 @@ import by.zoomos_v2.service.file.ProcessingStats;
 import by.zoomos_v2.service.file.export.exporter.DataExporter;
 import by.zoomos_v2.service.file.export.exporter.DataExporterFactory;
 import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
+import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,14 +57,19 @@ public class FileExportService {
         ProcessingStats stats = ProcessingStats.createNew();
 
         // Находим и применяем подходящую стратегию обработки
-        Optional<DataProcessingStrategy> strategy = processingStrategies.stream()
+        DataProcessingStrategy strategy = processingStrategies.stream()
                 .filter(s -> s.supports(exportConfig))
-                .findFirst();
+                .findFirst()
+                .orElseGet(() -> {
+                    log.warn("Стратегия не найдена, используется стратегия по умолчанию");
+                    return processingStrategies.stream()
+                            .filter(s -> ProcessingStrategyType.DEFAULT.equals(s.getStrategyType()))
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalStateException("Default strategy not found"));
+                });
 
-        if (strategy.isPresent()) {
-            log.debug("Применяем стратегию обработки: {}", strategy.get().getClass().getSimpleName());
-            data = strategy.get().processData(data, exportConfig, stats);
-        }
+        log.debug("Применяется стратегия: {}", strategy.getClass().getSimpleName());
+        data = strategy.processData(data, exportConfig, stats);
 
         // Получаем нужный экспортер
         DataExporter exporter = exporterFactory.getExporter(fileType);
@@ -83,43 +89,6 @@ public class FileExportService {
     /**
      * Получает данные из файла и преобразует их для экспорта
      */
-//    private List<Map<String, Object>> getDataFromFile(FileMetadata fileMetadata) {
-//        log.debug("Получение данных из файла: {}", fileMetadata.getOriginalFilename());
-//
-//        List<Product> products = productRepository.findByFileId(fileMetadata.getId());
-//        List<Map<String, Object>> result = new ArrayList<>();
-//
-//        for (Product product : products) {
-//            // Обрабатываем основные данные продукта
-//            Map<String, Object> productData = extractFieldsWithDescriptions(product);
-//
-//            // Обрабатываем данные регионов
-//            for (RegionData regionData : product.getRegionDataList()) {
-//                Map<String, Object> rowData = new HashMap<>(productData);
-//                rowData.putAll(extractFieldsWithDescriptions(regionData));
-//
-//                // Обрабатываем данные конкурентов
-//                for (CompetitorData competitorData : product.getCompetitorDataList()) {
-//                    Map<String, Object> fullRowData = new HashMap<>(rowData);
-//                    fullRowData.putAll(extractFieldsWithDescriptions(competitorData));
-//                    result.add(fullRowData);
-//                }
-//
-//                // Если нет данных конкурентов, добавляем строку только с данными региона
-//                if (product.getCompetitorDataList().isEmpty()) {
-//                    result.add(rowData);
-//                }
-//            }
-//
-//            // Если нет данных регионов, добавляем строку только с данными продукта
-//            if (product.getRegionDataList().isEmpty()) {
-//                result.add(productData);
-//            }
-//        }
-//
-//        log.debug("Получено {} записей для экспорта", result.size());
-//        return result;
-//    }
     private List<Map<String, Object>> getDataFromFile(FileMetadata fileMetadata) {
         List<Product> products = productRepository.findByFileId(fileMetadata.getId());
         List<Long> productIds = products.stream().map(Product::getId).toList();

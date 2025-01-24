@@ -19,10 +19,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -33,11 +30,28 @@ import java.util.stream.Collectors;
 @RequestMapping("/client/{clientId}/exportmapping")
 @RequiredArgsConstructor
 public class ExportConfigController {
-    @Autowired
-    private ProcessingStrategyService processingStrategyService;
+    private final ProcessingStrategyService processingStrategyService;
     private final ExportFieldConfigService exportFieldConfigService;
     private final ObjectMapper objectMapper;
     private final ClientService clientService;
+
+    // Добавим новый метод для управления параметрами стратегии
+    @GetMapping("/strategy-params/{strategyType}")
+    @ResponseBody
+    public Map<String, Object> getStrategyParams(
+            @PathVariable Long clientId,
+            @PathVariable ProcessingStrategyType strategyType) {
+        return processingStrategyService.getStrategyParameters(clientId, strategyType);
+    }
+
+    @PostMapping("/strategy-params/{strategyType}")
+    @ResponseBody
+    public void updateStrategyParams(
+            @PathVariable Long clientId,
+            @PathVariable ProcessingStrategyType strategyType,
+            @RequestBody Map<String, Object> parameters) {
+        processingStrategyService.addStrategyToClient(clientId, strategyType, parameters);
+    }
 
     /**
      * Отображает список настроек маппинга для магазина
@@ -68,10 +82,8 @@ public class ExportConfigController {
     public String newConfig(@PathVariable Long clientId, Model model) {
         log.debug("Создание новой конфигурации для клиента: {}", clientId);
         try {
-            // Создаем временную конфигурацию со всеми полями
             ExportConfig config = exportFieldConfigService.createTemporaryConfig(clientId);
 
-            // Группируем поля по источнику и фильтруем по признаку enabled
             Map<String, List<ExportField>> groupedEnabledFields = config.getFields().stream()
                     .filter(ExportField::isEnabled)
                     .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
@@ -79,10 +91,18 @@ public class ExportConfigController {
             Map<String, List<ExportField>> groupedDisabledFields = config.getFields().stream()
                     .filter(field -> !field.isEnabled())
                     .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
-            // Добавляем список доступных стратегий
+
             List<ProcessingStrategyType> availableStrategies =
                     processingStrategyService.getAvailableStrategies(clientId);
-            // Передаем данные в модель
+
+            log.debug("Доступные стратегии: {}", availableStrategies);
+
+            // Защищаемся от null
+            if (availableStrategies.isEmpty()) {
+                log.warn("Список доступных стратегий пуст");
+                availableStrategies = Arrays.asList(ProcessingStrategyType.values());
+            }
+
             model.addAttribute("strategies", availableStrategies);
             model.addAttribute("groupedEnabledFields", groupedEnabledFields);
             model.addAttribute("groupedDisabledFields", groupedDisabledFields);
@@ -110,15 +130,37 @@ public class ExportConfigController {
             @RequestParam ProcessingStrategyType strategyType,
             RedirectAttributes redirectAttributes) {
 
+//        log.debug("Создание новой конфигурации для клиента {}", clientId);
+//        try {
+//            List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {});
+//            exportFieldConfigService.createConfig(clientId, configName, fields, configDescription, strategyType);
+//            redirectAttributes.addFlashAttribute("success", "Конфигурация успешно создана");
+//            return "redirect:/client/{clientId}/exportmapping";
+//        } catch (Exception e) {
+//            log.error("Ошибка при создании конфигурации: {}", e.getMessage(), e);
+//            redirectAttributes.addFlashAttribute("error", "Ошибка при создании конфигурации");
+//            return "redirect:/client/{clientId}/exportmapping";
+//        }
         log.debug("Создание новой конфигурации для клиента {}", clientId);
         try {
+            // Добавим отладочный вывод
+            log.debug("Получены параметры: positionsJson={}, configName={}, description={}, strategyType={}",
+                    positionsJson, configName, configDescription, strategyType);
+
+            if (positionsJson == null || positionsJson.isEmpty()) {
+                throw new IllegalArgumentException("positions JSON is empty");
+            }
+
             List<EntityField> fields = objectMapper.readValue(positionsJson, new TypeReference<>() {});
+
+            log.debug("Десериализованные поля: {}", fields);
+
             exportFieldConfigService.createConfig(clientId, configName, fields, configDescription, strategyType);
             redirectAttributes.addFlashAttribute("success", "Конфигурация успешно создана");
             return "redirect:/client/{clientId}/exportmapping";
         } catch (Exception e) {
-            log.error("Ошибка при создании конфигурации: {}", e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("error", "Ошибка при создании конфигурации");
+            log.error("Ошибка при создании конфигурации. positionsJson: {}", positionsJson, e);
+            redirectAttributes.addFlashAttribute("error", "Ошибка при создании конфигурации: " + e.getMessage());
             return "redirect:/client/{clientId}/exportmapping";
         }
     }

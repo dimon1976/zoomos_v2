@@ -33,4 +33,9 @@ public interface DataProcessingStrategy {
     boolean supports(ExportConfig exportConfig);
 
     ProcessingStrategyType getStrategyType();
+
+    // Добавим метод для валидации параметров
+    default void validateParameters(Map<String, Object> parameters) {
+        // По умолчанию пустая реализация
+    }
 }

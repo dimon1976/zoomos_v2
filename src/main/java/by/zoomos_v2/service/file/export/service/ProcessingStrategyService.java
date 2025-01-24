@@ -1,15 +1,23 @@
 package by.zoomos_v2.service.file.export.service;
 
 import by.zoomos_v2.model.Client;
+import by.zoomos_v2.model.ClientProcessingStrategy;
 import by.zoomos_v2.model.ExportConfig;
+import by.zoomos_v2.repository.ClientProcessingStrategyRepository;
 import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -17,61 +25,104 @@ import java.util.stream.Collectors;
 public class ProcessingStrategyService {
 
     private final List<DataProcessingStrategy> strategies;
+    private final ClientProcessingStrategyRepository clientProcessingStrategyRepository;
+    private final ObjectMapper objectMapper;
 
-    /**
-     * Получает список доступных стратегий для клиента
-     */
     public List<ProcessingStrategyType> getAvailableStrategies(Long clientId) {
-        log.debug("Получение списка доступных стратегий для клиента: {}", clientId);
-
-        // Создаем тестовый конфиг для проверки стратегий
-        ExportConfig testConfig = new ExportConfig();
-        Client client = new Client();
-        client.setId(clientId);
-        testConfig.setClient(client);
-
-        // Фильтруем стратегии, которые поддерживают данного клиента
-        return strategies.stream()
-                .filter(strategy -> {
-                    testConfig.setStrategyType(strategy.getStrategyType());
-                    return strategy.supports(testConfig);
-                })
-                .map(DataProcessingStrategy::getStrategyType)
-                .distinct()
-                .collect(Collectors.toList());
+        return Arrays.asList(ProcessingStrategyType.values());
     }
 
-    /**
-     * Находит подходящую стратегию для конфигурации экспорта
-     */
-    public DataProcessingStrategy findStrategy(ExportConfig exportConfig) {
-        log.debug("Поиск стратегии для конфигурации: {}, тип стратегии: {}",
-                exportConfig.getId(), exportConfig.getStrategyType());
+    // Добавляем метод получения параметров стратегии
+    public Map<String, Object> getStrategyParameters(Long clientId, ProcessingStrategyType strategyType) {
+        log.debug("Получение параметров стратегии {} для клиента {}", strategyType, clientId);
 
+        return clientProcessingStrategyRepository
+                .findByClientIdAndStrategyTypeAndIsActiveTrue(clientId, strategyType)
+                .map(strategy -> {
+                    try {
+                        // Проверяем на пустые параметры
+                        String params = strategy.getParameters();
+                        if (params == null || params.isEmpty()) {
+                            return getDefaultParameters(strategyType);
+                        }
+                        return objectMapper.readValue(
+                                params,
+                                new TypeReference<Map<String, Object>>() {}
+                        );
+                    } catch (JsonProcessingException e) {
+                        log.error("Ошибка при чтении параметров стратегии: {}", e.getMessage(), e);
+                        return getDefaultParameters(strategyType);
+                    }
+                })
+                .orElseGet(() -> getDefaultParameters(strategyType));
+    }
+
+    // Метод для получения параметров по умолчанию для разных типов стратегий
+    private Map<String, Object> getDefaultParameters(ProcessingStrategyType strategyType) {
+        Map<String, Object> defaultParams = new HashMap<>();
+
+        switch (strategyType) {
+            case CLEAN_URLS:
+                defaultParams.put("competitors", Arrays.asList(
+                        "auchan.ru", "lenta.com", "metro-cc.ru", "myspar.ru",
+                        "okeydostavka.ru", "perekrestok.ru", "winelab.ru"
+                ));
+                break;
+            case DEFAULT:
+            default:
+                // Для стандартной стратегии параметры не требуются
+                break;
+        }
+
+        return defaultParams;
+    }
+
+    public DataProcessingStrategy findStrategy(ExportConfig exportConfig) {
         return strategies.stream()
                 .filter(strategy -> strategy.supports(exportConfig))
                 .findFirst()
-                .orElseThrow(() -> {
-                    log.error("Стратегия не найдена для конфигурации: {}", exportConfig.getId());
-                    return new IllegalStateException(
-                            String.format("Стратегия типа %s не найдена для клиента %s",
-                                    exportConfig.getStrategyType(),
-                                    exportConfig.getClient().getId())
-                    );
-                });
+                .orElseGet(this::getDefaultStrategy);
     }
 
-    /**
-     * Проверяет, существует ли стратегия указанного типа для клиента
-     */
-    public boolean isStrategyAvailable(Long clientId, ProcessingStrategyType strategyType) {
-        ExportConfig testConfig = new ExportConfig();
+    private DataProcessingStrategy getDefaultStrategy() {
+        return strategies.stream()
+                .filter(s -> ProcessingStrategyType.DEFAULT.equals(s.getStrategyType()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Default strategy not found"));
+    }
+
+    @Transactional
+    public void addStrategyToClient(Long clientId, ProcessingStrategyType strategyType,
+                                    Map<String, Object> parameters) {
+        log.debug("Добавление стратегии {} для клиента {}", strategyType, clientId);
+
+        // Деактивируем текущую стратегию
+        clientProcessingStrategyRepository
+                .findByClientIdAndStrategyTypeAndIsActiveTrue(clientId, strategyType)
+                .ifPresent(strategy -> {
+                    strategy.setActive(false);
+                    clientProcessingStrategyRepository.save(strategy);
+                });
+
+        // Создаем новую
         Client client = new Client();
         client.setId(clientId);
-        testConfig.setClient(client);
-        testConfig.setStrategyType(strategyType);
 
-        return strategies.stream()
-                .anyMatch(strategy -> strategy.supports(testConfig));
+        ClientProcessingStrategy strategy = ClientProcessingStrategy.builder()
+                .client(client)
+                .strategyType(strategyType)
+                .isActive(true)
+                .parameters(writeParametersAsJson(parameters))
+                .build();
+
+        clientProcessingStrategyRepository.save(strategy);
+    }
+
+    private String writeParametersAsJson(Map<String, Object> parameters) {
+        try {
+            return objectMapper.writeValueAsString(parameters);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Cannot serialize parameters to JSON", e);
+        }
     }
 }

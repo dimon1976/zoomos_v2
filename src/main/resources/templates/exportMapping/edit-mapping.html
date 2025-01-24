@@ -31,6 +31,20 @@
         #enabledFieldsTable tbody tr:not(.table-secondary):hover {
             background-color: #f5f5f5;
         }
+        #strategyParameters {
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .strategy-parameter {
+            margin-bottom: 10px;
+        }
+
+        .strategy-parameter label {
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -55,7 +69,7 @@
             <input type="text" class="form-control" id="configDescription" name="configDescription" th:value="${config.description}">
         </div>
 
-        <!-- Добавляем выбор стратегии -->
+        <!-- Обновленный блок выбора стратегии -->
         <div class="mb-3">
             <label for="strategyType" class="form-label">Стратегия обработки данных</label>
             <select class="form-control" id="strategyType" name="strategyType" required>
@@ -68,6 +82,14 @@
                 </option>
             </select>
             <small class="form-text text-muted">Выберите стратегию обработки данных перед экспортом</small>
+
+            <!-- Добавляем секцию для параметров стратегии -->
+            <div id="strategyParameters" class="mt-3" style="display: none;">
+                <h4>Параметры стратегии</h4>
+                <div id="parameterFields">
+                    <!-- Поля параметров будут добавлены динамически -->
+                </div>
+            </div>
         </div>
 
         <h3>Активные поля</h3>
@@ -152,39 +174,51 @@
 <div th:replace="~{fragments/navbar :: footer}"></div>
 
 <script th:inline="javascript">
-    document.getElementById('strategyType').addEventListener('change', function() {
-        const strategies = /*[[${strategies}]]*/ [];
-        const selectedStrategy = this.value;
-        const description = strategies.find(s => s.name === selectedStrategy)?.description || '';
-        document.getElementById('strategyDescription').textContent = description;
-    });
     $(document).ready(function() {
-        // Инициализация сортировки
-        $('#enabledFieldsTable tbody').sortable({
-            items: 'tr:not(.table-secondary)',
-            handle: 'td:first-child',
-            axis: 'y',
-            helper: function(e, tr) {
-                var $originals = tr.children();
-                var $helper = tr.clone();
-                $helper.children().each(function(index) {
-                    $(this).width($originals.eq(index).width());
-                });
-                return $helper;
-            },
-            update: function(event, ui) {
-                updatePositions();
+        const strategyParameters = /*[[${strategyParameters}]]*/ {};
+
+        // Обработчик изменения типа стратегии
+        document.getElementById('strategyType').addEventListener('change', function() {
+            const selectedStrategy = this.value;
+            const parametersDiv = document.getElementById('strategyParameters');
+            const parameterFields = document.getElementById('parameterFields');
+
+            if (selectedStrategy && strategyParameters[selectedStrategy]) {
+                parametersDiv.style.display = 'block';
+                parameterFields.innerHTML = '';
+
+                const parameters = strategyParameters[selectedStrategy];
+                for (const [key, value] of Object.entries(parameters)) {
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.className = 'mb-3';
+
+                    const label = document.createElement('label');
+                    label.className = 'form-label';
+                    label.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+
+                    const input = document.createElement('input');
+                    input.className = 'form-control strategy-parameter';
+                    input.name = `strategyParams[${key}]`;
+                    input.value = value;
+                    input.dataset.paramName = key;
+
+                    fieldDiv.appendChild(label);
+                    fieldDiv.appendChild(input);
+                    parameterFields.appendChild(fieldDiv);
+                }
+            } else {
+                parametersDiv.style.display = 'none';
             }
         });
 
-        // Добавляем иконку для drag-and-drop
+        // Инициализация drag-and-drop иконок
         $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
             $(this).find('td:first-child').addClass('drag-handle').prepend(
                 '<i class="fas fa-grip-vertical"></i>'
             );
         });
 
-        // Обработчик кнопки добавления поля
+        // Обработчик добавления поля
         $(document).on('click', '.add-field', function() {
             let sourceField = $(this).data('source-field');
             let displayName = $(this).data('display-name');
@@ -209,14 +243,12 @@
             </tr>
         `;
 
-            // Добавляем строку в таблицу активных полей
             $('#enabledFieldsTable tbody').append(row);
-            // Удаляем строку из таблицы неактивных полей
             $(this).closest('tr').remove();
             updatePositions();
         });
 
-        // Обработчик кнопки удаления поля
+        // Обработчик удаления поля
         $(document).on('click', '.remove-field', function() {
             let sourceField = $(this).closest('tr').find('td:nth-child(3)').text();
             let displayName = $(this).closest('tr').find('.field-display-name').val();
@@ -235,24 +267,41 @@
             </tr>
         `;
 
-            // Добавляем строку в таблицу неактивных полей
             $('#disabledFieldsTable tbody').append(row);
-            // Удаляем строку из таблицы активных полей
             $(this).closest('tr').remove();
             updatePositions();
         });
 
-        // Обработка отправки формы
-        $('#exportForm').on('submit', function() {
+        // Единый обработчик отправки формы
+        $('#exportForm').on('submit', function(e) {
+            // Собираем поля маппинга
             let allFields = getAllFields();
             $('#positionsJson').val(JSON.stringify(allFields));
+            console.log('JSON для отправки:', $('#positionsJson').val());
+
+            // Собираем параметры стратегии
+            const selectedStrategy = document.getElementById('strategyType').value;
+            if (selectedStrategy) {
+                const parameters = {};
+                document.querySelectorAll('.strategy-parameter').forEach(input => {
+                    parameters[input.dataset.paramName] = input.value;
+                });
+
+                // Отправляем параметры стратегии
+                fetch(`/client/${clientId}/exportmapping/strategy-params/${selectedStrategy}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(parameters)
+                });
+            }
         });
 
-        // Функция сбора всех полей
         function getAllFields() {
             let allFields = [];
+            console.log('Начинаем сбор полей');
 
-            // Собираем включенные поля
             $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function(index) {
                 let sourceField = $(this).find('td:nth-child(3)').text().trim();
                 if (sourceField) {
@@ -265,7 +314,6 @@
                 }
             });
 
-            // Собираем отключенные поля
             $('#disabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
                 let sourceField = $(this).find('td:nth-child(2)').text().trim();
                 if (sourceField) {
@@ -278,11 +326,10 @@
                 }
             });
 
-            console.log('Collected fields:', allFields); // для отладки
+            console.log('Собранные поля:', allFields);
             return allFields;
         }
 
-        // Функция обновления позиций
         function updatePositions() {
             var position = 0;
             $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function() {

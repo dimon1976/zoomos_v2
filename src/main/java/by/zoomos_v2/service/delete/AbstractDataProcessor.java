@@ -1,4 +1,4 @@
-package by.zoomos_v2.service.file.export.processor;
+package by.zoomos_v2.service.delete;
 
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.service.file.ProcessingStats;

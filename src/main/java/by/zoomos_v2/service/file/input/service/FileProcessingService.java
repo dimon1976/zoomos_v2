@@ -376,12 +376,13 @@ public class FileProcessingService {
 
         // Основные показатели
         stats.setTotalCount((int) results.getOrDefault("totalCount", 0));
-        stats.setSuccessCount((int) results.getOrDefault("successCount", 0));
+//        stats.setSuccessCount((int) results.getOrDefault("successCount", 0));
+        stats.setSuccessCount(((List<?>) results.get("successCount")).size());
         stats.setErrorCount((int) results.getOrDefault("errorCount", 0));
 
         // Обработанные данные
         @SuppressWarnings("unchecked")
-        List<Map<String, String>> records = (List<Map<String, String>>) results.get("records");
+        List<Map<String, String>> records = (List<Map<String, String>>) results.get("successCount");
         stats.setProcessedData(records != null ? records : new ArrayList<>());
 
         // Обработка ошибок
