@@ -175,6 +175,23 @@
 
 <script th:inline="javascript">
     $(document).ready(function() {
+        // Инициализация сортировки
+        $('#enabledFieldsTable tbody').sortable({
+            items: 'tr:not(.table-secondary)',
+            handle: 'td:first-child',
+            axis: 'y',
+            helper: function(e, tr) {
+                var $originals = tr.children();
+                var $helper = tr.clone();
+                $helper.children().each(function(index) {
+                    $(this).width($originals.eq(index).width());
+                });
+                return $helper;
+            },
+            update: function(event, ui) {
+                updatePositions();
+            }
+        });
         const strategyParameters = /*[[${strategyParameters}]]*/ {};
 
         // Обработчик изменения типа стратегии
