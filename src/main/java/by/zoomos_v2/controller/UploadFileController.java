@@ -69,13 +69,13 @@ public class UploadFileController {
             if (!metadata.getClientId().equals(clientId)) {
                 throw new IllegalArgumentException("Файл не принадлежит указанному клиенту");
             }
+
             // Рассчитываем разницу во времени обработки
             if (metadata.getProcessingStartedAt() != null && metadata.getProcessingCompletedAt() != null) {
                 Duration duration = Duration.between(metadata.getProcessingStartedAt(), metadata.getProcessingCompletedAt());
                 model.addAttribute("processingDuration", duration.getSeconds()); // разница в секундах
             }
-            model.addAttribute("clientId", clientId);
-            model.addAttribute("file", metadata);
+
             // Читаем статистику из JSON
             if (metadata.getProcessingResults() != null) {
                 Map<String, Object> statistics = objectMapper.readValue(
@@ -85,6 +85,8 @@ public class UploadFileController {
                 );
 
                 log.debug("Loaded statistics: {}", statistics); // добавляем лог
+                model.addAttribute("clientId", clientId);
+                model.addAttribute("file", metadata);
                 model.addAttribute("statistics", statistics);
 
             }

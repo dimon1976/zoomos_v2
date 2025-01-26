@@ -83,7 +83,7 @@ public class FileUploadService {
                 TextFileParameters parameters = TextFileAnalyzer.analyzeFile(pathResolver.getFilePath(clientId, metadata.getStoredFilename()));
                 metadata.updateTextParameters(parameters);
                 log.info("Определены параметры текстового файла {}: кодировка - {}, разделитель - {}",
-                         parameters.getEncoding(), parameters.getDelimiter());
+                         metadata.getOriginalFilename(), parameters.getEncoding(), parameters.getDelimiter());
             }
             metadata.updateProcessingStatistics(0, 0, 0);
             // Сохранение метаданных

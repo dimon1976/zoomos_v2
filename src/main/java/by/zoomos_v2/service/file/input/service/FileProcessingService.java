@@ -2,18 +2,19 @@ package by.zoomos_v2.service.file.input.service;
 
 import by.zoomos_v2.constant.FileStatus;
 import by.zoomos_v2.exception.FileProcessingException;
+import by.zoomos_v2.exception.ValidationError;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.client.ClientService;
-import by.zoomos_v2.service.file.metadata.FileMetadataService;
-import by.zoomos_v2.service.mapping.MappingConfigService;
-import by.zoomos_v2.service.file.input.strategy.ClientDataProcessor;
-import by.zoomos_v2.service.file.input.strategy.ClientDataProcessorFactory;
-import by.zoomos_v2.service.file.input.result.ValidationResult;
+import by.zoomos_v2.service.file.ProcessingStats;
 import by.zoomos_v2.service.file.input.processor.FileProcessor;
 import by.zoomos_v2.service.file.input.processor.FileProcessorFactory;
-import by.zoomos_v2.service.file.ProcessingStats;
+import by.zoomos_v2.service.file.input.result.ValidationResult;
+import by.zoomos_v2.service.file.input.strategy.ClientDataProcessor;
+import by.zoomos_v2.service.file.input.strategy.ClientDataProcessorFactory;
+import by.zoomos_v2.service.file.metadata.FileMetadataService;
+import by.zoomos_v2.service.mapping.MappingConfigService;
 import by.zoomos_v2.util.PathResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,8 +38,12 @@ import static by.zoomos_v2.constant.BatchSize.BATCH_SIZE_DATA_SAVE;
 import static by.zoomos_v2.constant.BatchSize.BATCH_SIZE_FILE_RECORD;
 
 /**
- * Сервис для асинхронной обработки файлов.
- * Обеспечивает загрузку, обработку и сохранение данных из файлов.
+ * Сервис для асинхронной обработки файлов с оптимизированной производительностью и управлением памятью.
+ * Обеспечивает потокобезопасную обработку файлов с журналированием и обработкой ошибок.
+ *
+ * @author Dimon
+ * @version 2.0
+ * @since 2024-01-26
  */
 @Slf4j
 @Service
@@ -101,7 +106,7 @@ public class FileProcessingService {
     /**
      * Выполняет основной процесс обработки файла
      */
-    private ProcessingStats processFile(FileMetadata metadata, LocalDateTime startTime) throws Exception {
+    private ProcessingStats processFile(FileMetadata metadata, LocalDateTime startTime) {
         try {
             metadata.updateStatus(FileStatus.PROCESSING, null);
 
@@ -248,7 +253,7 @@ public class FileProcessingService {
     /**
      * Сохраняет обработанные данные в базу данных
      */
-    private ProcessingStats persistData(FileMetadata metadata, List<Map<String, String>> data) throws Exception {
+    private ProcessingStats persistData(FileMetadata metadata, List<Map<String, String>> data){
 
         log.debug("Начало сохранения данных для файла: {}", metadata.getOriginalFilename());
         ProcessingStats stats = new ProcessingStats();
@@ -322,8 +327,6 @@ public class FileProcessingService {
             log.error(errorMsg, e);
             throw new FileProcessingException(errorMsg, e);
         }
-
-
     }
 
     /**
@@ -376,22 +379,26 @@ public class FileProcessingService {
 
         // Основные показатели
         stats.setTotalCount((int) results.getOrDefault("totalCount", 0));
-//        stats.setSuccessCount((int) results.getOrDefault("successCount", 0));
-        stats.setSuccessCount(((List<?>) results.get("successCount")).size());
+        stats.setSuccessCount((int) results.getOrDefault("successCount", 0));
+//        stats.setSuccessCount(((List<?>) results.get("successCount")).size());
         stats.setErrorCount((int) results.getOrDefault("errorCount", 0));
 
         // Обработанные данные
         @SuppressWarnings("unchecked")
-        List<Map<String, String>> records = (List<Map<String, String>>) results.get("successCount");
+        List<Map<String, String>> records = (List<Map<String, String>>) results.get("records");
         stats.setProcessedData(records != null ? records : new ArrayList<>());
 
         // Обработка ошибок
-        if (results.containsKey("errors")) {
+//        if (results.containsKey("validationErrors")) {
+//            @SuppressWarnings("unchecked")
+//            List<String> errors = (List<String>) results.get("validationErrors");
+//            errors.forEach(error -> stats.incrementErrorCount(error, "PARSE_ERROR"));
+//        }
+        if (results.containsKey("validationErrors")) {
             @SuppressWarnings("unchecked")
-            List<String> errors = (List<String>) results.get("errors");
-            errors.forEach(error -> stats.incrementErrorCount(error, "PARSE_ERROR"));
+            List<ValidationError> errors = (List<ValidationError>) results.get("validationErrors");
+            errors.forEach(error -> stats.incrementErrorCount(error.getMessage(), error.getCode()));
         }
-
         return stats;
 
     }
@@ -470,4 +477,6 @@ public class FileProcessingService {
         private int progress;
         private String message;
     }
+
+
 }

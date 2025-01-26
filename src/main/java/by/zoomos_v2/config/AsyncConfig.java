@@ -7,6 +7,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Конфигурация для асинхронной обработки файлов.
@@ -19,17 +20,28 @@ public class AsyncConfig {
 
     @Bean(name = "fileProcessingExecutor")
     public Executor fileProcessingExecutor() {
-        log.info("Создание пула потоков для обработки файлов");
+        log.info("Инициализация пула потоков для обработки файлов");
 
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(4);        // Базовое количество потоков
-        executor.setMaxPoolSize(8);         // Максимальное количество потоков
-        executor.setQueueCapacity(100);     // Размер очереди задач
-        executor.setThreadNamePrefix("file-processing-");
+        executor.setCorePoolSize(Runtime.getRuntime().availableProcessors());
+        executor.setMaxPoolSize(Runtime.getRuntime().availableProcessors() * 2);
+        executor.setQueueCapacity(250);
+        executor.setThreadNamePrefix("file-proc-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(60);
-        executor.initialize();
 
+        // Мониторинг состояния пула
+        executor.setThreadFactory(r -> {
+            Thread t = new Thread(r);
+            t.setUncaughtExceptionHandler((thread, ex) ->
+                    log.error("Необработанное исключение в потоке {}: {}",
+                            thread.getName(), ex.getMessage(), ex));
+            return t;
+        });
+
+        executor.initialize();
         return executor;
     }
 }

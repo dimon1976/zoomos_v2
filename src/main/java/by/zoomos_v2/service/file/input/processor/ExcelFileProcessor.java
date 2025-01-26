@@ -67,8 +67,12 @@ public class ExcelFileProcessor implements FileProcessor {
                         String.format("Обработано строк: %d из %d", i, totalRows));
             }
 
-            results.put("successCount", records);
+//            results.put("successCount", records);
+//            results.put("totalCount", records.size());
+            results.put("records", records);
             results.put("totalCount", records.size());
+            results.put("successCount", records.size());
+            results.put("headers", headers); // Обновляем заголовки с учетом дополнительных столбцов
 
             log.info("Excel файл успешно обработан: {}", metadata.getOriginalFilename());
             return results;

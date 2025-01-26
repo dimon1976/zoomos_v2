@@ -2,6 +2,7 @@ package by.zoomos_v2.service.file.input.processor;
 
 import by.zoomos_v2.model.FileMetadata;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -18,6 +19,6 @@ public interface FileProcessor {
      * Обрабатывает файл и возвращает результаты
      */
     Map<String, Object> processFile(Path filePath, FileMetadata metadata,
-                                    ProcessingProgressCallback progressCallback);
+                                    ProcessingProgressCallback progressCallback) throws IOException;
 
 }
