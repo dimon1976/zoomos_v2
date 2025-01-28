@@ -26,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -36,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static by.zoomos_v2.constant.BatchSize.BATCH_SIZE_DATA_SAVE;
 import static by.zoomos_v2.constant.BatchSize.BATCH_SIZE_FILE_RECORD;
+import static by.zoomos_v2.util.HeapSize.getHeapSizeAsString;
 
 /**
  * Сервис для асинхронной обработки файлов с оптимизированной производительностью и управлением памятью.
@@ -119,7 +122,8 @@ public class FileProcessingService {
 //            log.debug("Клиентская обработка завершена. Обработано записей: {}", clientStats.getSuccessCount());
 
             // Сохранение данных
-            ProcessingStats persistenceStats = persistData(metadata, fileStats.getProcessedData());
+//            ProcessingStats persistenceStats = persistData(metadata, fileStats.getProcessedData());
+            ProcessingStats persistenceStats = persistData(metadata, fileStats);
             log.debug("Сохранение данных завершено. Сохранено записей: {}", persistenceStats.getSuccessCount());
 
             // Объединяем статистику и добавляем время обработки
@@ -253,11 +257,87 @@ public class FileProcessingService {
     /**
      * Сохраняет обработанные данные в базу данных
      */
-    private ProcessingStats persistData(FileMetadata metadata, List<Map<String, String>> data){
+//    private ProcessingStats persistData(FileMetadata metadata, List<Map<String, String>> data){
+//
+//        log.debug("Начало сохранения данных для файла: {}", metadata.getOriginalFilename());
+//        ProcessingStats stats = new ProcessingStats();
+//        stats.setTotalCount(data.size());
+//
+//        try {
+//            // Получаем и проверяем конфигурацию маппинга
+//            if (metadata.getMappingConfigId() == null) {
+//                throw new FileProcessingException("Не указана конфигурация маппинга");
+//            }
+//
+//            ClientMappingConfig mapping = mappingConfigService.getMappingById(metadata.getMappingConfigId());
+//            Map<String, String> columnsMapping = objectMapper.readValue(
+//                    mapping.getColumnsConfig(),
+//                    new TypeReference<>() {}
+//            );
+//
+//            // Обработка данных батчами
+//            List<Map<String, String>> currentBatch = new ArrayList<>();
+//            int processedRecords = 0;
+//            int totalRecords = data.size();
+//            int successCount = 0;
+//            int errorCount = 0;
+//
+//            for (int i = 0; i < totalRecords; i++) {
+//                currentBatch.add(data.get(i));
+//
+//                if (shouldProcessBatch(currentBatch, i, totalRecords)) {
+//                    // Обработка батча
+//                    Map<String, Object> batchResults = processBatch(
+//                            metadata,
+//                            currentBatch,
+//                            columnsMapping,
+//                            processedRecords,
+//                            totalRecords
+//                    );
+//
+//                    // Обновление статистики
+//                    successCount += (int) batchResults.get("successCount");
+//                    errorCount += (int) batchResults.get("errorCount");
+//
+//                    // Обработка ошибок батча
+//                    if (batchResults.containsKey("errors")) {
+//                        List<String> errors = (List<String>) batchResults.get("errors");
+//                        errors.forEach(error -> {
+//                            metadata.addProcessingError(error);
+//                            stats.incrementErrorCount(error, "SAVE_ERROR");
+//                        });
+//                    }
+//
+//                    processedRecords += currentBatch.size();
+//                    currentBatch.clear();
+//
+//                    // Обновляем прогресс
+//                    updateProcessingStatus(metadata.getId(),
+//                            70 + (processedRecords * 30 / totalRecords),
+//                            String.format("Сохранено %d из %d записей", processedRecords, totalRecords));
+//                }
+//            }
+//
+//            // Обновляем итоговую статистику
+//            stats.setSuccessCount(successCount);
+//            stats.setErrorCount(errorCount);
+//
+//            log.debug("Сохранение данных завершено. Успешно: {}, Ошибок: {}",
+//                    successCount, errorCount);
+//            return stats;
+//
+//        } catch (Exception e) {
+//            String errorMsg = "Ошибка при сохранении данных: " + e.getMessage();
+//            log.error(errorMsg, e);
+//            throw new FileProcessingException(errorMsg, e);
+//        }
+//    }
 
+    private ProcessingStats persistData(FileMetadata metadata, ProcessingStats fileStats) {
         log.debug("Начало сохранения данных для файла: {}", metadata.getOriginalFilename());
+        log.info("Initial heap persistData: {}", getHeapSizeAsString());
         ProcessingStats stats = new ProcessingStats();
-        stats.setTotalCount(data.size());
+        stats.setTotalCount(fileStats.getTotalCount());
 
         try {
             // Получаем и проверяем конфигурацию маппинга
@@ -271,46 +351,68 @@ public class FileProcessingService {
                     new TypeReference<>() {}
             );
 
-            // Обработка данных батчами
             List<Map<String, String>> currentBatch = new ArrayList<>();
             int processedRecords = 0;
-            int totalRecords = data.size();
             int successCount = 0;
             int errorCount = 0;
 
-            for (int i = 0; i < totalRecords; i++) {
-                currentBatch.add(data.get(i));
+            // Читаем данные из временного файла батчами
+            try (BufferedReader reader = Files.newBufferedReader(fileStats.getTempFilePath())) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    Map<String, String> record = objectMapper.readValue(line,
+                            new TypeReference<>() {
+                            });
+                    currentBatch.add(record);
+                    log.debug("Processed batch. Current heap: {}", getHeapSizeAsString());
+                    if (shouldProcessBatch(currentBatch, processedRecords + currentBatch.size(),
+                            fileStats.getTotalCount())) {
+                        // Обработка батча
+                        Map<String, Object> batchResults = processBatch(
+                                metadata,
+                                currentBatch,
+                                columnsMapping,
+                                processedRecords,
+                                fileStats.getTotalCount()
+                        );
 
-                if (shouldProcessBatch(currentBatch, i, totalRecords)) {
-                    // Обработка батча
+                        // Обновление статистики
+                        successCount += (int) batchResults.get("successCount");
+                        errorCount += (int) batchResults.get("errorCount");
+
+                        // Обработка ошибок батча
+                        if (batchResults.containsKey("errors")) {
+                            @SuppressWarnings("unchecked")
+                            List<String> errors = (List<String>) batchResults.get("errors");
+                            errors.forEach(error -> {
+                                metadata.addProcessingError(error);
+                                stats.incrementErrorCount(error, "SAVE_ERROR");
+                            });
+                        }
+
+                        processedRecords += currentBatch.size();
+                        currentBatch.clear();
+
+                        // Обновляем прогресс
+                        updateProcessingStatus(metadata.getId(),
+                                70 + (processedRecords * 30 / fileStats.getTotalCount()),
+                                String.format("Сохранено %d из %d записей",
+                                        processedRecords, fileStats.getTotalCount()));
+                    }
+                }
+
+                // Обрабатываем оставшийся батч
+                if (!currentBatch.isEmpty()) {
                     Map<String, Object> batchResults = processBatch(
                             metadata,
                             currentBatch,
                             columnsMapping,
                             processedRecords,
-                            totalRecords
+                            fileStats.getTotalCount()
                     );
-
-                    // Обновление статистики
                     successCount += (int) batchResults.get("successCount");
                     errorCount += (int) batchResults.get("errorCount");
-
-                    // Обработка ошибок батча
-                    if (batchResults.containsKey("errors")) {
-                        List<String> errors = (List<String>) batchResults.get("errors");
-                        errors.forEach(error -> {
-                            metadata.addProcessingError(error);
-                            stats.incrementErrorCount(error, "SAVE_ERROR");
-                        });
-                    }
-
                     processedRecords += currentBatch.size();
-                    currentBatch.clear();
-
-                    // Обновляем прогресс
-                    updateProcessingStatus(metadata.getId(),
-                            70 + (processedRecords * 30 / totalRecords),
-                            String.format("Сохранено %d из %d записей", processedRecords, totalRecords));
                 }
             }
 
@@ -320,6 +422,7 @@ public class FileProcessingService {
 
             log.debug("Сохранение данных завершено. Успешно: {}, Ошибок: {}",
                     successCount, errorCount);
+            log.info("Final heap persistData: {}", getHeapSizeAsString());
             return stats;
 
         } catch (Exception e) {
@@ -374,14 +477,41 @@ public class FileProcessingService {
     /**
      * Преобразует результаты обработки в объект ProcessingStats
      */
+//    private ProcessingStats convertToProcessingStats(Map<String, Object> results) {
+//        ProcessingStats stats = new ProcessingStats();
+//
+//        // Основные показатели
+//        stats.setTotalCount((int) results.getOrDefault("totalCount", 0));
+//        stats.setSuccessCount((int) results.getOrDefault("successCount", 0));
+////        stats.setSuccessCount(((List<?>) results.get("successCount")).size());
+//        stats.setErrorCount((int) results.getOrDefault("errorCount", 0));
+//
+//        // Обработанные данные
+//        @SuppressWarnings("unchecked")
+//        List<Map<String, String>> records = (List<Map<String, String>>) results.get("records");
+//        stats.setProcessedData(records != null ? records : new ArrayList<>());
+//
+//        // Обработка ошибок
+////        if (results.containsKey("validationErrors")) {
+////            @SuppressWarnings("unchecked")
+////            List<String> errors = (List<String>) results.get("validationErrors");
+////            errors.forEach(error -> stats.incrementErrorCount(error, "PARSE_ERROR"));
+////        }
+//        if (results.containsKey("validationErrors")) {
+//            @SuppressWarnings("unchecked")
+//            List<ValidationError> errors = (List<ValidationError>) results.get("validationErrors");
+//            errors.forEach(error -> stats.incrementErrorCount(error.getMessage(), error.getCode()));
+//        }
+//        return stats;
+//
+//    }
     private ProcessingStats convertToProcessingStats(Map<String, Object> results) {
         ProcessingStats stats = new ProcessingStats();
 
-        // Основные показатели
-        stats.setTotalCount((int) results.getOrDefault("totalCount", 0));
-        stats.setSuccessCount((int) results.getOrDefault("successCount", 0));
-//        stats.setSuccessCount(((List<?>) results.get("successCount")).size());
-        stats.setErrorCount((int) results.getOrDefault("errorCount", 0));
+        // Безопасное преобразование числовых значений
+        stats.setTotalCount(convertToInt(results.getOrDefault("totalCount", 0)));
+        stats.setSuccessCount(convertToInt(results.getOrDefault("successCount", 0)));
+        stats.setErrorCount(convertToInt(results.getOrDefault("errorCount", 0)));
 
         // Обработанные данные
         @SuppressWarnings("unchecked")
@@ -389,18 +519,41 @@ public class FileProcessingService {
         stats.setProcessedData(records != null ? records : new ArrayList<>());
 
         // Обработка ошибок
-//        if (results.containsKey("validationErrors")) {
-//            @SuppressWarnings("unchecked")
-//            List<String> errors = (List<String>) results.get("validationErrors");
-//            errors.forEach(error -> stats.incrementErrorCount(error, "PARSE_ERROR"));
-//        }
         if (results.containsKey("validationErrors")) {
             @SuppressWarnings("unchecked")
             List<ValidationError> errors = (List<ValidationError>) results.get("validationErrors");
             errors.forEach(error -> stats.incrementErrorCount(error.getMessage(), error.getCode()));
         }
-        return stats;
 
+        // Добавляем путь к временному файлу, если есть
+        if (results.containsKey("tempFilePath")) {
+            stats.setTempFilePath((Path) results.get("tempFilePath"));
+        }
+
+        return stats;
+    }
+
+    /**
+     * Безопасно преобразует Object в int
+     */
+    private int convertToInt(Object value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        if (value instanceof Long) {
+            return ((Long) value).intValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     private boolean shouldProcessBatch(List<Map<String, String>> batch, int currentIndex, int totalSize) {

@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import static by.zoomos_v2.constant.BatchSize.BATCH_SIZE_DATA_SAVE;
+import static by.zoomos_v2.util.HeapSize.getHeapSizeAsString;
 
 @Slf4j
 @Service
@@ -341,6 +342,7 @@ public class DataPersistenceService {
     }
 
     private void logProcessingResults(int successCount, int errorCount, int totalCount) {
+        log.debug("Processed batch. Current heap: {}", getHeapSizeAsString());
         log.info("Обработка завершена. Успешно: {}, Ошибок: {}, Всего записей: {}",
                 successCount, errorCount, totalCount);
     }
