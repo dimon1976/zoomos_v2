@@ -160,6 +160,7 @@ public class ClientController {
             clientService.deleteClient(id);
             redirectAttributes.addFlashAttribute("success", "Магазин успешно удален");
         } catch (Exception e) {
+            //TODO Починить удаление магазина (рекурсивно)
             log.error("Ошибка при удалении магазина: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при удалении магазина: " + e.getMessage());
