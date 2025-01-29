@@ -32,11 +32,13 @@ public class ClientMappingController {
     private final MappingConfigService mappingConfigService;
     private final EntityRegistryService entityRegistryService;
 
+
+
     /**
-     * Отображает список настроек upload маппинга для магазина
+     * Отображает список настроек маппинга для магазина
      */
     @GetMapping
-    @LogExecution("Форма со списком uploadMappings")
+    @LogExecution("Просмотр списка маппингов")
     public String showMappings(@PathVariable Long clientId, Model model) {
         log.debug("Запрошен список маппингов для магазина с ID: {}", clientId);
         try {

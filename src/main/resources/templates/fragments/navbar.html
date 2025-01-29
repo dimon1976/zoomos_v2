@@ -8,27 +8,113 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link th:href="@{/css/styles.css}" rel="stylesheet">
-    <!-- Добавляем jQuery UI -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 </head>
 <body>
+<!-- Основная навигация -->
 <div th:fragment="header">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" th:href="@{/}">Zoomos</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-home"></i> Zoomos
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="mainNavbar">
                 <ul class="navbar-nav me-auto">
+                    <!-- Магазины -->
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/clients}">Магазины</a>
+                        <a class="nav-link" th:href="@{/clients}">
+                            <i class="fas fa-store"></i> Магазины
+                        </a>
+                    </li>
+                    <!-- Статистика -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-chart-line"></i> Статистика
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" th:href="@{/statistics/operations}">
+                                <i class="fas fa-tasks"></i> Операции
+                            </a></li>
+                            <li><a class="dropdown-item" th:href="@{/statistics/uploads}">
+                                <i class="fas fa-upload"></i> Загрузки
+                            </a></li>
+                            <li><a class="dropdown-item" th:href="@{/statistics/exports}">
+                                <i class="fas fa-download"></i> Выгрузки
+                            </a></li>
+                        </ul>
+                    </li>
+                    <!-- Утилиты -->
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/utils}">
+                            <i class="fas fa-tools"></i> Утилиты
+                        </a>
                     </li>
                 </ul>
                 <form th:action="@{/logout}" method="post" class="d-flex">
-                    <button class="btn btn-outline-light" type="submit">Выйти</button>
+                    <button class="btn btn-outline-light" type="submit">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+</div>
+
+<!-- Навигация для клиента -->
+<div th:fragment="client-header">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-home"></i> Zoomos
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#clientNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="clientNavbar">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/clients}">
+                            <i class="fas fa-store"></i> Магазины
+                        </a>
+                    </li>
+                    <!-- Группа настроек клиента -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cog"></i> Управление
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" th:href="@{/client/{id}/settings(id=${client.id})}">
+                                <i class="fas fa-sliders-h"></i> Настройки
+                            </a></li>
+                            <li><a class="dropdown-item" th:href="@{/client/{id}/files(id=${client.id})}">
+                                <i class="fas fa-file"></i> Файлы
+                            </a></li>
+                        </ul>
+                    </li>
+                    <!-- Группа маппингов -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-exchange-alt"></i> Маппинг
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" th:href="@{/client/{id}/uploadmapping(id=${client.id})}">
+                                <i class="fas fa-upload"></i> Загрузка
+                            </a></li>
+                            <li><a class="dropdown-item" th:href="@{/client/{id}/exportmapping(id=${client.id})}">
+                                <i class="fas fa-download"></i> Выгрузка
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <form th:action="@{/logout}" method="post" class="d-flex">
+                    <button class="btn btn-outline-light" type="submit">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </button>
                 </form>
             </div>
         </div>
@@ -39,38 +125,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </div>
 
-<!-- fragments/client-navbar.html -->
-<div th:fragment="client-header">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" th:href="@{/}">Zoomos</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="clientNavbar">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/clients}">Магазины</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/client/{id}/settings(id=${client.id})}">Настройки</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/client/{id}/files(id=${client.id})}">Файлы</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/client/{id}/uploadmapping(id=${client.id})}">Маппинг upload</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/client/{id}/exportmapping(id=${client.id})}">Маппинг export</a>
-                    </li>
-                </ul>
-                <form th:action="@{/logout}" method="post" class="d-flex">
-                    <button class="btn btn-outline-light" type="submit">Выйти</button>
-                </form>
-            </div>
-        </div>
-    </nav>
-</div>
 </body>
 </html>

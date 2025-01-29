@@ -5,20 +5,39 @@
     <title>Магазины</title>
     <div th:replace="~{fragments/navbar :: header-css}"></div>
     <style>
+        .client-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .client-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .stats-item {
+            border-right: 1px solid #dee2e6;
+            padding: 0 15px;
+        }
+        .stats-item:last-child {
+            border-right: none;
+        }
+        .client-title {
+            color: #2c3e50;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .client-title:hover {
+            color: #3498db;
+        }
         .shake {
             animation: shake 0.5s;
         }
-
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
             20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
-
         .fade-out {
             animation: fadeOut 0.5s;
         }
-
         @keyframes fadeOut {
             from { opacity: 1; }
             to { opacity: 0; }
@@ -31,86 +50,131 @@
 <div th:replace="~{fragments/navbar :: header}"></div>
 
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="card-title mb-0">Список магазинов</h2>
-                    <a th:href="@{/client/new}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Добавить магазин
-                    </a>
-                </div>
+    <!-- Заголовок и поиск -->
+    <div class="row mb-4">
+        <div class="col-md-8 d-flex align-items-center">
+            <h1 class="mb-0">Магазины</h1>
+        </div>
+        <div class="col-md-4 d-flex justify-content-end">
+            <a th:href="@{/client/new}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Добавить магазин
+            </a>
+        </div>
+    </div>
+
+    <!-- Поисковая строка -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control"
+                       placeholder="Поиск по названию или ID магазина...">
+                <button class="btn btn-outline-secondary" type="button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" id="sortSelect">
+                <option value="name">По названию</option>
+                <option value="id">По ID</option>
+                <option value="status">По статусу</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Сообщения об успехе/ошибке -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Карточки магазинов -->
+    <div class="row row-cols-1 row-cols-lg-2 g-4">
+        <div class="col" th:each="client : ${clients}">
+            <div class="card h-100 client-card">
                 <div class="card-body">
-                    <!-- Сообщения об успехе/ошибке -->
-                    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
-                        <span th:text="${success}"></span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
-                        <span th:text="${error}"></span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <!-- Статус -->
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}"
+                           class="h5 mb-0 client-title">
+                            <span th:text="${client.name}"></span>
+                            <small class="text-muted" th:text="'#' + ${client.id}"></small>
+                        </a>
+                        <span th:class="${'badge ' + (client.active ? 'bg-success' : 'bg-danger')}"
+                              th:text="${client.active ? 'Активен' : 'Неактивен'}">
+                        </span>
                     </div>
 
-                    <!-- Таблица магазинов -->
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Название</th>
-                                <th>URL</th>
-                                <th>Статус</th>
-                                <th>Действия</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:each="client : ${clients}">
-                                <td th:text="${client.id}"></td>
-                                <td th:text="${client.name}"></td>
-                                <td th:text="${client.url}"></td>
-                                <td>
-                                            <span th:class="${client.active ? 'badge bg-success' : 'badge bg-danger'}"
-                                                  th:text="${client.active ? 'Активен' : 'Неактивен'}">
-                                            </span>
-                                </td>
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        <a th:href="@{/client/{id}/files(id=${client.id})}"
-                                           class="btn btn-sm btn-info" title="Файлы">
-                                            <i class="fas fa-file"></i> Файлы
-                                        </a>
-                                        <a th:href="@{/client/{id}/uploadmapping(id=${client.id})}"
-                                           class="btn btn-sm btn-warning" title="Маппинг upload">
-                                            <i class="fas fa-cog"></i> Маппинг upload
-                                        </a>
-                                        <a th:href="@{/client/{id}/exportmapping(id=${client.id})}"
-                                           class="btn btn-sm btn-secondary" title="Маппинг export">
-                                            <i class="fas fa-list"></i> Маппинг export
-                                        </a>
-                                        <a th:href="@{/client/{id}/settings(id=${client.id})}"
-                                           class="btn btn-sm btn-primary" title="Настройки">
-                                            <i class="fas fa-edit"></i> Настройки
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-danger" title="Удалить"
-                                                th:data-client-id="${client.id}"
-                                                th:data-client-name="${client.name}"
-                                                onclick="showDeleteConfirmation(this)">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr th:if="${#lists.isEmpty(clients)}">
-                                <td colspan="5" class="text-center">Нет доступных магазинов</td>
-                            </tr>
-                            </tbody>
-                        </table>
+                    <!-- URL и API ключ -->
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1">
+                            <i class="fas fa-link"></i>
+                            <a th:href="${client.url}" target="_blank"
+                               th:text="${client.url}" class="text-decoration-none"></a>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="fas fa-key"></i>
+                            <code th:text="${#strings.abbreviate(client.apiKey, 20)}"></code>
+                        </div>
                     </div>
+
+                    <!-- Статистика -->
+                    <div class="row text-center bg-light rounded py-2 mb-3">
+                        <div class="col stats-item">
+                            <div class="small text-muted">Файлов загружено</div>
+                            <div class="h6 mb-0">0</div>
+                        </div>
+                        <div class="col stats-item">
+                            <div class="small text-muted">Размер данных</div>
+                            <div class="h6 mb-0">0 MB</div>
+                        </div>
+                        <div class="col stats-item">
+                            <div class="small text-muted">Активных задач</div>
+                            <div class="h6 mb-0">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Действия -->
+                    <div class="d-flex gap-2">
+                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}"
+                           class="btn btn-sm btn-primary flex-grow-1">
+                            <i class="fas fa-columns"></i> Панель управления
+                        </a>
+                        <a th:href="@{/client/{id}/settings(id=${client.id})}"
+                           class="btn btn-sm btn-outline-secondary"
+                           title="Настройки">
+                            <i class="fas fa-cog"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger"
+                                th:data-client-id="${client.id}"
+                                th:data-client-name="${client.name}"
+                                onclick="showDeleteConfirmation(this)"
+                                title="Удалить">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Пустое состояние -->
+        <div class="col-12" th:if="${#lists.isEmpty(clients)}">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-store-alt-slash fa-3x text-muted mb-3"></i>
+                    <h5>Нет доступных магазинов</h5>
+                    <p class="text-muted">Добавьте свой первый магазин, нажав кнопку "Добавить магазин"</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Модальное окно удаления -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -139,6 +203,7 @@
         </div>
     </div>
 </div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let currentClientId = null;
@@ -146,6 +211,23 @@
         let modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
         const confirmCheck = document.getElementById('confirmCheck');
         const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+        // Поиск по клиентам
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchValue = e.target.value.toLowerCase();
+            const cards = document.querySelectorAll('.client-card');
+
+            cards.forEach(card => {
+                const clientName = card.querySelector('.client-title').textContent.toLowerCase();
+                const clientId = card.querySelector('.text-muted').textContent.toLowerCase();
+
+                if (clientName.includes(searchValue) || clientId.includes(searchValue)) {
+                    card.closest('.col').style.display = '';
+                } else {
+                    card.closest('.col').style.display = 'none';
+                }
+            });
+        });
 
         confirmCheck.addEventListener('change', function() {
             confirmBtn.disabled = !this.checked;
@@ -177,16 +259,16 @@
                 return;
             }
 
-            fetch(`/client/delete/${currentClientId}`, {
+            fetch(`/client/${currentClientId}/delete`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    [document.querySelector('meta[name="_csrf_header"]').content]: document.querySelector('meta[name="_csrf"]').content
+                    [document.querySelector('meta[name="_csrf_header"]').content]:
+                    document.querySelector('meta[name="_csrf"]').content
                 }
             })
                 .then(response => {
                     if (response.redirected) {
-                        // Перезагружаем страницу, чтобы увидеть изменения и flash-сообщения
                         window.location.href = response.url;
                     } else {
                         throw new Error('Ошибка при удалении');

@@ -1,52 +1,124 @@
 <!-- src/main/resources/templates/index.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Zoomos - Главная</title>
-    <div th:replace="fragments/navbar :: header-css"></div>
+<head th:replace="fragments/navbar :: header-css">
 </head>
 <body>
-<div th:replace="fragments/navbar :: header"></div>
+<header th:replace="fragments/navbar :: header">
+</header>
 
 <div class="container mt-4">
-    <div class="row">
-        <div class="col-12">
+    <!-- Заголовок -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4">Панель управления Zoomos</h1>
+        </div>
+    </div>
+
+    <!-- Карточки со статистикой -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-store"></i> Активные магазины
+                    </h5>
+                    <p class="card-text display-6" th:text="${activeClientsCount}">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-upload"></i> Загрузки сегодня
+                    </h5>
+                    <p class="card-text display-6" th:text="${todayUploadsCount}">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-download"></i> Выгрузки сегодня
+                    </h5>
+                    <p class="card-text display-6" th:text="${todayExportsCount}">0</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-tasks"></i> Активные операции
+                    </h5>
+                    <p class="card-text display-6" th:text="${activeOperationsCount}">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрые действия -->
+    <div class="row mb-4">
+        <div class="col">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Панель управления</h2>
+                    <h5><i class="fas fa-bolt"></i> Быстрые действия</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-store fa-3x mb-3"></i>
-                                    <h5 class="card-title">Магазины</h5>
-                                    <p class="card-text">Управление магазинами и их настройками</p>
-                                    <a th:href="@{/clients}" class="btn btn-primary">Перейти к магазинам</a>
-                                </div>
-                            </div>
+                        <div class="col-md-3">
+                            <a th:href="@{/clients}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-store"></i> Управление магазинами
+                            </a>
                         </div>
-                        <div class="col-md-4 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-file-upload fa-3x mb-3"></i>
-                                    <h5 class="card-title">Загрузка файлов</h5>
-                                    <p class="card-text">Загрузка и обработка файлов</p>
-                                    <a th:href="@{/clients}" class="btn btn-primary">Выбрать магазин</a>
-                                </div>
-                            </div>
+                        <div class="col-md-3">
+                            <a th:href="@{/statistics/operations}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-chart-line"></i> Статистика операций
+                            </a>
                         </div>
-                        <div class="col-md-4 mb-4">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-cog fa-3x mb-3"></i>
-                                    <h5 class="card-title">Настройки маппинга</h5>
-                                    <p class="card-text">Настройка правил обработки данных</p>
-                                    <a th:href="@{/clients}" class="btn btn-primary">Выбрать магазин</a>
-                                </div>
-                            </div>
+                        <div class="col-md-3">
+                            <a th:href="@{/utils}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-tools"></i> Утилиты
+                            </a>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Последние операции -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Последние операции</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Магазин</th>
+                                <th>Тип операции</th>
+                                <th>Статус</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="operation : ${recentOperations}">
+                                <td th:text="${#temporals.format(operation.timestamp, 'dd.MM.yyyy HH:mm')}"></td>
+                                <td th:text="${operation.clientName}"></td>
+                                <td th:text="${operation.type}"></td>
+                                <td>
+                                    <span th:class="${'badge ' + operation.statusBadgeClass}"
+                                          th:text="${operation.status}"></span>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -54,6 +126,8 @@
     </div>
 </div>
 
-<div th:replace="fragments/navbar :: footer"></div>
+<div th:replace="fragments/navbar :: footer">
+</div>
+
 </body>
 </html>
