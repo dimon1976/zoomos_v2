@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Настройка полей экспорта</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <div th:replace="~{fragments/navbar :: header-css}"></div>
+    <style>
+        .drag-handle {
+            cursor: move;
+            padding: 5px;
+            color: #666;
+        }
+
+        .ui-sortable-helper {
+            display: table;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .ui-sortable-placeholder {
+            visibility: visible !important;
+            background: #f3f3f3;
+            height: 50px;
+        }
+
+        .table-secondary {
+            cursor: default;
+        }
+
+        #enabledFieldsTable tbody tr:not(.table-secondary):hover {
+            background-color: #f5f5f5;
+        }
+        #strategyParameters {
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .strategy-parameter {
+            margin-bottom: 10px;
+        }
+
+        .strategy-parameter label {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: header}"></div>
+
+<div class="container">
+    <h2>Настройка полей экспорта</h2>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- Форма редактирования маппинга -->
+    <form th:action="${config.id == null ?
+                  '/client/' + clientId + '/export-mappings/create' :
+                  '/client/' + clientId + '/export-mappings/' + config.id + '/update'}"
+          method="post" id="exportForm" class="needs-validation" novalidate>
+
+        <div class="mb-4">
+            <label for="configName" class="form-label">Название конфигурации</label>
+            <input type="text" class="form-control" id="configName"
+                   name="configName" th:value="${config.name}" required>
+            <div class="invalid-feedback">
+                Необходимо указать название конфигурации
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label for="configDescription" class="form-label">Описание</label>
+            <textarea class="form-control" id="configDescription"
+                      name="configDescription" rows="3" th:text="${config.description}">
+        </textarea>
+        </div>
+
+        <!-- Стратегия -->
+        <div class="mb-4">
+            <label for="strategyType" class="form-label">Стратегия обработки</label>
+            <select class="form-select" id="strategyType" name="strategyType" required>
+                <option value="">Выберите стратегию</option>
+                <option th:each="strategy : ${strategies}"
+                        th:value="${strategy}"
+                        th:text="${strategy.displayName}"
+                        th:selected="${config.strategyType == strategy}">
+                </option>
+            </select>
+            <div class="invalid-feedback">
+                Необходимо выбрать стратегию обработки
+            </div>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="d-flex gap-2 justify-content-end mb-4">
+            <a th:href="@{/client/{id}/export-mappings(id=${clientId})}"
+               class="btn btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>Отмена
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>
+                <span th:text="${config.id == null ? 'Создать' : 'Сохранить'}"></span>
+            </button>
+        </div>
+
+        <!-- Остальные части формы остаются без изменений -->
+    </form>
+
+
+</div>
+
+<div th:replace="~{fragments/navbar :: footer}"></div>
+
+<script th:inline="javascript">
+    $(document).ready(function() {
+        // Инициализация сортировки
+        $('#enabledFieldsTable tbody').sortable({
+            items: 'tr:not(.table-secondary)',
+            handle: 'td:first-child',
+            axis: 'y',
+            helper: function(e, tr) {
+                var $originals = tr.children();
+                var $helper = tr.clone();
+                $helper.children().each(function(index) {
+                    $(this).width($originals.eq(index).width());
+                });
+                return $helper;
+            },
+            update: function(event, ui) {
+                updatePositions();
+            }
+        });
+        const strategyParameters = /*[[${strategyParameters}]]*/ {};
+        const clientId = [[${clientId}]];
+
+        // Обновляем URL для параметров стратегии
+        function updateStrategyParams(strategyType, parameters) {
+            fetch(`/client/${clientId}/export-mappings/strategy-params/${strategyType}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    [document.querySelector('meta[name="_csrf_header"]').content]:
+                    document.querySelector('meta[name="_csrf"]').content
+                },
+                body: JSON.stringify(parameters)
+            });
+        }
+
+        // Обработчик изменения типа стратегии
+        document.getElementById('strategyType').addEventListener('change', function() {
+            const selectedStrategy = this.value;
+            const parametersDiv = document.getElementById('strategyParameters');
+            const parameterFields = document.getElementById('parameterFields');
+
+            if (selectedStrategy && strategyParameters[selectedStrategy]) {
+                parametersDiv.style.display = 'block';
+                parameterFields.innerHTML = '';
+
+                const parameters = strategyParameters[selectedStrategy];
+                for (const [key, value] of Object.entries(parameters)) {
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.className = 'mb-3';
+
+                    const label = document.createElement('label');
+                    label.className = 'form-label';
+                    label.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+
+                    const input = document.createElement('input');
+                    input.className = 'form-control strategy-parameter';
+                    input.name = `strategyParams[${key}]`;
+                    input.value = value;
+                    input.dataset.paramName = key;
+
+                    fieldDiv.appendChild(label);
+                    fieldDiv.appendChild(input);
+                    parameterFields.appendChild(fieldDiv);
+                }
+            } else {
+                parametersDiv.style.display = 'none';
+            }
+        });
+
+        // Инициализация drag-and-drop иконок
+        $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
+            $(this).find('td:first-child').addClass('drag-handle').prepend(
+                '<i class="fas fa-grip-vertical"></i>'
+            );
+        });
+
+        // Обработчик добавления поля
+        $(document).on('click', '.add-field', function() {
+            let sourceField = $(this).data('source-field');
+            let displayName = $(this).data('display-name');
+
+            let row = `
+            <tr>
+                <td class="drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </td>
+                <td>
+                    <input type="text" class="form-control field-display-name"
+                           value="${displayName}"
+                           name="fields[${sourceField}].displayName">
+                </td>
+                <td>${sourceField}</td>
+                <td class="position-display">0</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-danger remove-field">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+
+            $('#enabledFieldsTable tbody').append(row);
+            $(this).closest('tr').remove();
+            updatePositions();
+        });
+
+        // Обработчик удаления поля
+        $(document).on('click', '.remove-field', function() {
+            let sourceField = $(this).closest('tr').find('td:nth-child(3)').text();
+            let displayName = $(this).closest('tr').find('.field-display-name').val();
+
+            let row = `
+            <tr>
+                <td>${displayName}</td>
+                <td>${sourceField}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-success add-field"
+                            data-source-field="${sourceField}"
+                            data-display-name="${displayName}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+
+            $('#disabledFieldsTable tbody').append(row);
+            $(this).closest('tr').remove();
+            updatePositions();
+        });
+
+        // Единый обработчик отправки формы
+        $('#exportForm').on('submit', function(e) {
+            // Собираем поля маппинга
+            let allFields = getAllFields();
+            $('#positionsJson').val(JSON.stringify(allFields));
+            console.log('JSON для отправки:', $('#positionsJson').val());
+
+            // Собираем параметры стратегии
+            const selectedStrategy = document.getElementById('strategyType').value;
+            if (selectedStrategy) {
+                const parameters = {};
+                document.querySelectorAll('.strategy-parameter').forEach(input => {
+                    parameters[input.dataset.paramName] = input.value;
+                });
+
+                // Отправляем параметры стратегии
+                fetch(`/client/${clientId}/exportmapping/strategy-params/${selectedStrategy}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(parameters)
+                });
+            }
+        });
+
+        function getAllFields() {
+            let allFields = [];
+            console.log('Начинаем сбор полей');
+
+            $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function(index) {
+                let sourceField = $(this).find('td:nth-child(3)').text().trim();
+                if (sourceField) {
+                    allFields.push({
+                        mappingKey: sourceField,
+                        description: $(this).find('.field-display-name').val(),
+                        position: parseInt($(this).find('.position-display').text()),
+                        enabled: true
+                    });
+                }
+            });
+
+            $('#disabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
+                let sourceField = $(this).find('td:nth-child(2)').text().trim();
+                if (sourceField) {
+                    allFields.push({
+                        mappingKey: sourceField,
+                        description: $(this).find('td:first-child').text(),
+                        position: -1,
+                        enabled: false
+                    });
+                }
+            });
+
+            console.log('Собранные поля:', allFields);
+            return allFields;
+        }
+
+        function updatePositions() {
+            var position = 0;
+            $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
+                $(this).find('.position-display').text(position++);
+            });
+        }
+    });
+</script>
+</body>
+</html>

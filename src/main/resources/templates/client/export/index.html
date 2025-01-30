@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Экспорт данных</title>
+    <div th:replace="~{fragments/navbar :: header-css}"></div>
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: header}"></div>
+
+<div class="container mt-4">
+    <!-- Навигация -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb" class="d-flex align-items-center">
+                <a th:href="@{/}" class="btn btn-sm btn-outline-secondary me-2" title="На главную">
+                    <i class="fas fa-home"></i>
+                </a>
+                <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
+                    <i class="fas fa-store"></i>
+                </a>
+                <a th:href="@{/client/{id}/dashboard(id=${client.id})}"
+                   class="btn btn-sm btn-outline-secondary me-2" title="К панели управления">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}" th:text="${client.name}">Магазин</a>
+                    </li>
+                    <li class="breadcrumb-item active">Экспорт данных</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Основная карточка -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="card-title h5 mb-0">
+                <i class="fas fa-download me-2"></i>Экспорт данных
+            </h2>
+            <a th:href="@{/client/{id}/export-mappings(id=${client.id})}"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-cog"></i> Настройки маппинга
+            </a>
+        </div>
+        <div class="card-body">
+            <!-- Сообщения об успехе/ошибке -->
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <i class="fas fa-check-circle me-2"></i>
+                <span th:text="${success}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Таблица файлов -->
+            <div th:if="${files != null && !files.isEmpty()}" class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th>Имя файла</th>
+                        <th>Дата загрузки</th>
+                        <th>Количество записей</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="file : ${files}">
+                        <td>
+                            <i class="fas fa-file me-2"></i>
+                            <span th:text="${file.originalFilename}"></span>
+                        </td>
+                        <td>
+                            <i class="fas fa-calendar me-2"></i>
+                            <span th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></span>
+                        </td>
+                        <td>
+                            <i class="fas fa-list-ol me-2"></i>
+                            <span th:text="${file.totalRecords}"></span>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary btn-sm"
+                                    onclick="showExportOptions(this)"
+                                    th:data-file-id="${file.id}"
+                                    th:data-file-name="${file.originalFilename}">
+                                <i class="fas fa-download me-1"></i> Экспортировать
+                            </button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Пустое состояние -->
+            <div th:if="${files == null || files.isEmpty()}" class="text-center py-5">
+                <i class="fas fa-file-export fa-3x text-muted mb-3"></i>
+                <h5>Нет доступных файлов</h5>
+                <p class="text-muted">Загрузите файлы через раздел "Загрузка"</p>
+            </div>
+
+            <!-- Форма настроек экспорта (изначально скрыта) -->
+            <div id="exportOptions" class="mt-4" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog me-2"></i>Настройки экспорта
+                            <small class="text-muted" id="selectedFileName"></small>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="exportForm" class="needs-validation" novalidate>
+                            <input type="hidden" id="selectedFileId" name="fileId"/>
+
+                            <div class="mb-3">
+                                <label for="configId" class="form-label">Конфигурация экспорта</label>
+                                <select class="form-select" id="configId" name="configId" required>
+                                    <option value="">Выберите конфигурацию</option>
+                                    <option th:each="config : ${configs}"
+                                            th:value="${config.id}"
+                                            th:text="${config.name}">
+                                    </option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Выберите конфигурацию экспорта
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="fileType" class="form-label">Формат файла</label>
+                                <select class="form-select" id="fileType" name="fileType" required>
+                                    <option value="">Выберите формат</option>
+                                    <option value="CSV">CSV</option>
+                                    <option value="XLSX">Excel (XLSX)</option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Выберите формат файла
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-secondary" onclick="hideExportOptions()">
+                                    <i class="fas fa-times me-2"></i>Отмена
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="exportButton">
+                                    <i class="fas fa-download me-2"></i>Скачать файл
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/navbar :: footer}"></div>
+
+<script th:inline="javascript">
+    function showExportOptions(button) {
+        const fileId = button.getAttribute('data-file-id');
+        const fileName = button.getAttribute('data-file-name');
+        document.getElementById('selectedFileId').value = fileId;
+        document.getElementById('selectedFileName').textContent = ' - ' + fileName;
+        document.getElementById('exportOptions').style.display = 'block';
+
+        // Прокручиваем к форме
+        document.getElementById('exportOptions').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function hideExportOptions() {
+        document.getElementById('exportOptions').style.display = 'none';
+    }
+
+    document.getElementById('exportForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!this.checkValidity()) {
+            e.stopPropagation();
+            this.classList.add('was-validated');
+            return;
+        }
+
+        const fileId = document.getElementById('selectedFileId').value;
+        const configId = document.getElementById('configId').value;
+        const fileType = document.getElementById('fileType').value;
+        const clientId = [[${client.id}]];
+
+        const exportButton = document.getElementById('exportButton');
+        exportButton.disabled = true;
+        exportButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Экспорт...';
+
+        // Создаем URL для скачивания
+        const url = `/client/${clientId}/export/download/${fileId}?configId=${configId}&fileType=${fileType}`;
+
+        // Создаем временную ссылку для скачивания
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Возвращаем кнопку в исходное состояние через 2 секунды
+        setTimeout(() => {
+            exportButton.disabled = false;
+            exportButton.innerHTML = '<i class="fas fa-download me-2"></i>Скачать файл';
+            hideExportOptions();
+        }, 2000);
+    });
+</script>
+
+</body>
+</html>

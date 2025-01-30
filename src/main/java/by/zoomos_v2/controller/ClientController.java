@@ -5,6 +5,8 @@ import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.service.file.input.service.FileUploadService;
+import by.zoomos_v2.service.file.metadata.FileMetadataService;
+import by.zoomos_v2.service.mapping.ExportConfigService;
 import by.zoomos_v2.service.mapping.MappingConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,8 @@ public class ClientController {
     private final ClientService clientService;
     private final FileUploadService fileUploadService;
     private final MappingConfigService mappingConfigService;
+    private final ExportConfigService exportConfigService;
+    private final FileMetadataService fileMetadataService;
 
     /**
      * Отображает список всех клиентов
@@ -63,9 +67,14 @@ public class ClientController {
         try {
             Client client = clientService.getClientById(id);
             model.addAttribute("client", client);
-            // Добавляем данные для вкладки загрузки
-            model.addAttribute("files", fileUploadService.getRecentFiles(id));
+
+            // Данные для вкладки загрузки
+            model.addAttribute("files", fileMetadataService.getFilesByClientId(id));
             model.addAttribute("mappings", mappingConfigService.getMappingsForClient(id));
+
+            // Данные для вкладки экспорта
+            model.addAttribute("configs", exportConfigService.getConfigsByClientId(id));
+
             return "client/dashboard";
         } catch (Exception e) {
             log.error("Ошибка при загрузке dashboard магазина: {}", e.getMessage(), e);
