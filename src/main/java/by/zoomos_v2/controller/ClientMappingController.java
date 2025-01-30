@@ -1,10 +1,10 @@
 package by.zoomos_v2.controller;
 
+import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.mapping.MappingConfigService;
-import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.util.EntityFieldGroup;
 import by.zoomos_v2.util.EntityRegistryService;
 import com.fasterxml.jackson.core.JsonProcessingException;

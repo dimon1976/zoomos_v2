@@ -146,6 +146,30 @@ public class ClientController {
     }
 
     /**
+     * Обрабатывает создание нового клиента
+     * @param client объект клиента с данными
+     * @param redirectAttributes атрибуты для передачи сообщений
+     * @return редирект на список клиентов
+     */
+    @PostMapping("/client/new")
+    @LogExecution("Создание нового магазина")
+    public String createClient(@ModelAttribute Client client,
+                               @RequestParam(value = "active", defaultValue = "false") boolean active,
+                               RedirectAttributes redirectAttributes) {
+        log.debug("Создание нового магазина: {}", client);
+        try {
+            client.setActive(active);
+            clientService.createClient(client);
+            redirectAttributes.addFlashAttribute("success", "Магазин успешно создан");
+            return "redirect:/clients";
+        } catch (Exception e) {
+            log.error("Ошибка при создании магазина: {}", e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error", "Ошибка при создании магазина: " + e.getMessage());
+            return "redirect:/client/new";
+        }
+    }
+
+    /**
      * Обрабатывает удаление клиента
      * @param id идентификатор клиента
      * @param redirectAttributes атрибуты для передачи сообщений
