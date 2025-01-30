@@ -1,10 +1,9 @@
 package by.zoomos_v2.controller;
 
-import by.zoomos_v2.model.FileMetadata;
-import by.zoomos_v2.service.file.input.service.FileUploadService;
-import by.zoomos_v2.service.file.input.service.FileProcessingService;
-import by.zoomos_v2.service.mapping.MappingConfigService;
 import by.zoomos_v2.aspect.LogExecution;
+import by.zoomos_v2.model.FileMetadata;
+import by.zoomos_v2.service.file.input.service.FileProcessingService;
+import by.zoomos_v2.service.file.input.service.FileUploadService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,10 +23,9 @@ import java.util.Map;
 @Controller
 @RequestMapping("/client/{clientId}/files")
 @RequiredArgsConstructor
-public class FileController {
+public class UploadController {
     private final FileUploadService fileUploadService;
     private final FileProcessingService fileProcessingService;
-    private final MappingConfigService mappingConfigService;
     private final ObjectMapper objectMapper;
 
     /**

@@ -1,33 +1,37 @@
+<!-- src/main/resources/templates/client/export-mappings/edit.html -->
+
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Настройка полей экспорта</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${mapping.id == null ? 'Новая настройка экспорта' : 'Редактирование настройки экспорта'}">Настройка экспорта</title>
     <div th:replace="~{fragments/navbar :: header-css}"></div>
     <style>
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+        }
+        .required-field::after {
+            content: "*";
+            color: red;
+            margin-left: 4px;
+        }
         .drag-handle {
             cursor: move;
             padding: 5px;
             color: #666;
         }
-
         .ui-sortable-helper {
             display: table;
             background: white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-
         .ui-sortable-placeholder {
             visibility: visible !important;
             background: #f3f3f3;
             height: 50px;
         }
-
         .table-secondary {
             cursor: default;
         }
-
         #enabledFieldsTable tbody tr:not(.table-secondary):hover {
             background-color: #f5f5f5;
         }
@@ -37,11 +41,9 @@
             border-radius: 4px;
             margin-top: 15px;
         }
-
         .strategy-parameter {
             margin-bottom: 10px;
         }
-
         .strategy-parameter label {
             font-weight: 500;
         }
@@ -50,72 +52,224 @@
 <body>
 <div th:replace="~{fragments/navbar :: header}"></div>
 
-<div class="container">
-    <h2>Настройка полей экспорта</h2>
+<div class="container mt-4">
+    <!-- Хлебные крошки и навигация -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb" class="d-flex align-items-center">
+                <a th:href="@{/}" class="btn btn-sm btn-outline-secondary me-2" title="На главную">
+                    <i class="fas fa-home"></i>
+                </a>
+                <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}" th:text="${client.name}">Магазин</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/client/{id}/export-mappings(id=${client.id})}">Настройки экспорта</a>
+                    </li>
+                    <li class="breadcrumb-item active"
+                        th:text="${mapping.id == null ? 'Новая настройка' : 'Редактирование настройки'}">
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
 
-    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
-    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
-
-    <!-- Форма редактирования маппинга -->
-    <form th:action="${config.id == null ?
-                  '/client/' + clientId + '/export-mappings/create' :
-                  '/client/' + clientId + '/export-mappings/' + config.id + '/update'}"
-          method="post" id="exportForm" class="needs-validation" novalidate>
-
-        <div class="mb-4">
-            <label for="configName" class="form-label">Название конфигурации</label>
-            <input type="text" class="form-control" id="configName"
-                   name="configName" th:value="${config.name}" required>
-            <div class="invalid-feedback">
-                Необходимо указать название конфигурации
+    <!-- Основное содержимое -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title h5 mb-0">
+                <i class="fas fa-download me-2"></i>
+                <span th:text="${mapping.id == null ? 'Новая настройка экспорта' : 'Редактирование настройки экспорта'}"></span>
+            </h2>
+        </div>
+        <div class="card-body">
+            <!-- Сообщения об успехе/ошибке -->
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <i class="fas fa-check-circle me-2"></i>
+                <span th:text="${success}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-        </div>
-
-        <div class="mb-4">
-            <label for="configDescription" class="form-label">Описание</label>
-            <textarea class="form-control" id="configDescription"
-                      name="configDescription" rows="3" th:text="${config.description}">
-        </textarea>
-        </div>
-
-        <!-- Стратегия -->
-        <div class="mb-4">
-            <label for="strategyType" class="form-label">Стратегия обработки</label>
-            <select class="form-select" id="strategyType" name="strategyType" required>
-                <option value="">Выберите стратегию</option>
-                <option th:each="strategy : ${strategies}"
-                        th:value="${strategy}"
-                        th:text="${strategy.displayName}"
-                        th:selected="${config.strategyType == strategy}">
-                </option>
-            </select>
-            <div class="invalid-feedback">
-                Необходимо выбрать стратегию обработки
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <span th:text="${error}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
+
+            <!-- Форма настройки -->
+            <form th:action="${mapping.id == null ?
+                            '/client/' + client.id + '/export-mappings/create' :
+                            '/client/' + client.id + '/export-mappings/' + mapping.id + '/update'}"
+                  method="post" id="exportForm">
+
+                <!-- Основные настройки -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="configName" class="form-label required-field">Название конфигурации</label>
+                            <input type="text" class="form-control" id="configName" name="configName"
+                                   th:value="${mapping.name}" required
+                                   placeholder="Введите название конфигурации">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="configDescription" class="form-label">Описание</label>
+                            <input type="text" class="form-control" id="configDescription" name="configDescription"
+                                   th:value="${mapping.description}"
+                                   placeholder="Добавьте описание конфигурации">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Стратегия обработки -->
+                <div class="mb-4">
+                    <label for="strategyType" class="form-label required-field">Стратегия обработки данных</label>
+                    <select class="form-select" id="strategyType" name="strategyType" required>
+                        <option value="">Выберите стратегию</option>
+                        <option th:each="strategy : ${strategies}"
+                                th:value="${strategy}"
+                                th:text="${strategy.displayName}"
+                                th:title="${strategy.description}"
+                                th:selected="${mapping.strategyType == strategy}">
+                        </option>
+                    </select>
+                    <div class="form-text">Выберите способ обработки данных перед экспортом</div>
+
+                    <!-- Параметры стратегии -->
+                    <div id="strategyParameters" class="mt-3" style="display: none;">
+                        <h5 class="mb-3">Параметры стратегии</h5>
+                        <div id="parameterFields">
+                            <!-- Поля параметров добавляются динамически -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Настройка полей -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="mb-3">Активные поля</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="enabledFieldsTable">
+                                <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Название поля</th>
+                                    <th>Ключ поля</th>
+                                    <th>Позиция</th>
+                                    <th>Действия</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <!-- Группы полей -->
+                                <th:block th:each="group : ${groupedEnabledFields}">
+                                    <tr class="table-secondary">
+                                        <td colspan="5" th:text="${group.key}"></td>
+                                    </tr>
+                                    <!-- Поля группы -->
+                                    <th:block th:each="field : ${group.value}">
+                                        <tr>
+                                            <td class="drag-handle">
+                                                <i class="fas fa-grip-vertical"></i>
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control field-display-name"
+                                                       th:value="${field.displayName}"
+                                                       th:attr="name='fields[' + ${field.sourceField} + '].displayName'">
+                                            </td>
+                                            <td th:text="${field.sourceField}"></td>
+                                            <td th:text="${field.position}" class="position-display"></td>
+                                            <td>
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-mapping">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </th:block>
+                                </th:block>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="mb-3">Доступные поля</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="disabledFieldsTable">
+                                <thead>
+                                <tr>
+                                    <th>Название поля</th>
+                                    <th>Ключ поля</th>
+                                    <th>Действия</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <!-- Группы полей -->
+                                <th:block th:each="group : ${groupedDisabledFields}">
+                                    <tr class="table-secondary">
+                                        <td colspan="3" th:text="${group.key}"></td>
+                                    </tr>
+                                    <!-- Поля группы -->
+                                    <th:block th:each="field : ${group.value}">
+                                        <tr>
+                                            <td th:text="${field.displayName}"></td>
+                                            <td th:text="${field.sourceField}"></td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-success add-field"
+                                                        th:attr="data-source-field=${field.sourceField},
+                                                                 data-display-name=${field.displayName}">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </th:block>
+                                </th:block>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки действий -->
+                <div class="d-flex gap-2 justify-content-between mt-4">
+                    <div>
+                        <a th:href="@{/client/{id}/export-mappings(id=${client.id})}"
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Отмена
+                        </a>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Сохранить
+                        </button>
+                        <th:block th:if="${mapping.id != null}">
+                            <button type="button" class="btn btn-warning"
+                                    onclick="if(confirm('Сбросить настройки к значениям по умолчанию?')) {
+                                        window.location.href=this.getAttribute('data-reset-url');
+                                    }"
+                                    th:data-reset-url="@{/client/{id}/export-mappings/{mappingId}/reset(id=${client.id},mappingId=${mapping.id})}">
+                                <i class="fas fa-undo me-2"></i>Сбросить
+                            </button>
+                        </th:block>
+                    </div>
+                </div>
+
+                <input type="hidden" name="positionsJson" id="positionsJson">
+            </form>
         </div>
-
-        <!-- Кнопки действий -->
-        <div class="d-flex gap-2 justify-content-end mb-4">
-            <a th:href="@{/client/{id}/export-mappings(id=${clientId})}"
-               class="btn btn-outline-secondary">
-                <i class="fas fa-times me-2"></i>Отмена
-            </a>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save me-2"></i>
-                <span th:text="${config.id == null ? 'Создать' : 'Сохранить'}"></span>
-            </button>
-        </div>
-
-        <!-- Остальные части формы остаются без изменений -->
-    </form>
-
-
+    </div>
 </div>
 
 <div th:replace="~{fragments/navbar :: footer}"></div>
 
+<!-- JavaScript код остается тем же -->
 <script th:inline="javascript">
     $(document).ready(function() {
+        const clientId = /*[[${client.id}]]*/ null;
         // Инициализация сортировки
         $('#enabledFieldsTable tbody').sortable({
             items: 'tr:not(.table-secondary)',
@@ -134,20 +288,6 @@
             }
         });
         const strategyParameters = /*[[${strategyParameters}]]*/ {};
-        const clientId = [[${clientId}]];
-
-        // Обновляем URL для параметров стратегии
-        function updateStrategyParams(strategyType, parameters) {
-            fetch(`/client/${clientId}/export-mappings/strategy-params/${strategyType}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    [document.querySelector('meta[name="_csrf_header"]').content]:
-                    document.querySelector('meta[name="_csrf"]').content
-                },
-                body: JSON.stringify(parameters)
-            });
-        }
 
         // Обработчик изменения типа стратегии
         document.getElementById('strategyType').addEventListener('change', function() {
@@ -208,8 +348,8 @@
                 <td>${sourceField}</td>
                 <td class="position-display">0</td>
                 <td>
-                    <button type="button" class="btn btn-sm btn-danger remove-field">
-                        <i class="fas fa-trash"></i>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-mapping">
+                        <i class="fas fa-times"></i>
                     </button>
                 </td>
             </tr>
@@ -260,7 +400,7 @@
                 });
 
                 // Отправляем параметры стратегии
-                fetch(`/client/${clientId}/exportmapping/strategy-params/${selectedStrategy}`, {
+                fetch(`/client/${client.id}/export-mappings/strategy-params/${selectedStrategy}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
