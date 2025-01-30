@@ -1,7 +1,7 @@
+<!-- src/main/resources/templates/files/status.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
     <title>Статус обработки файла</title>
     <div th:replace="~{fragments/navbar :: header-css}"></div>
 </head>
@@ -9,54 +9,94 @@
 <div th:replace="~{fragments/navbar :: header}"></div>
 
 <div class="container mt-4">
+    <!-- Навигация -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb" class="d-flex align-items-center">
+                <a th:href="@{/}" class="btn btn-sm btn-outline-secondary me-2" title="На главную">
+                    <i class="fas fa-home"></i>
+                </a>
+                <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
+                    <i class="fas fa-store"></i>
+                </a>
+                <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
+                   class="btn btn-sm btn-outline-secondary me-2" title="К панели управления">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/client/{id}/dashboard(id=${clientId})}">Панель управления</a>
+                    </li>
+                    <li class="breadcrumb-item active">Статус обработки файла</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-8 offset-md-2">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Статус обработки файла</h2>
+                    <h2 class="card-title h5 mb-0">
+                        <i class="fas fa-tasks me-2"></i>Статус обработки файла
+                    </h2>
                 </div>
                 <div class="card-body">
                     <!-- Сообщения об успехе/ошибке -->
                     <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>
                         <span th:text="${success}"></span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                     <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
                         <span th:text="${error}"></span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
 
                     <!-- Информация о файле -->
                     <div class="mb-4">
-                        <h5>Информация о файле</h5>
-                        <dl class="row">
-                            <dt class="col-sm-3">Имя файла</dt>
-                            <dd class="col-sm-9" th:text="${file.originalFilename}"></dd>
-
-                            <dt class="col-sm-3">Тип файла</dt>
-                            <dd class="col-sm-9" th:text="${file.fileType}"></dd>
-
-                            <dt class="col-sm-3">Статус</dt>
-                            <dd class="col-sm-9">
-                                    <span th:class="${'badge ' +
-                                        (file.status == 'COMPLETED' ? 'bg-success' :
-                                         file.status == 'ERROR' ? 'bg-danger' :
-                                         file.status == 'PROCESSING' ? 'bg-primary' :
-                                         file.status == 'CANCELLED' ? 'bg-warning' : 'bg-secondary')}"
-                                          th:text="${file.status}">
-                                    </span>
-                            </dd>
-
-                            <dt class="col-sm-3">Загружен</dt>
-                            <dd class="col-sm-9" th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></dd>
-                        </dl>
+                        <h5><i class="fas fa-info-circle me-2"></i>Информация о файле</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tbody>
+                                <tr>
+                                    <th style="width: 30%">Имя файла</th>
+                                    <td th:text="${file.originalFilename}"></td>
+                                </tr>
+                                <tr>
+                                    <th>Тип файла</th>
+                                    <td th:text="${file.fileType}"></td>
+                                </tr>
+                                <tr>
+                                    <th>Статус</th>
+                                    <td>
+                                            <span th:class="${'badge ' +
+                                                (file.status == 'COMPLETED' ? 'bg-success' :
+                                                 file.status == 'ERROR' ? 'bg-danger' :
+                                                 file.status == 'COMPLETED_WITH_ERRORS' ? 'bg-warning' :
+                                                 file.status == 'PROCESSING' ? 'bg-primary' :
+                                                 file.status == 'CANCELLED' ? 'bg-secondary' : 'bg-secondary')}"
+                                                  th:text="${file.status}">
+                                            </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Загружен</th>
+                                    <td th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <!-- Прогресс обработки -->
                     <div class="mb-4" th:if="${processingStatus != null}">
-                        <h5>Прогресс обработки</h5>
-                        <div class="progress mb-2">
-                            <div class="progress-bar" role="progressbar"
+                        <h5><i class="fas fa-spinner me-2"></i>Прогресс обработки</h5>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 role="progressbar"
                                  th:style="'width: ' + ${processingStatus.progress} + '%'"
                                  th:aria-valuenow="${processingStatus.progress}"
                                  aria-valuemin="0"
@@ -64,34 +104,40 @@
                                 <span th:text="${processingStatus.progress + '%'}"></span>
                             </div>
                         </div>
-                        <p class="text-muted" th:text="${processingStatus.message}"></p>
+                        <p class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <span th:text="${processingStatus.message}"></span>
+                        </p>
                     </div>
 
                     <!-- Сообщение об ошибке -->
                     <div class="mb-4" th:if="${file.errorMessage}">
-                        <h5>Ошибка обработки</h5>
-                        <div class="alert alert-danger" th:text="${file.errorMessage}"></div>
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Ошибка обработки</h5>
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle me-2"></i>
+                            <span th:text="${file.errorMessage}"></span>
+                        </div>
                     </div>
 
                     <!-- Кнопки действий -->
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a th:href="@{/client/{clientId}/files(clientId=${clientId})}"
-                           class="btn btn-secondary me-md-2">
-                            <i class="fas fa-arrow-left"></i> Назад к списку
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>К панели управления
                         </a>
 
                         <form th:if="${file.status == 'PROCESSING'}"
-                              th:action="@{/client/{clientId}/files/status/{fileId}/cancel(clientId=${clientId},fileId=${file.id})}"
+                              th:action="@{/client/{id}/files/status/{fileId}/cancel(id=${clientId},fileId=${file.id})}"
                               method="post" class="d-inline">
                             <button type="submit" class="btn btn-warning">
-                                <i class="fas fa-stop-circle"></i> Отменить обработку
+                                <i class="fas fa-stop-circle me-2"></i>Отменить обработку
                             </button>
                         </form>
 
-                        <a th:if="${file.status == 'COMPLETED'}"
-                           th:href="@{/client/{clientId}/files/{fileId}/statistics(fileId=${file.id},clientId=${clientId})}"
-                           class="btn btn-success">
-                            <i class="fas fa-chart-bar"></i> Просмотр результатов
+                        <a th:if="${file.status == 'COMPLETED' or file.status == 'COMPLETED_WITH_ERRORS'}"
+                           th:href="@{/client/{id}/files/{fileId}/statistics(id=${clientId},fileId=${file.id})}"
+                           class="btn btn-primary">
+                            <i class="fas fa-chart-bar me-2"></i>Просмотр результатов
                         </a>
                     </div>
                 </div>
@@ -110,32 +156,42 @@
             .then(html => {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const newStatus = doc.querySelector('.progress-bar');
-                const newMessage = doc.querySelector('.text-muted');
 
-                if (newStatus) {
-                    document.querySelector('.progress-bar').style.width = newStatus.style.width;
-                    document.querySelector('.progress-bar').setAttribute('aria-valuenow',
-                        newStatus.getAttribute('aria-valuenow'));
-                    document.querySelector('.progress-bar span').textContent =
-                        newStatus.querySelector('span').textContent;
+                // Обновление прогресс-бара
+                const newProgress = doc.querySelector('.progress-bar');
+                const currentProgress = document.querySelector('.progress-bar');
+                if (newProgress && currentProgress) {
+                    currentProgress.style.width = newProgress.style.width;
+                    currentProgress.setAttribute('aria-valuenow',
+                        newProgress.getAttribute('aria-valuenow'));
+                    currentProgress.querySelector('span').textContent =
+                        newProgress.querySelector('span').textContent;
                 }
 
-                if (newMessage) {
-                    document.querySelector('.text-muted').textContent = newMessage.textContent;
+                // Обновление сообщения о статусе
+                const newMessage = doc.querySelector('.text-muted span');
+                const currentMessage = document.querySelector('.text-muted span');
+                if (newMessage && currentMessage) {
+                    currentMessage.textContent = newMessage.textContent;
                 }
 
-                // Перезагружаем страницу, если статус изменился
+                // Проверка изменения статуса
                 const currentStatus = document.querySelector('.badge').textContent.trim();
-                const newStatusBadge = doc.querySelector('.badge').textContent.trim();
-                if (currentStatus !== newStatusBadge) {
+                const newStatus = doc.querySelector('.badge').textContent.trim();
+                if (currentStatus !== newStatus) {
                     window.location.reload();
                 }
-            });
+            })
+            .catch(error => console.error('Ошибка обновления статуса:', error));
     }
 
     // Обновляем статус каждые 5 секунд
-    setInterval(updateStatus, 5000);
+    const updateInterval = setInterval(updateStatus, 5000);
+
+    // Очищаем интервал при уходе со страницы
+    window.addEventListener('beforeunload', () => {
+        clearInterval(updateInterval);
+    });
 </script>
 </body>
 </html>
