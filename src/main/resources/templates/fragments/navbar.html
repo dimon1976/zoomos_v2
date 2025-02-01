@@ -1,4 +1,132 @@
 <!-- src/main/resources/templates/fragments/navbar.html -->
+<!--<!DOCTYPE html>-->
+<!--<html xmlns:th="http://www.thymeleaf.org">-->
+<!--<head th:fragment="header-css">-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1">-->
+<!--    <title>Zoomos</title>-->
+<!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">-->
+<!--    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">-->
+<!--    <link th:href="@{/css/styles.css}" rel="stylesheet">-->
+<!--    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">-->
+<!--    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>-->
+<!--    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>-->
+<!--</head>-->
+<!--<body>-->
+<!--&lt;!&ndash; Основная навигация &ndash;&gt;-->
+<!--<div th:fragment="header">-->
+<!--    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">-->
+<!--        <div class="container">-->
+<!--            <a class="navbar-brand" th:href="@{/}">-->
+<!--                <i class="fas fa-home"></i> Zoomos-->
+<!--            </a>-->
+<!--            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">-->
+<!--                <span class="navbar-toggler-icon"></span>-->
+<!--            </button>-->
+<!--            <div class="collapse navbar-collapse" id="mainNavbar">-->
+<!--                <ul class="navbar-nav me-auto">-->
+<!--                    &lt;!&ndash; Магазины &ndash;&gt;-->
+<!--                    <li class="nav-item">-->
+<!--                        <a class="nav-link" th:href="@{/clients}">-->
+<!--                            <i class="fas fa-store"></i> Магазины-->
+<!--                        </a>-->
+<!--                    </li>-->
+<!--                    &lt;!&ndash; Статистика &ndash;&gt;-->
+<!--                    <li class="nav-item dropdown">-->
+<!--                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">-->
+<!--                            <i class="fas fa-chart-line"></i> Статистика-->
+<!--                        </a>-->
+<!--                        <ul class="dropdown-menu">-->
+<!--                            <li><a class="dropdown-item" th:href="@{/statistics/operations}">-->
+<!--                                <i class="fas fa-tasks"></i> Операции-->
+<!--                            </a></li>-->
+<!--                            <li><a class="dropdown-item" th:href="@{/statistics/uploads}">-->
+<!--                                <i class="fas fa-upload"></i> Загрузки-->
+<!--                            </a></li>-->
+<!--                            <li><a class="dropdown-item" th:href="@{/statistics/exports}">-->
+<!--                                <i class="fas fa-download"></i> Выгрузки-->
+<!--                            </a></li>-->
+<!--                        </ul>-->
+<!--                    </li>-->
+<!--                    &lt;!&ndash; Утилиты &ndash;&gt;-->
+<!--                    <li class="nav-item">-->
+<!--                        <a class="nav-link" th:href="@{/utils}">-->
+<!--                            <i class="fas fa-tools"></i> Утилиты-->
+<!--                        </a>-->
+<!--                    </li>-->
+<!--                </ul>-->
+<!--                <form th:action="@{/logout}" method="post" class="d-flex">-->
+<!--                    <button class="btn btn-outline-light" type="submit">-->
+<!--                        <i class="fas fa-sign-out-alt"></i> Выйти-->
+<!--                    </button>-->
+<!--                </form>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </nav>-->
+<!--</div>-->
+
+<!--&lt;!&ndash; Навигация для клиента &ndash;&gt;-->
+<!--<div th:fragment="client-header">-->
+<!--    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">-->
+<!--        <div class="container">-->
+<!--            <a class="navbar-brand" th:href="@{/}">-->
+<!--                <i class="fas fa-home"></i> Zoomos-->
+<!--            </a>-->
+<!--            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#clientNavbar">-->
+<!--                <span class="navbar-toggler-icon"></span>-->
+<!--            </button>-->
+<!--            <div class="collapse navbar-collapse" id="clientNavbar">-->
+<!--                <ul class="navbar-nav me-auto">-->
+<!--                    <li class="nav-item">-->
+<!--                        <a class="nav-link" th:href="@{/clients}">-->
+<!--                            <i class="fas fa-store"></i> Магазины-->
+<!--                        </a>-->
+<!--                    </li>-->
+<!--                    &lt;!&ndash; Группа настроек клиента &ndash;&gt;-->
+<!--                    <li class="nav-item dropdown">-->
+<!--                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">-->
+<!--                            <i class="fas fa-cog"></i> Управление-->
+<!--                        </a>-->
+<!--                        <ul class="dropdown-menu">-->
+<!--                            <li><a class="dropdown-item" th:href="@{/client/{id}/settings(id=${client.id})}">-->
+<!--                                <i class="fas fa-sliders-h"></i> Настройки-->
+<!--                            </a></li>-->
+<!--                            <li><a class="dropdown-item" th:href="@{/client/{id}/files(id=${client.id})}">-->
+<!--                                <i class="fas fa-file"></i> Файлы-->
+<!--                            </a></li>-->
+<!--                        </ul>-->
+<!--                    </li>-->
+<!--                    &lt;!&ndash; Группа маппингов &ndash;&gt;-->
+<!--                    <li class="nav-item dropdown">-->
+<!--                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">-->
+<!--                            <i class="fas fa-exchange-alt"></i> Маппинг-->
+<!--                        </a>-->
+<!--                        <ul class="dropdown-menu">-->
+<!--                            <li><a class="dropdown-item" th:href="@{/client/{id}/uploadmapping(id=${client.id})}">-->
+<!--                                <i class="fas fa-upload"></i> Загрузка-->
+<!--                            </a></li>-->
+<!--                            <li><a class="dropdown-item" th:href="@{/client/{id}/exportmapping(id=${client.id})}">-->
+<!--                                <i class="fas fa-download"></i> Выгрузка-->
+<!--                            </a></li>-->
+<!--                        </ul>-->
+<!--                    </li>-->
+<!--                </ul>-->
+<!--                <form th:action="@{/logout}" method="post" class="d-flex">-->
+<!--                    <button class="btn btn-outline-light" type="submit">-->
+<!--                        <i class="fas fa-sign-out-alt"></i> Выйти-->
+<!--                    </button>-->
+<!--                </form>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </nav>-->
+<!--</div>-->
+
+<!--<div th:fragment="footer">-->
+<!--    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>-->
+<!--</div>-->
+
+<!--</body>-->
+<!--</html>-->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:fragment="header-css">
@@ -13,8 +141,7 @@
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 </head>
 <body>
-<!-- Основная навигация -->
-<div th:fragment="header">
+<div th:fragment="navbar(activeMenu)">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
@@ -27,13 +154,47 @@
                 <ul class="navbar-nav me-auto">
                     <!-- Магазины -->
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/clients}">
+                        <a class="nav-link" th:classappend="${activeMenu == 'clients'} ? 'active'" th:href="@{/clients}">
                             <i class="fas fa-store"></i> Магазины
                         </a>
                     </li>
+
+                    <!-- Клиентское меню (отображается только при наличии client в контексте) -->
+                    <th:block th:if="${client != null}">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" th:classappend="${activeMenu == 'client-management'} ? 'active'"
+                               href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-cog"></i> Управление
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" th:href="@{/client/{id}/settings(id=${client.id})}">
+                                    <i class="fas fa-sliders-h"></i> Настройки
+                                </a></li>
+                                <li><a class="dropdown-item" th:href="@{/client/{id}/files(id=${client.id})}">
+                                    <i class="fas fa-file"></i> Файлы
+                                </a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" th:classappend="${activeMenu == 'client-mapping'} ? 'active'"
+                               href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-exchange-alt"></i> Маппинг
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" th:href="@{/client/{id}/uploadmapping(id=${client.id})}">
+                                    <i class="fas fa-upload"></i> Загрузка
+                                </a></li>
+                                <li><a class="dropdown-item" th:href="@{/client/{id}/exportmapping(id=${client.id})}">
+                                    <i class="fas fa-download"></i> Выгрузка
+                                </a></li>
+                            </ul>
+                        </li>
+                    </th:block>
+
                     <!-- Статистика -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle" th:classappend="${activeMenu == 'statistics'} ? 'active'"
+                           href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-chart-line"></i> Статистика
                         </a>
                         <ul class="dropdown-menu">
@@ -48,74 +209,24 @@
                             </a></li>
                         </ul>
                     </li>
+
                     <!-- Утилиты -->
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/utils}">
+                        <a class="nav-link" th:classappend="${activeMenu == 'utils'} ? 'active'" th:href="@{/utils}">
                             <i class="fas fa-tools"></i> Утилиты
                         </a>
                     </li>
                 </ul>
-                <form th:action="@{/logout}" method="post" class="d-flex">
-                    <button class="btn btn-outline-light" type="submit">
-                        <i class="fas fa-sign-out-alt"></i> Выйти
-                    </button>
-                </form>
-            </div>
-        </div>
-    </nav>
-</div>
 
-<!-- Навигация для клиента -->
-<div th:fragment="client-header">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-home"></i> Zoomos
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#clientNavbar">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="clientNavbar">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" th:href="@{/clients}">
-                            <i class="fas fa-store"></i> Магазины
-                        </a>
-                    </li>
-                    <!-- Группа настроек клиента -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-cog"></i> Управление
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" th:href="@{/client/{id}/settings(id=${client.id})}">
-                                <i class="fas fa-sliders-h"></i> Настройки
-                            </a></li>
-                            <li><a class="dropdown-item" th:href="@{/client/{id}/files(id=${client.id})}">
-                                <i class="fas fa-file"></i> Файлы
-                            </a></li>
-                        </ul>
-                    </li>
-                    <!-- Группа маппингов -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-exchange-alt"></i> Маппинг
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" th:href="@{/client/{id}/uploadmapping(id=${client.id})}">
-                                <i class="fas fa-upload"></i> Загрузка
-                            </a></li>
-                            <li><a class="dropdown-item" th:href="@{/client/{id}/exportmapping(id=${client.id})}">
-                                <i class="fas fa-download"></i> Выгрузка
-                            </a></li>
-                        </ul>
-                    </li>
-                </ul>
-                <form th:action="@{/logout}" method="post" class="d-flex">
-                    <button class="btn btn-outline-light" type="submit">
-                        <i class="fas fa-sign-out-alt"></i> Выйти
-                    </button>
-                </form>
+                <!-- Профиль и выход -->
+                <div class="d-flex align-items-center">
+                    <span class="text-light me-3" th:if="${client != null}" th:text="${client.name}"></span>
+                    <form th:action="@{/logout}" method="post">
+                        <button class="btn btn-outline-light" type="submit">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </nav>
@@ -123,6 +234,19 @@
 
 <div th:fragment="footer">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Активация текущего пункта меню
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
 </div>
 
 </body>

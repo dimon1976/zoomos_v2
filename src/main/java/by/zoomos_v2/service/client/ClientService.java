@@ -95,4 +95,14 @@ public class ClientService {
         clientRepository.deleteById(id);
         log.info("Клиент с ID: {} успешно удален", id);
     }
+
+    /**
+     * Получает количество активных клиентов
+     * @return количество активных клиентов
+     */
+    @Transactional(readOnly = true)
+    public long getActiveClientsCount() {
+        log.debug("Получение количества активных клиентов");
+        return clientRepository.countByActiveTrue();
+    }
 }

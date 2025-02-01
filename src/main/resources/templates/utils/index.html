@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/navbar :: header-css">
+</head>
+<body>
+<div th:replace="fragments/navbar :: navbar(activeMenu='utils')">
+</div>
+
+<div class="container mt-4">
+  <!-- Заголовок -->
+  <div class="row mb-4">
+    <div class="col">
+      <h1 class="display-5">
+        <i class="fas fa-tools"></i> Утилиты
+      </h1>
+    </div>
+  </div>
+
+  <!-- Основное содержимое -->
+  <div class="row">
+    <!-- Валидация файлов -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="fas fa-check-circle"></i> Валидация файлов
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="card-text">Проверка структуры и содержимого файлов перед загрузкой.</p>
+          <form id="fileValidationForm" class="mt-3">
+            <div class="mb-3">
+              <label for="validationFile" class="form-label">Выберите файл</label>
+              <input type="file" class="form-control" id="validationFile" name="file">
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-check"></i> Проверить
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Конвертация форматов -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="fas fa-exchange-alt"></i> Конвертация форматов
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="card-text">Преобразование файлов между форматами CSV и XLSX.</p>
+          <form id="conversionForm" class="mt-3">
+            <div class="mb-3">
+              <label for="conversionFile" class="form-label">Выберите файл</label>
+              <input type="file" class="form-control" id="conversionFile" name="file">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Формат назначения</label>
+              <div class="btn-group w-100">
+                <input type="radio" class="btn-check" name="targetFormat" id="csvFormat" value="csv" autocomplete="off" checked>
+                <label class="btn btn-outline-primary" for="csvFormat">CSV</label>
+                <input type="radio" class="btn-check" name="targetFormat" id="xlsxFormat" value="xlsx" autocomplete="off">
+                <label class="btn btn-outline-primary" for="xlsxFormat">XLSX</label>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-sync"></i> Конвертировать
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Анализ данных -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="fas fa-chart-bar"></i> Анализ данных
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="card-text">Базовый анализ содержимого файлов: статистика, распределение значений.</p>
+          <form id="analysisForm" class="mt-3">
+            <div class="mb-3">
+              <label for="analysisFile" class="form-label">Выберите файл</label>
+              <input type="file" class="form-control" id="analysisFile" name="file">
+            </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="includeCharts" checked>
+                <label class="form-check-label" for="includeCharts">
+                  Включить графики
+                </label>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-search"></i> Анализировать
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Очистка данных -->
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="fas fa-broom"></i> Очистка данных
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="card-text">Удаление дубликатов, нормализация значений, обработка пустых полей.</p>
+          <form id="cleaningForm" class="mt-3">
+            <div class="mb-3">
+              <label for="cleaningFile" class="form-label">Выберите файл</label>
+              <input type="file" class="form-control" id="cleaningFile" name="file">
+            </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="removeDuplicates" checked>
+                <label class="form-check-label" for="removeDuplicates">
+                  Удалить дубликаты
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="normalizeValues" checked>
+                <label class="form-check-label" for="normalizeValues">
+                  Нормализовать значения
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="handleEmpty" checked>
+                <label class="form-check-label" for="handleEmpty">
+                  Обработать пустые поля
+                </label>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-magic"></i> Очистить
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно результатов -->
+<div class="modal fade" id="resultsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Результаты обработки</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Содержимое будет добавлено динамически -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+        <button type="button" class="btn btn-primary" id="downloadResult">
+          <i class="fas fa-download"></i> Скачать результат
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div th:replace="fragments/navbar :: footer">
+</div>
+
+<script th:inline="javascript">
+  // Обработка формы валидации
+  document.getElementById('fileValidationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('file', document.getElementById('validationFile').files[0]);
+
+    fetch('/utils/validate', {
+      method: 'POST',
+      body: formData
+    })
+            .then(response => response.json())
+            .then(result => showResults('Результаты валидации', result))
+            .catch(error => showError('Ошибка при валидации файла'));
+  });
+
+  // Обработка формы конвертации
+  document.getElementById('conversionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('file', document.getElementById('conversionFile').files[0]);
+    formData.append('targetFormat', document.querySelector('input[name="targetFormat"]:checked').value);
+
+    fetch('/utils/convert', {
+      method: 'POST',
+      body: formData
+    })
+            .then(response => response.blob())
+            .then(blob => {
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'converted.' + document.querySelector('input[name="targetFormat"]:checked').value;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+            })
+            .catch(error => showError('Ошибка при конвертации файла'));
+  });
+
+  // Обработка формы анализа
+  document.getElementById('analysisForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('file', document.getElementById('analysisFile').files[0]);
+    formData.append('includeCharts', document.getElementById('includeCharts').checked);
+
+    fetch('/utils/analyze', {
+      method: 'POST',
+      body: formData
+    })
+            .then(response => response.json())
+            .then(result => showResults('Результаты анализа', result))
+            .catch(error => showError('Ошибка при анализе файла'));
+  });
+
+  // Обработка формы очистки
+  document.getElementById('cleaningForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append('file', document.getElementById('cleaningFile').files[0]);
+    formData.append('removeDuplicates', document.getElementById('removeDuplicates').checked);
+    formData.append('normalizeValues', document.getElementById('normalizeValues').checked);
+    formData.append('handleEmpty', document.getElementById('handleEmpty').checked);
+
+    fetch('/utils/clean', {
+      method: 'POST',
+      body: formData
+    })
+            .then(response => response.json())
+            .then(result => showResults('Результаты очистки', result))
+            .catch(error => showError('Ошибка при очистке файла'));
+  });
+
+  // Функция отображения результатов
+  function showResults(title, results) {
+    const modal = new bootstrap.Modal(document.getElementById('resultsModal'));
+    document.querySelector('#resultsModal .modal-title').textContent = title;
+
+    let content = '<div class="results-container">';
+    if (results.summary) {
+      content += `<div class="alert alert-info">${results.summary}</div>`;
+    }
+    if (results.details) {
+      content += '<div class="table-responsive"><table class="table">';
+      for (const [key, value] of Object.entries(results.details)) {
+        content += `<tr><td>${key}</td><td>${value}</td></tr>`;
+      }
+      content += '</table></div>';
+    }
+    if (results.charts) {
+      content += '<div class="charts-container mt-3">';
+      results.charts.forEach(chart => {
+        content += `<div class="chart-wrapper mb-3">${chart}</div>`;
+      });
+      content += '</div>';
+    }
+    content += '</div>';
+
+    document.querySelector('#resultsModal .modal-body').innerHTML = content;
+    modal.show();
+  }
+
+  // Функция отображения ошибки
+  function showError(message) {
+    const modal = new bootstrap.Modal(document.getElementById('resultsModal'));
+    document.querySelector('#resultsModal .modal-title').textContent = 'Ошибка';
+    document.querySelector('#resultsModal .modal-body').innerHTML =
+            `<div class="alert alert-danger">${message}</div>`;
+    document.getElementById('downloadResult').style.display = 'none';
+    modal.show();
+  }
+</script>
+
+</body>
+</html>

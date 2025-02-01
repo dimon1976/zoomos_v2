@@ -1,34 +1,129 @@
-/* src/main/resources/static/css/styles.css */
+/* Navbar styles */
 .navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
     margin-bottom: 20px;
 }
 
-.table-responsive {
-    margin-top: 20px;
+.navbar-dark .navbar-nav .nav-link {
+    color: rgba(255,255,255,.8);
+    padding: 0.5rem 1rem;
+    transition: color 0.3s ease;
 }
 
-.alert {
-    margin-top: 20px;
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link.active {
+    color: #fff;
+    background-color: rgba(255,255,255,.1);
+    border-radius: 4px;
 }
 
-.btn-toolbar {
-    margin-bottom: 20px;
-}
-
+/* Card styles */
 .card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
     margin-bottom: 20px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.form-group {
-    margin-bottom: 15px;
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,.2);
 }
 
-.progress {
-    height: 20px;
-    margin-bottom: 20px;
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0,0,0,.1);
+    padding: 1rem 1.25rem;
 }
 
+.card-title {
+    margin-bottom: 0;
+    font-weight: 600;
+}
+
+/* Table styles */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    border-top: none;
+    border-bottom-width: 1px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.table tbody tr {
+    transition: background-color 0.3s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0,0,0,.03);
+}
+
+/* Badge styles */
 .badge {
-    font-size: 0.9em;
-    padding: 5px 10px;
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+    border-radius: 4px;
+}
+
+/* Button styles */
+.btn {
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-success:hover,
+.btn-outline-info:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+/* Stats card styles */
+.bg-primary, .bg-success, .bg-info, .bg-warning {
+    position: relative;
+    overflow: hidden;
+}
+
+.bg-primary::after,
+.bg-success::after,
+.bg-info::after,
+.bg-warning::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1), transparent);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-deck {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Animation for statistics numbers */
+.display-6 {
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

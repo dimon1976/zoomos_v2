@@ -10,4 +10,10 @@ import java.util.Optional;
 public interface ClientRepository extends JpaRepository<Client, Long> {
 
     Optional<Client> findByName(String name);
+
+    /**
+     * Подсчитывает количество активных клиентов
+     * @return количество активных клиентов
+     */
+    long countByActiveTrue();
 }
