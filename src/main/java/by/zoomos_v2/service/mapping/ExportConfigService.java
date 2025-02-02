@@ -1,8 +1,8 @@
 package by.zoomos_v2.service.mapping;
 
 import by.zoomos_v2.exception.ValidationException;
-import by.zoomos_v2.model.ExportConfig;
-import by.zoomos_v2.model.ExportField;
+import by.zoomos_v2.model.export.ExportConfig;
+import by.zoomos_v2.model.export.ExportField;
 import by.zoomos_v2.repository.ClientRepository;
 import by.zoomos_v2.repository.ExportConfigRepository;
 import by.zoomos_v2.util.EntityField;

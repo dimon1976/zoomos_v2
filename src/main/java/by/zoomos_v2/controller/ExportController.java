@@ -2,9 +2,9 @@ package by.zoomos_v2.controller;
 
 import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.model.Client;
-import by.zoomos_v2.model.ExportConfig;
-import by.zoomos_v2.model.ExportField;
-import by.zoomos_v2.model.ExportResult;
+import by.zoomos_v2.model.export.ExportConfig;
+import by.zoomos_v2.model.export.ExportField;
+import by.zoomos_v2.model.export.ExportResult;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.export.service.FileExportService;
 import by.zoomos_v2.service.file.export.service.ProcessingStrategyService;
@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

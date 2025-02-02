@@ -2,7 +2,7 @@ package by.zoomos_v2.service.file.export.service;
 
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.model.ClientProcessingStrategy;
-import by.zoomos_v2.model.ExportConfig;
+import by.zoomos_v2.model.export.ExportConfig;
 import by.zoomos_v2.repository.ClientProcessingStrategyRepository;
 import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;

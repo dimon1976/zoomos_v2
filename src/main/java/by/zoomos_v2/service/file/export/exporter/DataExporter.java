@@ -1,7 +1,7 @@
 package by.zoomos_v2.service.file.export.exporter;
 
-import by.zoomos_v2.model.ExportConfig;
-import by.zoomos_v2.model.ExportResult;
+import by.zoomos_v2.model.export.ExportConfig;
+import by.zoomos_v2.model.export.ExportResult;
 import by.zoomos_v2.service.file.ProcessingStats;
 
 import java.io.OutputStream;

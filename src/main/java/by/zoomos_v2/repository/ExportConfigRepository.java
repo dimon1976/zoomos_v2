@@ -1,6 +1,6 @@
 package by.zoomos_v2.repository;
 
-import by.zoomos_v2.model.ExportConfig;
+import by.zoomos_v2.model.export.ExportConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,4 +1,4 @@
-package by.zoomos_v2.model;
+package by.zoomos_v2.model.export;
 import by.zoomos_v2.service.file.ProcessingStats;
 import lombok.Builder;
 import lombok.Data;

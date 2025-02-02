@@ -1,4 +1,4 @@
-package by.zoomos_v2.model;
+package by.zoomos_v2.model.export;
 import jakarta.persistence.*;
 import lombok.Data;
 

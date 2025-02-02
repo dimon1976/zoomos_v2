@@ -1,6 +1,5 @@
 package by.zoomos_v2.model;
 
-import by.zoomos_v2.model.Client;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

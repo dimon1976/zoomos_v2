@@ -1,9 +1,9 @@
 package by.zoomos_v2.util;
 
 import by.zoomos_v2.annotations.FieldDescription;
-import by.zoomos_v2.model.CompetitorData;
-import by.zoomos_v2.model.Product;
-import by.zoomos_v2.model.RegionData;
+import by.zoomos_v2.model.entity.CompetitorData;
+import by.zoomos_v2.model.entity.Product;
+import by.zoomos_v2.model.entity.RegionData;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Field;

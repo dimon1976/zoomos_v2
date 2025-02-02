@@ -2,6 +2,11 @@ package by.zoomos_v2.service.file.export.service;
 
 import by.zoomos_v2.annotations.FieldDescription;
 import by.zoomos_v2.model.*;
+import by.zoomos_v2.model.entity.CompetitorData;
+import by.zoomos_v2.model.entity.Product;
+import by.zoomos_v2.model.entity.RegionData;
+import by.zoomos_v2.model.export.ExportConfig;
+import by.zoomos_v2.model.export.ExportResult;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.repository.ProductRepository;
 import by.zoomos_v2.service.file.ProcessingStats;

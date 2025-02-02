@@ -1,6 +1,6 @@
 package by.zoomos_v2.service.file.export.strategy;
 
-import by.zoomos_v2.model.ExportConfig;
+import by.zoomos_v2.model.export.ExportConfig;
 import by.zoomos_v2.service.file.ProcessingStats;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

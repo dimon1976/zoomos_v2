@@ -1,7 +1,7 @@
 package by.zoomos_v2.service.file.export.exporter;
 
-import by.zoomos_v2.model.ExportConfig;
-import by.zoomos_v2.model.ExportField;
+import by.zoomos_v2.model.export.ExportConfig;
+import by.zoomos_v2.model.export.ExportField;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
