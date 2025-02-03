@@ -93,8 +93,13 @@
     <div class="row">
         <div class="col">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5><i class="fas fa-history"></i> Последние операции</h5>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterOperations('IMPORT')">Импорт</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterOperations('EXPORT')">Экспорт</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary active" onclick="filterOperations('ALL')">Все</button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -103,18 +108,31 @@
                             <tr>
                                 <th>Время</th>
                                 <th>Магазин</th>
-                                <th>Тип операции</th>
+                                <th>Тип</th>
+                                <th>Файл</th>
+                                <th>Записей</th>
                                 <th>Статус</th>
+                                <th>Действия</th>
                             </tr>
                             </thead>
                             <tbody>
                             <tr th:each="operation : ${recentOperations}">
-                                <td th:text="${#temporals.format(operation.timestamp, 'dd.MM.yyyy HH:mm')}"></td>
-                                <td th:text="${operation.clientName}"></td>
-                                <td th:text="${operation.type}"></td>
+                                <td th:text="${#temporals.format(operation.startTime, 'dd.MM.yyyy HH:mm')}"></td>
+                                <td th:text="${operation.clientId}"></td>
+                                <td th:text="${operation.type.description}"></td>
+                                <td th:text="${operation.status}"></td>
                                 <td>
-                                    <span th:class="${'badge ' + operation.statusBadgeClass}"
-                                          th:text="${operation.status}"></span>
+                                    <span th:text="${operation.processedRecords + '/' + operation.totalRecords}"></span>
+                                </td>
+                                <td>
+                                <span th:class="${(operation.status != null ? #strings.toLowerCase(operation.status) : '')}"
+                                      th:text="${operation.status.description}"></span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-info"
+                                            th:onclick="'showDetails(\'' + ${operation.id} + '\')'">
+                                        <i class="fas fa-info-circle"></i>
+                                    </button>
                                 </td>
                             </tr>
                             </tbody>
