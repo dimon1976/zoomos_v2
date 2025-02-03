@@ -23,8 +23,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
 import java.rmi.server.ExportException;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -51,33 +53,48 @@ public class FileExportService {
      * @param fileType тип экспорта (CSV, XLSX)
      * @return результат экспорта
      */
-    @Transactional(readOnly = true)
+    @Transactional()
     public ExportResult exportFileData(Long fileId, ExportConfig exportConfig, String fileType) {
         log.info("Начало экспорта. FileId: {}, Type: {}", fileId, fileType);
         ExportOperation operation = null;
 
         try {
             FileMetadata metadata = getFileMetadata(fileId);
-            DataExporter exporter = getExporter(fileType);
-            DataProcessingStrategy strategy = selectStrategy(exportConfig);
+
             // Создаем операцию экспорта
             operation = initializeExportOperation(metadata, fileType, exportConfig);
 
-            List<Map<String, Object>> data = processDataWithStrategy(metadata, strategy, exportConfig);
-            ExportResult result = createExportResult(data, metadata, exporter, exportConfig, fileType);
+            // Выполняем экспорт в режиме readonly
+            ExportResult result = processExportData(metadata, exportConfig, fileType, operation);
 
             // Обновляем статистику операции
             if (result.getProcessingStats() != null) {
                 statisticsProcessor.updateOperationStats(operation.getId(), result.getProcessingStats());
+
+                if (result.isSuccess()) {
+                    operation.setFilesGenerated(1);
+                    operation.setTargetPath(result.getFileName());
+                }
             }
 
             return result;
 
-
         } catch (Exception e) {
-            log.error("Ошибка экспорта данных: {}", e.getMessage(), e);
+            handleExportError(operation, e);
             return ExportResult.error(e.getMessage());
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ExportResult processExportData(FileMetadata metadata,
+                                             ExportConfig exportConfig,
+                                             String fileType,
+                                             ExportOperation operation) throws ExportException {
+        // Переносим сюда логику обработки данных в режиме readonly
+        DataExporter exporter = getExporter(fileType);
+        DataProcessingStrategy strategy = selectStrategy(exportConfig);
+        List<Map<String, Object>> data = processDataWithStrategy(metadata, strategy, exportConfig);
+        return createExportResult(data, metadata, exporter, exportConfig, fileType);
     }
 
     private ExportOperation initializeExportOperation(FileMetadata metadata,

@@ -1,15 +1,15 @@
 package by.zoomos_v2.service.statistics;
 
-import by.zoomos_v2.model.enums.OperationType;
 import by.zoomos_v2.model.enums.OperationStatus;
+import by.zoomos_v2.model.enums.OperationType;
 import by.zoomos_v2.model.operation.BaseOperation;
 import by.zoomos_v2.repository.BaseOperationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ResolvableType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.lang.reflect.ParameterizedType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -97,14 +97,17 @@ public class OperationStatsService {
      */
     @SuppressWarnings("unchecked")
     private <T extends BaseOperation> BaseOperationRepository<T> getRepositoryForType(Class<T> operationType) {
-        return repositories.stream()
-                .filter(repo -> {
-                    Class<?> entityType = ((Class<?>) ((ParameterizedType) repo.getClass()
-                            .getGenericInterfaces()[0]).getActualTypeArguments()[0]);
-                    return operationType.isAssignableFrom(entityType);
-                })
-                .map(repo -> (BaseOperationRepository<T>) repo)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Repository not found for type: " + operationType));
+        for (BaseOperationRepository<?> repo : repositories) {
+            ResolvableType resolvableType = ResolvableType.forClass(repo.getClass())
+                    .as(BaseOperationRepository.class);
+            Class<?> repoEntityType = resolvableType.getGenerics()[0].resolve();
+
+            if (repoEntityType != null && operationType.equals(repoEntityType)) {
+                @SuppressWarnings("unchecked")
+                BaseOperationRepository<T> typedRepo = (BaseOperationRepository<T>) repo;
+                return typedRepo;
+            }
+        }
+        throw new IllegalArgumentException("Repository not found for type: " + operationType);
     }
 }
