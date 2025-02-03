@@ -2,6 +2,9 @@ package by.zoomos_v2.service.file.export.service;
 
 import by.zoomos_v2.annotations.FieldDescription;
 import by.zoomos_v2.model.*;
+import by.zoomos_v2.model.enums.OperationStatus;
+import by.zoomos_v2.model.enums.OperationType;
+import by.zoomos_v2.model.operation.ExportOperation;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.repository.ProductRepository;
 import by.zoomos_v2.service.file.ProcessingStats;
@@ -9,6 +12,8 @@ import by.zoomos_v2.service.file.export.exporter.DataExporter;
 import by.zoomos_v2.service.file.export.exporter.DataExporterFactory;
 import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
+import by.zoomos_v2.service.statistics.OperationStatsService;
+import by.zoomos_v2.service.statistics.StatisticsProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,153 +34,14 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class FileExportService {
-
-//    private final FileMetadataRepository fileMetadataRepository;
-//    private final ProductRepository productRepository;
-//    private final DataExporterFactory exporterFactory;
-//    private final List<DataProcessingStrategy> processingStrategies;
-//
-//    /**
-//     * Экспортирует данные из указанного файла
-//     *
-//     * @param fileId       ID файла в системе
-//     * @param exportConfig конфигурация экспорта
-//     * @param fileType     тип файла для экспорта (CSV, XLSX)
-//     * @return результат экспорта
-//     */
-//    @Transactional(readOnly = true)
-//    public ExportResult exportFileData(Long fileId, ExportConfig exportConfig, String fileType) {
-//        log.debug("Начало экспорта данных из файла ID: {}", fileId);
-//
-//        // Получаем метаданные файла
-//        FileMetadata fileMetadata = fileMetadataRepository.findById(fileId)
-//                .orElseThrow(() -> new IllegalArgumentException("File not found: " + fileId));
-//
-//        // Получаем данные из файла
-//        List<Map<String, Object>> data = getDataFromFile(fileMetadata);
-//
-//        // Создаем статистику обработки
-//        ProcessingStats stats = ProcessingStats.createNew();
-//
-//        // Находим и применяем подходящую стратегию обработки
-//        DataProcessingStrategy strategy = processingStrategies.stream()
-//                .filter(s -> s.supports(exportConfig))
-//                .findFirst()
-//                .orElseGet(() -> {
-//                    log.warn("Стратегия не найдена, используется стратегия по умолчанию");
-//                    return processingStrategies.stream()
-//                            .filter(s -> ProcessingStrategyType.DEFAULT.equals(s.getStrategyType()))
-//                            .findFirst()
-//                            .orElseThrow(() -> new IllegalStateException("Default strategy not found"));
-//                });
-//
-//        log.debug("Применяется стратегия: {}", strategy.getClass().getSimpleName());
-//        data = strategy.processData(data, exportConfig, stats);
-//
-//        // Получаем нужный экспортер
-//        DataExporter exporter = exporterFactory.getExporter(fileType);
-//
-//        // Выполняем экспорт
-//        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-//            ExportResult result = exporter.export(data, outputStream, exportConfig, stats);
-//            result.setFileName(generateFileName(fileMetadata, fileType));
-//            result.setFileContent(outputStream.toByteArray());
-//            return result;
-//        } catch (Exception e) {
-//            log.error("Ошибка при экспорте данных: {}", e.getMessage(), e);
-//            return ExportResult.error(e.getMessage());
-//        }
-//    }
-//
-//    /**
-//     * Получает данные из файла и преобразует их для экспорта
-//     */
-//    private List<Map<String, Object>> getDataFromFile(FileMetadata fileMetadata) {
-//        List<Product> products = productRepository.findByFileId(fileMetadata.getId());
-//        List<Long> productIds = products.stream().map(Product::getId).toList();
-//
-//        List<Product> productsWithRegions = productRepository.findByIdInWithRegionData(productIds);
-//        List<Product> productsWithCompetitors = productRepository.findByIdInWithCompetitorData(productIds);
-//
-//        Map<Long, Product> productWithRegionsMap = productsWithRegions.stream()
-//                .collect(Collectors.toMap(Product::getId, p -> p));
-//        Map<Long, Product> productWithCompetitorsMap = productsWithCompetitors.stream()
-//                .collect(Collectors.toMap(Product::getId, p -> p));
-//
-//        List<Map<String, Object>> result = new ArrayList<>();
-//
-//        for (Product product : products) {
-//            Product withRegions = productWithRegionsMap.get(product.getId());
-//            Product withCompetitors = productWithCompetitorsMap.get(product.getId());
-//
-//            Map<String, Object> productData = extractFieldsWithDescriptions(product, "product");
-//
-//            if (withRegions != null && !withRegions.getRegionDataList().isEmpty()) {
-//                for (RegionData regionData : withRegions.getRegionDataList()) {
-//                    Map<String, Object> rowData = new HashMap<>(productData);
-//                    rowData.putAll(extractFieldsWithDescriptions(regionData, "regiondata"));
-//
-//                    if (withCompetitors != null && !withCompetitors.getCompetitorDataList().isEmpty()) {
-//                        for (CompetitorData competitorData : withCompetitors.getCompetitorDataList()) {
-//                            Map<String, Object> fullRowData = new HashMap<>(rowData);
-//                            fullRowData.putAll(extractFieldsWithDescriptions(competitorData, "competitordata"));
-//                            result.add(fullRowData);
-//                        }
-//                    } else {
-//                        result.add(rowData);
-//                    }
-//                }
-//            } else if (withCompetitors != null && !withCompetitors.getCompetitorDataList().isEmpty()) {
-//                for (CompetitorData competitorData : withCompetitors.getCompetitorDataList()) {
-//                    Map<String, Object> fullRowData = new HashMap<>(productData);
-//                    fullRowData.putAll(extractFieldsWithDescriptions(competitorData, "competitordata"));
-//                    result.add(fullRowData);
-//                }
-//            } else {
-//                result.add(productData);
-//            }
-//        }
-//
-//        return result;
-//    }
-//
-//    /**
-//     * Извлекает значения полей с аннотациями FieldDescription
-//     */
-//    private Map<String, Object> extractFieldsWithDescriptions(Object object, String prefix) {
-//        Map<String, Object> fields = new HashMap<>();
-//        for (Field field : object.getClass().getDeclaredFields()) {
-//            FieldDescription description = field.getAnnotation(FieldDescription.class);
-//            if (description != null && !description.skipMapping()) {
-//                try {
-//                    field.setAccessible(true);
-//                    Object value = field.get(object);
-//                    if (value != null) {
-//                        fields.put(prefix + "." + field.getName(), value);
-//                    }
-//                } catch (IllegalAccessException e) {
-//                    log.error("Ошибка при получении значения поля: {}", field.getName(), e);
-//                }
-//            }
-//        }
-//        return fields;
-//    }
-//
-//    /**
-//     * Генерирует имя файла для экспорта
-//     */
-//    private String generateFileName(FileMetadata originalFile, String exportType) {
-//        String baseName = originalFile.getOriginalFilename().replaceFirst("[.][^.]+$", "");
-//        return String.format("%s_export.%s", baseName, exportType.toLowerCase());
-//    }
-
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int BATCH_SIZE = 1000;
 
     private final FileMetadataRepository fileMetadataRepository;
     private final ProductRepository productRepository;
     private final DataExporterFactory exporterFactory;
     private final List<DataProcessingStrategy> processingStrategies;
+    private final OperationStatsService operationStatsService;
+    private final StatisticsProcessor statisticsProcessor;
 
     /**
      * Экспортирует данные из файла с оптимизированной обработкой
@@ -188,19 +54,63 @@ public class FileExportService {
     @Transactional(readOnly = true)
     public ExportResult exportFileData(Long fileId, ExportConfig exportConfig, String fileType) {
         log.info("Начало экспорта. FileId: {}, Type: {}", fileId, fileType);
+        ExportOperation operation = null;
 
         try {
             FileMetadata metadata = getFileMetadata(fileId);
             DataExporter exporter = getExporter(fileType);
             DataProcessingStrategy strategy = selectStrategy(exportConfig);
+            // Создаем операцию экспорта
+            operation = initializeExportOperation(metadata, fileType, exportConfig);
 
             List<Map<String, Object>> data = processDataWithStrategy(metadata, strategy, exportConfig);
-            return createExportResult(data, metadata, exporter, exportConfig, fileType);
+            ExportResult result = createExportResult(data, metadata, exporter, exportConfig, fileType);
+
+            // Обновляем статистику операции
+            if (result.getProcessingStats() != null) {
+                statisticsProcessor.updateOperationStats(operation.getId(), result.getProcessingStats());
+            }
+
+            return result;
+
 
         } catch (Exception e) {
             log.error("Ошибка экспорта данных: {}", e.getMessage(), e);
             return ExportResult.error(e.getMessage());
         }
+    }
+
+    private ExportOperation initializeExportOperation(FileMetadata metadata,
+                                                      String fileType,
+                                                      ExportConfig exportConfig) {
+        ExportOperation operation = new ExportOperation();
+        operation.setClientId(metadata.getClientId());
+        operation.setType(OperationType.EXPORT);
+        operation.setExportFormat(fileType);
+        operation.setSourceIdentifier(metadata.getStoredFilename());
+        operation.setProcessingStrategy(exportConfig.getStrategyType().name());
+        operation.setExportConfig(convertExportConfigToMap(exportConfig));
+
+        return operationStatsService.createOperation(operation);
+    }
+
+    private void handleExportError(ExportOperation operation, Exception e) {
+        log.error("Ошибка экспорта данных: {}", e.getMessage(), e);
+
+        if (operation != null) {
+            operationStatsService.updateOperationStatus(
+                    operation.getId(),
+                    OperationStatus.FAILED,
+                    e.getMessage()
+            );
+        }
+    }
+
+    private Map<String, Object> convertExportConfigToMap(ExportConfig config) {
+        // Конвертация конфигурации экспорта в Map для сохранения в БД
+        Map<String, Object> configMap = new HashMap<>();
+        // Добавляем нужные параметры из конфигурации
+        return configMap;
     }
 
     private FileMetadata getFileMetadata(Long fileId) throws FileNotFoundException {

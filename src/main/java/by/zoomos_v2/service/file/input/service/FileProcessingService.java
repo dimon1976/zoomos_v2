@@ -5,6 +5,9 @@ import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.exception.ValidationError;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.FileMetadata;
+import by.zoomos_v2.model.enums.OperationStatus;
+import by.zoomos_v2.model.enums.OperationType;
+import by.zoomos_v2.model.operation.ImportOperation;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.ProcessingStats;
@@ -15,6 +18,8 @@ import by.zoomos_v2.service.file.input.strategy.ClientDataProcessor;
 import by.zoomos_v2.service.file.input.strategy.ClientDataProcessorFactory;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.mapping.MappingConfigService;
+import by.zoomos_v2.service.statistics.OperationStatsService;
+import by.zoomos_v2.service.statistics.StatisticsProcessor;
 import by.zoomos_v2.util.PathResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +28,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -61,6 +67,8 @@ public class FileProcessingService {
     private final ClientService clientService;
     private final ObjectMapper objectMapper;
     private final PathResolver pathResolver;
+    private final OperationStatsService operationStatsService;
+    private final StatisticsProcessor statisticsProcessor;
 
 
     private final ConcurrentHashMap<Long, ProcessingStatus> processingStatuses = new ConcurrentHashMap<>();
@@ -72,6 +80,7 @@ public class FileProcessingService {
     public void processFileAsync(Long fileId) {
         log.debug("Начало асинхронной обработки файла с ID: {}", fileId);
         LocalDateTime startTime = LocalDateTime.now();
+        ImportOperation operation = null;
 
         try {
 
@@ -86,6 +95,8 @@ public class FileProcessingService {
             if (metadata.isProcessingCompleted()) {
                 throw new FileProcessingException("Файл уже обработан, статус: " + metadata.getStatus());
             }
+            operation = initializeImportOperation(metadata);
+
             // Инициализация
             fileMetadataService.initializeProcessing(fileId);
             updateProcessingStatus(fileId, 0, "Инициализация обработки");
@@ -94,16 +105,34 @@ public class FileProcessingService {
             // Основной процесс обработки
             ProcessingStats stats = processFile(metadata, startTime);
 
+            // Обновление статистики операции
+            statisticsProcessor.updateOperationStats(operation.getId(), stats);
+
             // Обновление результатов
             fileMetadataService.updateProcessingResults(metadata, stats);
             updateProcessingStatus(fileId, 100, "Обработка завершена");
 
         } catch (Exception e) {
-            handleProcessingError(fileId, e);
+            handleProcessingError(fileId, e, operation);
         } finally {
             // Очищаем статус обработки из памяти
             processingStatuses.remove(fileId);
         }
+    }
+
+    private ImportOperation initializeImportOperation(FileMetadata metadata) {
+        ImportOperation operation = new ImportOperation();
+        operation.setClientId(metadata.getClientId());
+        operation.setType(OperationType.IMPORT);
+        operation.setFileName(metadata.getOriginalFilename());
+        operation.setFileSize(metadata.getSize());
+        operation.setFileFormat(metadata.getFileType().name());
+        operation.setMappingConfigId(metadata.getMappingConfigId());
+        operation.setEncoding(metadata.getEncoding());
+        operation.setDelimiter(metadata.getDelimiter());
+        operation.setContentType(metadata.getContentType());
+
+        return operationStatsService.createOperation(operation);
     }
 
     /**
@@ -468,8 +497,17 @@ public class FileProcessingService {
     /**
      * Обрабатывает ошибки процесса обработки
      */
-    private void handleProcessingError(Long fileId, Exception e) {
+    private void handleProcessingError(Long fileId, Exception e, ImportOperation operation) {
         log.error("Ошибка при обработке файла {}: {}", fileId, e.getMessage(), e);
+
+        if (operation != null) {
+            operationStatsService.updateOperationStatus(
+                    operation.getId(),
+                    OperationStatus.FAILED,
+                    e.getMessage()
+            );
+        }
+
         fileMetadataService.markAsError(fileId, e.getMessage());
         updateProcessingStatus(fileId, -1, "Ошибка: " + e.getMessage());
     }
