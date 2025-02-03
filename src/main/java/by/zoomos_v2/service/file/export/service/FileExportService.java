@@ -7,7 +7,7 @@ import by.zoomos_v2.model.enums.OperationType;
 import by.zoomos_v2.model.operation.ExportOperation;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.repository.ProductRepository;
-import by.zoomos_v2.service.file.ProcessingStats;
+import by.zoomos_v2.service.file.ProcessingData;
 import by.zoomos_v2.service.file.export.exporter.DataExporter;
 import by.zoomos_v2.service.file.export.exporter.DataExporterFactory;
 import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
@@ -68,8 +68,8 @@ public class FileExportService {
             ExportResult result = processExportData(metadata, exportConfig, fileType, operation);
 
             // Обновляем статистику операции
-            if (result.getProcessingStats() != null) {
-                statisticsProcessor.updateOperationStats(operation.getId(), result.getProcessingStats());
+            if (result.getProcessingData() != null) {
+                statisticsProcessor.updateOperationStats(operation.getId(), result.getProcessingData());
 
                 if (result.isSuccess()) {
                     operation.setFilesGenerated(1);
@@ -164,7 +164,7 @@ public class FileExportService {
     private List<Map<String, Object>> processDataWithStrategy(FileMetadata metadata,
                                                               DataProcessingStrategy strategy,
                                                               ExportConfig exportConfig) throws ExportException {
-        ProcessingStats stats = ProcessingStats.createNew();
+        ProcessingData stats = ProcessingData.createNew();
         List<Map<String, Object>> data = getDataFromFile(metadata);
         return strategy.processData(data, exportConfig, stats);
     }
@@ -175,7 +175,7 @@ public class FileExportService {
                                             ExportConfig exportConfig,
                                             String fileType) throws ExportException {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            ProcessingStats stats = ProcessingStats.createNew();
+            ProcessingData stats = ProcessingData.createNew();
             ExportResult result = exporter.export(data, outputStream, exportConfig, stats);
             result.setFileName(generateFileName(metadata, fileType));
             result.setFileContent(outputStream.toByteArray());

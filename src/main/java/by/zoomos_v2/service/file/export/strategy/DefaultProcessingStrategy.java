@@ -1,7 +1,7 @@
 package by.zoomos_v2.service.file.export.strategy;
 
 import by.zoomos_v2.model.ExportConfig;
-import by.zoomos_v2.service.file.ProcessingStats;
+import by.zoomos_v2.service.file.ProcessingData;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -14,13 +14,13 @@ public class DefaultProcessingStrategy implements DataProcessingStrategy{
     @Override
     public List<Map<String, Object>> processData(List<Map<String, Object>> data,
                                                  ExportConfig exportConfig,
-                                                 ProcessingStats processingStats) {
+                                                 ProcessingData processingData) {
         log.debug("Применяется стандартная стратегия обработки данных");
 
         // Увеличиваем счетчик для каждой записи
-        data.forEach(record -> processingStats.incrementSuccessCount());
+        data.forEach(record -> processingData.incrementSuccessCount());
 
-        log.info("Обработка данных завершена. Обработано записей: {}", processingStats.getSuccessCount());
+        log.info("Обработка данных завершена. Обработано записей: {}", processingData.getSuccessCount());
         return data;
     }
 

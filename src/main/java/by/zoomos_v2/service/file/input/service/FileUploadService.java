@@ -1,10 +1,10 @@
 package by.zoomos_v2.service.file.input.service;
 
-import by.zoomos_v2.constant.FileStatus;
 import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
 import by.zoomos_v2.model.TextFileParameters;
+import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.util.FileTypeDetector;
 import by.zoomos_v2.util.FileUtils;
@@ -77,7 +77,6 @@ public class FileUploadService {
             metadata.setSize(file.getSize());
             metadata.setContentType(file.getContentType());
             metadata.setMappingConfigId(mappingId);
-            metadata.setStatus(FileStatus.PENDING);
             // Анализируем параметры текстового файла
             if (isTextFile(fileType)) {
                 TextFileParameters parameters = TextFileAnalyzer.analyzeFile(pathResolver.getFilePath(clientId, metadata.getStoredFilename()));
@@ -85,7 +84,6 @@ public class FileUploadService {
                 log.info("Определены параметры текстового файла {}: кодировка - {}, разделитель - {}",
                          metadata.getOriginalFilename(), parameters.getEncoding(), parameters.getDelimiter());
             }
-            metadata.updateProcessingStatistics(0, 0, 0);
             // Сохранение метаданных
             metadata = fileMetadataRepository.save(metadata);
             log.info("Файл {} успешно загружен и сохранен с ID: {}",

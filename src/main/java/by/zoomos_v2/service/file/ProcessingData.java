@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProcessingStats {
+public class ProcessingData {
 
     /**
      * Общее количество записей для обработки
@@ -93,8 +93,8 @@ public class ProcessingStats {
     /**
      * Объединяет несколько статистик в одну с учетом временных файлов
      */
-    public static ProcessingStats merge(ProcessingStats... stats) {
-        ProcessingStats result = ProcessingStats.createNew();
+    public static ProcessingData merge(ProcessingData... stats) {
+        ProcessingData result = ProcessingData.createNew();
         Path mergedTempFile = null;
 
         try {
@@ -103,7 +103,7 @@ public class ProcessingStats {
 
             try (BufferedWriter writer = Files.newBufferedWriter(mergedTempFile, StandardCharsets.UTF_8)) {
                 // Объединяем данные из всех временных файлов
-                for (ProcessingStats stat : stats) {
+                for (ProcessingData stat : stats) {
                     if (stat == null) continue;
 
                     // Суммируем числовые показатели
@@ -221,8 +221,8 @@ public class ProcessingStats {
     /**
      * Создает новый экземпляр статистики
      */
-    public static ProcessingStats createNew() {
-        return ProcessingStats.builder()
+    public static ProcessingData createNew() {
+        return ProcessingData.builder()
                 .totalCount(0)
                 .successCount(0)
                 .errorCount(0)

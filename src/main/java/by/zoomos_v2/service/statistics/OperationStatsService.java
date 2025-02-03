@@ -177,13 +177,6 @@ public class OperationStatsService {
     /**
      * Получает статистику по операциям клиента
      */
-//    @Transactional(readOnly = true)
-//    public List<? extends BaseOperation> getClientOperations(Long clientId, OperationType type) {
-//        return repositories.stream()
-//                .flatMap(repo -> repo.findByClientId(clientId).stream())
-//                .filter(op -> type == null || op.getType().equals(type))
-//                .toList();
-//    }
     @Transactional(readOnly = true)
     public List<? extends BaseOperation> getClientOperations(Long clientId, OperationType type) {
         return repositories.stream()

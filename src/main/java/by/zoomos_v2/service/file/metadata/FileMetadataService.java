@@ -2,8 +2,7 @@ package by.zoomos_v2.service.file.metadata;
 
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.repository.FileMetadataRepository;
-import by.zoomos_v2.service.file.ProcessingStats;
-import com.fasterxml.jackson.databind.JsonNode;
+import by.zoomos_v2.service.file.ProcessingData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +56,7 @@ public class FileMetadataService {
      * @param stats статистика обработки файла
      */
     @Transactional
-    public void updateProcessingResults(FileMetadata metadata, ProcessingStats stats) {
+    public void updateProcessingResults(FileMetadata metadata, ProcessingData stats) {
         try {
 
             // Исключение из хранения в БД излишних данных в метаданных файла

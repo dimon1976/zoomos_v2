@@ -1,7 +1,7 @@
 package by.zoomos_v2.service.statistics;
 
 import by.zoomos_v2.model.enums.OperationStatus;
-import by.zoomos_v2.service.file.ProcessingStats;
+import by.zoomos_v2.service.file.ProcessingData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ public class StatisticsProcessor {
     /**
      * Обновляет статистику операции на основе ProcessingStats
      */
-    public void updateOperationStats(Long operationId, ProcessingStats stats) {
+    public void updateOperationStats(Long operationId, ProcessingData stats) {
         log.debug("Обновление статистики операции {}", operationId);
 
         try {
@@ -60,7 +60,7 @@ public class StatisticsProcessor {
     /**
      * Определяет статус операции на основе статистики
      */
-    private OperationStatus determineStatus(ProcessingStats stats) {
+    private OperationStatus determineStatus(ProcessingData stats) {
         if (stats.getErrorCount() == 0) {
             return OperationStatus.COMPLETED;
         } else if (stats.getSuccessCount() > 0) {

@@ -1,6 +1,5 @@
 package by.zoomos_v2.service.file.input.service;
 
-import by.zoomos_v2.constant.FileStatus;
 import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.exception.ValidationError;
 import by.zoomos_v2.mapping.ClientMappingConfig;
@@ -10,7 +9,7 @@ import by.zoomos_v2.model.enums.OperationType;
 import by.zoomos_v2.model.operation.ImportOperation;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.service.client.ClientService;
-import by.zoomos_v2.service.file.ProcessingStats;
+import by.zoomos_v2.service.file.ProcessingData;
 import by.zoomos_v2.service.file.input.processor.FileProcessor;
 import by.zoomos_v2.service.file.input.processor.FileProcessorFactory;
 import by.zoomos_v2.service.file.input.result.ValidationResult;
@@ -28,7 +27,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -87,23 +85,18 @@ public class FileProcessingService {
             // Сначала получаем метаданные без изменения статуса
             FileMetadata metadata = fileMetadataRepository.findById(fileId)
                     .orElseThrow(() -> new FileProcessingException("Файл не найден"));
-            // Проверяем статус
-            if (FileStatus.PROCESSING.equals(metadata.getStatus())) {
-                throw new FileProcessingException("Файл уже находится в процессе обработки");
-            }
 
-            if (metadata.isProcessingCompleted()) {
-                throw new FileProcessingException("Файл уже обработан, статус: " + metadata.getStatus());
-            }
             operation = initializeImportOperation(metadata);
+            operation.updateProcessingStatistics(0, 0, 0);
 
             // Инициализация
-            fileMetadataService.initializeProcessing(fileId);
+//            fileMetadataService.initializeProcessing(fileId);
+            operationStatsService.updateOperationStatus(operation.getId(), OperationStatus.IN_PROGRESS, null);
             updateProcessingStatus(fileId, 0, "Инициализация обработки");
 
 
             // Основной процесс обработки
-            ProcessingStats stats = processFile(metadata, startTime);
+            ProcessingData stats = processFile(metadata, operation, startTime);
 
             // Обновление статистики операции
             statisticsProcessor.updateOperationStats(operation.getId(), stats);
@@ -138,12 +131,11 @@ public class FileProcessingService {
     /**
      * Выполняет основной процесс обработки файла
      */
-    private ProcessingStats processFile(FileMetadata metadata, LocalDateTime startTime) {
+    private ProcessingData processFile(FileMetadata metadata, ImportOperation operation, LocalDateTime startTime) {
         try {
-            metadata.updateStatus(FileStatus.PROCESSING, null);
 
             // Базовая обработка файла
-            ProcessingStats fileStats = processRawFile(metadata);
+            ProcessingData fileStats = processRawFile(metadata);
             log.debug("Базовая обработка файла завершена. Получено записей: {}", fileStats.getTotalCount());
 
             // Клиентская обработка
@@ -151,17 +143,16 @@ public class FileProcessingService {
 //            log.debug("Клиентская обработка завершена. Обработано записей: {}", clientStats.getSuccessCount());
 
             // Сохранение данных
-//            ProcessingStats persistenceStats = persistData(metadata, fileStats.getProcessedData());
-            ProcessingStats persistenceStats = persistData(metadata, fileStats);
+            ProcessingData persistenceStats = persistData(metadata, fileStats);
             log.debug("Сохранение данных завершено. Сохранено записей: {}", persistenceStats.getSuccessCount());
 
             // Объединяем статистику и добавляем время обработки
-            ProcessingStats finalStats = ProcessingStats.merge(fileStats, persistenceStats);
+            ProcessingData finalStats = ProcessingData.merge(fileStats, persistenceStats);
             finalStats.setProcessingTimeSeconds(ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()));
 
             // Обновляем статус и статистику в метаданных файла
-            metadata.updateStatus(FileStatus.COMPLETED, null);
-            metadata.updateProcessingStatistics(
+            operationStatsService.updateOperationStatus(operation.getId(), OperationStatus.COMPLETED, null);
+            operationStatsService.updateProcessingStats(operation.getId(),
                     finalStats.getTotalCount(),
                     finalStats.getSuccessCount(),
                     finalStats.getErrorCount()
@@ -172,8 +163,8 @@ public class FileProcessingService {
 
         } catch (Exception e) {
             log.error("Ошибка при обработке файла {}: {}", metadata.getOriginalFilename(), e.getMessage(), e);
-            metadata.updateStatus(FileStatus.ERROR, e.getMessage());
-            metadata.addProcessingError(e.getMessage());
+            operationStatsService.updateOperationStatus(operation.getId(), OperationStatus.FAILED, e.getMessage());
+            operation.addError(e.getMessage());
             throw e;
         }
 
@@ -182,7 +173,7 @@ public class FileProcessingService {
     /**
      * Выполняет базовую обработку файла
      */
-    private ProcessingStats processRawFile(FileMetadata metadata) {
+    private ProcessingData processRawFile(FileMetadata metadata) {
         log.debug("Начало базовой обработки файла: {}", metadata.getOriginalFilename());
         updateProcessingStatus(metadata.getId(), 10, "Чтение файла");
 
@@ -200,12 +191,12 @@ public class FileProcessingService {
             Map<String, Object> results = processor.processFile(filePath, metadata,
                     (progress, message) -> updateProcessingStatus(
                             metadata.getId(),
-                            10 + (int)(progress * 0.2), // от 10% до 30% общего прогресса
+                            10 + (int) (progress * 0.2), // от 10% до 30% общего прогресса
                             "Чтение файла: " + message
                     ));
 
             // Конвертация результатов
-            ProcessingStats stats = convertToProcessingStats(results);
+            ProcessingData stats = convertToProcessingStats(results);
 
             if (stats.getTotalCount() == 0) {
                 throw new FileProcessingException("Файл не содержит данных для обработки");
@@ -224,10 +215,10 @@ public class FileProcessingService {
     /**
      * Обрабатывает данные согласно правилам клиента при загрузке файла
      */
-    private ProcessingStats processForClient(FileMetadata metadata, List<Map<String, String>> data) {
+    private ProcessingData processForClient(FileMetadata metadata, List<Map<String, String>> data) {
         // Получаем процессор для клиента
         ClientDataProcessor processor = clientProcessorFactory.getProcessor(clientService.getClientById(metadata.getClientId()));
-        ProcessingStats stats = ProcessingStats.createNew();
+        ProcessingData stats = ProcessingData.createNew();
 
         try {
             // Устанавливаем общее количество записей
@@ -286,86 +277,12 @@ public class FileProcessingService {
     /**
      * Сохраняет обработанные данные в базу данных
      */
-//    private ProcessingStats persistData(FileMetadata metadata, List<Map<String, String>> data){
-//
-//        log.debug("Начало сохранения данных для файла: {}", metadata.getOriginalFilename());
-//        ProcessingStats stats = new ProcessingStats();
-//        stats.setTotalCount(data.size());
-//
-//        try {
-//            // Получаем и проверяем конфигурацию маппинга
-//            if (metadata.getMappingConfigId() == null) {
-//                throw new FileProcessingException("Не указана конфигурация маппинга");
-//            }
-//
-//            ClientMappingConfig mapping = mappingConfigService.getMappingById(metadata.getMappingConfigId());
-//            Map<String, String> columnsMapping = objectMapper.readValue(
-//                    mapping.getColumnsConfig(),
-//                    new TypeReference<>() {}
-//            );
-//
-//            // Обработка данных батчами
-//            List<Map<String, String>> currentBatch = new ArrayList<>();
-//            int processedRecords = 0;
-//            int totalRecords = data.size();
-//            int successCount = 0;
-//            int errorCount = 0;
-//
-//            for (int i = 0; i < totalRecords; i++) {
-//                currentBatch.add(data.get(i));
-//
-//                if (shouldProcessBatch(currentBatch, i, totalRecords)) {
-//                    // Обработка батча
-//                    Map<String, Object> batchResults = processBatch(
-//                            metadata,
-//                            currentBatch,
-//                            columnsMapping,
-//                            processedRecords,
-//                            totalRecords
-//                    );
-//
-//                    // Обновление статистики
-//                    successCount += (int) batchResults.get("successCount");
-//                    errorCount += (int) batchResults.get("errorCount");
-//
-//                    // Обработка ошибок батча
-//                    if (batchResults.containsKey("errors")) {
-//                        List<String> errors = (List<String>) batchResults.get("errors");
-//                        errors.forEach(error -> {
-//                            metadata.addProcessingError(error);
-//                            stats.incrementErrorCount(error, "SAVE_ERROR");
-//                        });
-//                    }
-//
-//                    processedRecords += currentBatch.size();
-//                    currentBatch.clear();
-//
-//                    // Обновляем прогресс
-//                    updateProcessingStatus(metadata.getId(),
-//                            70 + (processedRecords * 30 / totalRecords),
-//                            String.format("Сохранено %d из %d записей", processedRecords, totalRecords));
-//                }
-//            }
-//
-//            // Обновляем итоговую статистику
-//            stats.setSuccessCount(successCount);
-//            stats.setErrorCount(errorCount);
-//
-//            log.debug("Сохранение данных завершено. Успешно: {}, Ошибок: {}",
-//                    successCount, errorCount);
-//            return stats;
-//
-//        } catch (Exception e) {
-//            String errorMsg = "Ошибка при сохранении данных: " + e.getMessage();
-//            log.error(errorMsg, e);
-//            throw new FileProcessingException(errorMsg, e);
-//        }
-//    }
 
-    private ProcessingStats persistData(FileMetadata metadata, ProcessingStats fileStats) {
+
+    private ProcessingData persistData(FileMetadata metadata, ProcessingData fileStats) {
         log.debug("Начало сохранения данных для файла: {}", metadata.getOriginalFilename());
         log.info("Initial heap persistData: {}", getHeapSizeAsString());
-        ProcessingStats stats = new ProcessingStats();
+        ProcessingData stats = new ProcessingData();
         stats.setTotalCount(fileStats.getTotalCount());
 
         try {
@@ -377,7 +294,8 @@ public class FileProcessingService {
             ClientMappingConfig mapping = mappingConfigService.getMappingById(metadata.getMappingConfigId());
             Map<String, String> columnsMapping = objectMapper.readValue(
                     mapping.getColumnsConfig(),
-                    new TypeReference<>() {}
+                    new TypeReference<>() {
+                    }
             );
 
             List<Map<String, String>> currentBatch = new ArrayList<>();
@@ -464,7 +382,7 @@ public class FileProcessingService {
     /**
      * Добавляет дополнительную статистику к результатам обработки
      */
-    private void addAdditionalStats(ProcessingStats stats) {
+    private void addAdditionalStats(ProcessingData stats) {
         // Скорость обработки
         if (stats.getProcessingTimeSeconds() > 0) {
             double speed = (double) stats.getTotalCount() / stats.getProcessingTimeSeconds();
@@ -515,36 +433,8 @@ public class FileProcessingService {
     /**
      * Преобразует результаты обработки в объект ProcessingStats
      */
-//    private ProcessingStats convertToProcessingStats(Map<String, Object> results) {
-//        ProcessingStats stats = new ProcessingStats();
-//
-//        // Основные показатели
-//        stats.setTotalCount((int) results.getOrDefault("totalCount", 0));
-//        stats.setSuccessCount((int) results.getOrDefault("successCount", 0));
-////        stats.setSuccessCount(((List<?>) results.get("successCount")).size());
-//        stats.setErrorCount((int) results.getOrDefault("errorCount", 0));
-//
-//        // Обработанные данные
-//        @SuppressWarnings("unchecked")
-//        List<Map<String, String>> records = (List<Map<String, String>>) results.get("records");
-//        stats.setProcessedData(records != null ? records : new ArrayList<>());
-//
-//        // Обработка ошибок
-////        if (results.containsKey("validationErrors")) {
-////            @SuppressWarnings("unchecked")
-////            List<String> errors = (List<String>) results.get("validationErrors");
-////            errors.forEach(error -> stats.incrementErrorCount(error, "PARSE_ERROR"));
-////        }
-//        if (results.containsKey("validationErrors")) {
-//            @SuppressWarnings("unchecked")
-//            List<ValidationError> errors = (List<ValidationError>) results.get("validationErrors");
-//            errors.forEach(error -> stats.incrementErrorCount(error.getMessage(), error.getCode()));
-//        }
-//        return stats;
-//
-//    }
-    private ProcessingStats convertToProcessingStats(Map<String, Object> results) {
-        ProcessingStats stats = new ProcessingStats();
+    private ProcessingData convertToProcessingStats(Map<String, Object> results) {
+        ProcessingData stats = new ProcessingData();
 
         // Безопасное преобразование числовых значений
         stats.setTotalCount(convertToInt(results.getOrDefault("totalCount", 0)));

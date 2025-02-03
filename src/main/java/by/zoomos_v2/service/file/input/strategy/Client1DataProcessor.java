@@ -1,8 +1,8 @@
 package by.zoomos_v2.service.file.input.strategy;
 
-import by.zoomos_v2.constant.FileStatus;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.model.FileMetadata;
+import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.input.result.ValidationResult;
 import lombok.extern.slf4j.Slf4j;
@@ -73,7 +73,7 @@ public class Client1DataProcessor implements ClientDataProcessor {
                     fileMetadata.getClientId());
 
             // Обновляем статус файла
-            fileMetadata.updateStatus(FileStatus.PROCESSING, null);
+            fileMetadata.updateStatus(OperationStatus.IN_PROGRESS, null);
 
             // Обработка данных
             List<Map<String, String>> processedData = new ArrayList<>();

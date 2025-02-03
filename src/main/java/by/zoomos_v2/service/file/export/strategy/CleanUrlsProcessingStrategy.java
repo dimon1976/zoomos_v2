@@ -2,7 +2,7 @@ package by.zoomos_v2.service.file.export.strategy;
 
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.repository.ClientProcessingStrategyRepository;
-import by.zoomos_v2.service.file.ProcessingStats;
+import by.zoomos_v2.service.file.ProcessingData;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ public class CleanUrlsProcessingStrategy implements DataProcessingStrategy {
     @Override
     public List<Map<String, Object>> processData(List<Map<String, Object>> data,
                                                  ExportConfig exportConfig,
-                                                 ProcessingStats processingStats) {
+                                                 ProcessingData processingData) {
         log.debug("Начало обработки данных - очистка URL конкурентов");
 
         List<String> competitors = getCompetitorsFromConfig(exportConfig);
@@ -49,14 +49,14 @@ public class CleanUrlsProcessingStrategy implements DataProcessingStrategy {
                     Object webCacheUrl = record.get("competitordata.competitorWebCacheUrl");
                     if (webCacheUrl != null && !webCacheUrl.toString().isEmpty()) {
                         record.put("competitordata.competitorWebCacheUrl", "");
-                        processingStats.incrementSuccessCount();
+                        processingData.incrementSuccessCount();
                         log.debug("Очищен URL для конкурента: {}", name);
                     }
                 }
             }
         }
 
-        log.info("Обработка данных завершена. Очищено URL: {}", processingStats.getSuccessCount());
+        log.info("Обработка данных завершена. Очищено URL: {}", processingData.getSuccessCount());
         return data;
     }
 

@@ -2,7 +2,7 @@ package by.zoomos_v2.service.file.export.exporter;
 
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportResult;
-import by.zoomos_v2.service.file.ProcessingStats;
+import by.zoomos_v2.service.file.ProcessingData;
 
 import java.io.OutputStream;
 import java.util.List;
@@ -19,13 +19,13 @@ public interface DataExporter {
      * @param data данные для экспорта в виде списка Map
      * @param outputStream поток для записи результата
      * @param exportConfig конфигурация экспорта
-     * @param processingStats статистика обработки
+     * @param processingData статистика обработки
      * @return результат экспорта
      */
     ExportResult export(List<Map<String, Object>> data,
                         OutputStream outputStream,
                         ExportConfig exportConfig,
-                        ProcessingStats processingStats);
+                        ProcessingData processingData);
 
     /**
      * Возвращает поддерживаемый тип файла для экспорта

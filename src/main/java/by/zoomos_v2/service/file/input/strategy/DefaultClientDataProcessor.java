@@ -1,5 +1,4 @@
 package by.zoomos_v2.service.file.input.strategy;
-import by.zoomos_v2.constant.FileStatus;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.service.file.input.result.ValidationResult;

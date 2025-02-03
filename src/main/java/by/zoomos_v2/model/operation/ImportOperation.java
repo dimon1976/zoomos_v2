@@ -1,6 +1,8 @@
 package by.zoomos_v2.model.operation;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -39,4 +41,5 @@ public class ImportOperation extends BaseOperation {
      */
     @Column(name = "content_type")
     private String contentType;
+
 }
