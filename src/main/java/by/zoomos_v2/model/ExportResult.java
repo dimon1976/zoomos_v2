@@ -1,5 +1,6 @@
 package by.zoomos_v2.model;
-import by.zoomos_v2.service.file.ProcessingData;
+
+import by.zoomos_v2.service.file.BatchProcessingData;
 import lombok.Builder;
 import lombok.Data;
 
@@ -12,7 +13,7 @@ public class ExportResult {
     private boolean success;
     private String errorMessage;
     private String fileName;
-    private ProcessingData processingData;
+    private BatchProcessingData batchProcessingData;
 
     /**
      * Содержимое экспортированного файла
@@ -22,10 +23,10 @@ public class ExportResult {
     /**
      * Создает успешный результат экспорта
      */
-    public static ExportResult success(ProcessingData stats, String fileName) {
+    public static ExportResult success(BatchProcessingData stats, String fileName) {
         return ExportResult.builder()
                 .success(true)
-                .processingData(stats)
+                .batchProcessingData(stats)
                 .fileName(fileName)
                 .build();
     }

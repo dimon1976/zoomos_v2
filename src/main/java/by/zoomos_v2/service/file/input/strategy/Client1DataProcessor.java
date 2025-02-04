@@ -73,7 +73,7 @@ public class Client1DataProcessor implements ClientDataProcessor {
                     fileMetadata.getClientId());
 
             // Обновляем статус файла
-            fileMetadata.updateStatus(OperationStatus.IN_PROGRESS, null);
+//            fileMetadata.updateStatus(OperationStatus.IN_PROGRESS, null);
 
             // Обработка данных
             List<Map<String, String>> processedData = new ArrayList<>();
@@ -91,39 +91,39 @@ public class Client1DataProcessor implements ClientDataProcessor {
             }
 
             // Обновляем статистику
-            fileMetadata.updateProcessingStatistics(
-                    data.size(),
-                    successCount,
-                    errors.size()
-            );
+//            fileMetadata.updateProcessingStatistics(
+//                    data.size(),
+//                    successCount,
+//                    errors.size()
+//            );
 
             // Если были ошибки, добавляем их
-            errors.forEach(fileMetadata::addProcessingError);
-
-            // Обновляем статус файла
-            if (errors.isEmpty()) {
-                fileMetadata.updateStatus(FileStatus.COMPLETED, null);
-            } else {
-                fileMetadata.updateStatus(FileStatus.ERROR,
-                        "Обработано с ошибками: " + errors.size() + " из " + data.size());
-            }
+//            errors.forEach(fileMetadata::addProcessingError);
+//
+//            // Обновляем статус файла
+//            if (errors.isEmpty()) {
+//                fileMetadata.updateStatus(FileStatus.COMPLETED, null);
+//            } else {
+//                fileMetadata.updateStatus(FileStatus.ERROR,
+//                        "Обработано с ошибками: " + errors.size() + " из " + data.size());
+//            }
 
             log.info("Завершение обработки файла {}. Успешно: {}, Ошибок: {}",
                     fileMetadata.getOriginalFilename(), successCount, errors.size());
 
         } catch (Exception e) {
             log.error("Ошибка при обработке файла: {}", e.getMessage(), e);
-            fileMetadata.updateStatus(FileStatus.ERROR, e.getMessage());
+//            fileMetadata.updateStatus(FileStatus.ERROR, e.getMessage());
         }
     }
 
     @Override
     public void afterProcessing(FileMetadata metadata) {
         // Дополнительные действия после обработки
-        if (FileStatus.COMPLETED.equals(metadata.getStatus())) {
-            log.info("Пост-обработка файла {}", metadata.getOriginalFilename());
-            // Здесь можно добавить специфичную логику
-        }
+//        if (FileStatus.COMPLETED.equals(metadata.getStatus())) {
+//            log.info("Пост-обработка файла {}", metadata.getOriginalFilename());
+//            // Здесь можно добавить специфичную логику
+//        }
     }
 
     @Override

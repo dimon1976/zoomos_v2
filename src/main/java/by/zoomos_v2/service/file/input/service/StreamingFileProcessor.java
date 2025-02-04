@@ -1,7 +1,7 @@
 package by.zoomos_v2.service.file.input.service;
 
 import by.zoomos_v2.model.FileMetadata;
-import by.zoomos_v2.service.file.input.processor.ProcessingProgressCallback;
+import by.zoomos_v2.service.file.input.callback.ProcessingProgressCallback;
 
 import java.io.IOException;
 import java.nio.file.Path;

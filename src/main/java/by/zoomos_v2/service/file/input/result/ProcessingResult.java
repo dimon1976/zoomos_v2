@@ -1,6 +1,6 @@
 package by.zoomos_v2.service.file.input.result;
 
-import by.zoomos_v2.service.file.ProcessingData;
+import by.zoomos_v2.service.file.BatchProcessingData;
 import lombok.Builder;
 import lombok.Data;
 
@@ -19,7 +19,7 @@ public class ProcessingResult {
     private List<String> errors;
     private List<Map<String, String>> processedData;
     private Map<String, Object> statistics;
-    private ProcessingData processingData;
+    private BatchProcessingData batchProcessingData;
 
     // Дополнительные поля для экспорта
     private String fileName;
@@ -29,11 +29,11 @@ public class ProcessingResult {
     /**
      * Создает успешный результат обработки
      */
-    public static ProcessingResult success(List<Map<String, String>> data, ProcessingData stats) {
+    public static ProcessingResult success(List<Map<String, String>> data, BatchProcessingData stats) {
         return ProcessingResult.builder()
                 .success(true)
                 .processedData(data)
-                .processingData(stats)
+                .batchProcessingData(stats)
                 .errors(new ArrayList<>())
                 .build();
     }

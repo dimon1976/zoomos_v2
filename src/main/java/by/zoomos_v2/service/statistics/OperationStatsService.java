@@ -50,13 +50,13 @@ public class OperationStatsService {
      * Обновляет статус операции
      */
     @Transactional
-    public void updateOperationStatus(Long operationId, OperationStatus status, String error) {
+    public void updateOperationStatus(Long operationId, OperationStatus status, String error, String errorType) {
         Optional<? extends BaseOperation> operationOpt = findOperation(operationId);
         if (operationOpt.isPresent()) {
             BaseOperation operation = operationOpt.get();
             operation.setStatus(status);
             if (error != null) {
-                operation.addError(error);
+                operation.addError(error, errorType);
             }
             if (status.equals(OperationStatus.COMPLETED) ||
                     status.equals(OperationStatus.FAILED) ||
@@ -242,5 +242,14 @@ public class OperationStatsService {
                 .processingStrategy(operation.getProcessingStrategy())
                 .errors(operation.getErrors())
                 .build();
+    }
+
+    //    @Transactional(readOnly = true)
+//    public ImportOperation findImportOperationBySourceIdentifier(String sourceIdentifier) {
+//        return importOperationRepository.findFirstBySourceIdentifierOrderByStartTimeDesc(sourceIdentifier);
+//    }
+    @Transactional(readOnly = true)
+    public ImportOperation findLastOperationBySourceAndClient(String sourceIdentifier, Long clientId) {
+        return importOperationRepository.findLastOperationBySourceAndClient(sourceIdentifier, clientId);
     }
 }

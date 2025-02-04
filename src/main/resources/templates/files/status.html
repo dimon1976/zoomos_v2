@@ -72,14 +72,17 @@
                                 <tr>
                                     <th>Статус</th>
                                     <td>
-                                            <span th:class="${'badge ' +
-                                                (file.status == 'COMPLETED' ? 'bg-success' :
-                                                 file.status == 'ERROR' ? 'bg-danger' :
-                                                 file.status == 'COMPLETED_WITH_ERRORS' ? 'bg-warning' :
-                                                 file.status == 'PROCESSING' ? 'bg-primary' :
-                                                 file.status == 'CANCELLED' ? 'bg-secondary' : 'bg-secondary')}"
+                                            <span th:with="statusClass=${
+    file.status.name() == 'PENDING' ? 'bg-secondary' :
+    file.status.name() == 'IN_PROGRESS' ? 'bg-primary' :
+    file.status.name() == 'COMPLETED' ? 'bg-success' :
+    file.status.name() == 'FAILED' ? 'bg-danger' :
+    file.status.name() == 'CANCELLED' ? 'bg-secondary' :
+    file.status.name() == 'PARTIAL_SUCCESS' ? 'bg-warning' : 'bg-secondary'
+}"
+                                                  th:class="${'badge ' + statusClass}"
                                                   th:text="${file.status}">
-                                            </span>
+</span>
                                     </td>
                                 </tr>
                                 <tr>

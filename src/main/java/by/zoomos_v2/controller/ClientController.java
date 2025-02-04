@@ -69,7 +69,7 @@ public class ClientController {
             model.addAttribute("client", client);
 
             // Данные для вкладки загрузки
-            model.addAttribute("files", fileMetadataService.getFilesByClientId(id));
+            model.addAttribute("files", fileMetadataService.getFilesInfoByClientId(id));
             model.addAttribute("mappings", mappingConfigService.getMappingsForClient(id));
 
             // Данные для вкладки экспорта

@@ -1,7 +1,7 @@
 package by.zoomos_v2.service.file.export.exporter;
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportResult;
-import by.zoomos_v2.service.file.ProcessingData;
+import by.zoomos_v2.service.file.BatchProcessingData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,7 +22,7 @@ public abstract class AbstractDataExporter implements DataExporter{
     public ExportResult export(List<Map<String, Object>> data,
                                OutputStream outputStream,
                                ExportConfig exportConfig,
-                               ProcessingData processingData) {
+                               BatchProcessingData batchProcessingData) {
         try {
             long startTime = System.currentTimeMillis();
 
@@ -36,19 +36,19 @@ public abstract class AbstractDataExporter implements DataExporter{
             doExport(preparedData, outputStream, exportConfig);
 
             // Обновляем статистику
-            processingData.setTotalCount(data.size());
-            processingData.setSuccessCount(preparedData.size());
-            processingData.setProcessingTimeSeconds((System.currentTimeMillis() - startTime) / 1000);
+//            batchProcessingData.setTotalCount(data.size());
+//            batchProcessingData.setSuccessCount(preparedData.size());
+//            batchProcessingData.setProcessingTimeSeconds((System.currentTimeMillis() - startTime) / 1000);
 
             // Формирование результата
             return ExportResult.success(
-                    processingData,
+                    batchProcessingData,
                     generateFileName(exportConfig)
             );
 
         } catch (Exception e) {
             log.error("Error during export: ", e);
-            if (processingData != null) {
+            if (batchProcessingData != null) {
 //                processingStats.addError(e.getMessage(), "EXPORT_ERROR");
             }
             return ExportResult.error(e.getMessage());

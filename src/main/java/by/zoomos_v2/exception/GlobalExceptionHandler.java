@@ -1,7 +1,6 @@
 package by.zoomos_v2.exception;
 
 
-import by.zoomos_v2.config.UploadFileException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -38,9 +37,9 @@ public class GlobalExceptionHandler {
     /**
      * Обрабатывает ошибки загрузки файлов
      */
-    @ExceptionHandler(UploadFileException.class)
+    @ExceptionHandler(FileUploadExceptionHandler.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ResponseEntity<ErrorResponse> handleUploadFileException(UploadFileException ex) {
+    public ResponseEntity<ErrorResponse> handleUploadFileException(FileUploadExceptionHandler ex) {
         log.error("File upload error: {}", ex.getMessage(), ex);
         return buildErrorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }

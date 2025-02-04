@@ -42,33 +42,33 @@ public class DefaultClientDataProcessor implements ClientDataProcessor {
                     fileMetadata.getOriginalFilename());
 
             // Обновляем статус
-            fileMetadata.updateStatus(FileStatus.PROCESSING, null);
-
-            // Статистика
-            fileMetadata.updateProcessingStatistics(
-                    data.size(),    // всего записей
-                    data.size(),    // успешных записей (все, т.к. не меняем данные)
-                    0               // ошибок нет
-            );
+//            fileMetadata.updateStatus(FileStatus.PROCESSING, null);
+//
+//            // Статистика
+//            fileMetadata.updateProcessingStatistics(
+//                    data.size(),    // всего записей
+//                    data.size(),    // успешных записей (все, т.к. не меняем данные)
+//                    0               // ошибок нет
+//            );
 
             // Успешное завершение
-            fileMetadata.updateStatus(FileStatus.COMPLETED, null);
+//            fileMetadata.updateStatus(FileStatus.COMPLETED, null);
 
             log.info("Завершение обработки файла {}. Обработано записей: {}",
                     fileMetadata.getOriginalFilename(), data.size());
 
         } catch (Exception e) {
             log.error("Ошибка при обработке файла: {}", e.getMessage(), e);
-            fileMetadata.updateStatus(FileStatus.ERROR, e.getMessage());
-            fileMetadata.addProcessingError(e.getMessage());
+//            fileMetadata.updateStatus(FileStatus.ERROR, e.getMessage());
+//            fileMetadata.addProcessingError(e.getMessage());
         }
     }
 
     @Override
     public void afterProcessing(FileMetadata metadata) {
-        if (FileStatus.COMPLETED.equals(metadata.getStatus())) {
-            log.info("Завершена обработка файла {}", metadata.getOriginalFilename());
-        }
+//        if (FileStatus.COMPLETED.equals(metadata.getStatus())) {
+//            log.info("Завершена обработка файла {}", metadata.getOriginalFilename());
+//        }
     }
 
     @Override

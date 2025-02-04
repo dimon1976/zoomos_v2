@@ -1,7 +1,7 @@
 package by.zoomos_v2.service.file.export.strategy;
 
 import by.zoomos_v2.model.ExportConfig;
-import by.zoomos_v2.service.file.ProcessingData;
+import by.zoomos_v2.service.file.BatchProcessingData;
 
 import java.util.List;
 import java.util.Map;
@@ -17,12 +17,12 @@ public interface DataProcessingStrategy {
      *
      * @param data исходные данные для обработки
      * @param exportConfig конфигурация экспорта
-     * @param processingData статистика обработки
+     * @param batchProcessingData статистика обработки
      * @return обработанные данные
      */
     List<Map<String, Object>> processData(List<Map<String, Object>> data,
                                           ExportConfig exportConfig,
-                                          ProcessingData processingData);
+                                          BatchProcessingData batchProcessingData);
 
     /**
      * Проверяет, подходит ли данная стратегия для указанной конфигурации

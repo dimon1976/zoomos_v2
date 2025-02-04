@@ -2,8 +2,11 @@ package by.zoomos_v2.controller;
 
 import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.model.FileMetadata;
+import by.zoomos_v2.model.operation.ImportOperation;
 import by.zoomos_v2.service.file.input.service.FileProcessingService;
 import by.zoomos_v2.service.file.input.service.FileUploadService;
+import by.zoomos_v2.service.file.metadata.FileMetadataService;
+import by.zoomos_v2.service.statistics.OperationStatsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -26,7 +30,9 @@ import java.util.Map;
 public class UploadController {
     private final FileUploadService fileUploadService;
     private final FileProcessingService fileProcessingService;
-    private final ObjectMapper objectMapper;
+    private final OperationStatsService operationStatsService;
+    private final FileMetadataService fileMetadataService;
+
 
     /**
      * Загрузка файла
@@ -72,7 +78,7 @@ public class UploadController {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
             validateFileOwnership(metadata, clientId);
 
-            model.addAttribute("file", metadata);
+            model.addAttribute("file", fileMetadataService.createFileInfo(metadata, clientId));
             model.addAttribute("processingStatus", fileProcessingService.getProcessingStatus(fileId));
             model.addAttribute("clientId", clientId);
 
@@ -83,6 +89,49 @@ public class UploadController {
             return "error";
         }
     }
+
+//    /**
+//     * Страница статистики обработки файла
+//     */
+//    @GetMapping("/{fileId}/statistics")
+//    public String showFileStatistics(@PathVariable Long clientId,
+//                                     @PathVariable Long fileId,
+//                                     Model model) {
+//        log.debug("Запрошена статистика обработки файла {} для клиента {}", fileId, clientId);
+//
+//        try {
+//            FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
+//            validateFileOwnership(metadata, clientId);
+//
+//            // Рассчитываем время обработки
+//            if (metadata.getProcessingStartedAt() != null && metadata.getProcessingCompletedAt() != null) {
+//                Duration duration = Duration.between(
+//                        metadata.getProcessingStartedAt(),
+//                        metadata.getProcessingCompletedAt()
+//                );
+//                model.addAttribute("processingDuration", duration.getSeconds());
+//            }
+//
+//            // Загружаем статистику из JSON
+//            if (metadata.getProcessingResults() != null) {
+//                Map<String, Object> statistics = objectMapper.readValue(
+//                        metadata.getProcessingResults(),
+//                        objectMapper.getTypeFactory().constructMapType(
+//                                Map.class, String.class, Object.class)
+//                );
+//                model.addAttribute("statistics", statistics);
+//            }
+//
+//            model.addAttribute("file", metadata);
+//            model.addAttribute("clientId", clientId);
+//
+//            return "files/statistics";
+//        } catch (Exception e) {
+//            log.error("Ошибка при получении статистики обработки файла: {}", e.getMessage(), e);
+//            model.addAttribute("error", "Ошибка при получении статистики");
+//            return "error";
+//        }
+//    }
 
     /**
      * Страница статистики обработки файла
@@ -97,23 +146,60 @@ public class UploadController {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
             validateFileOwnership(metadata, clientId);
 
-            // Рассчитываем время обработки
-            if (metadata.getProcessingStartedAt() != null && metadata.getProcessingCompletedAt() != null) {
-                Duration duration = Duration.between(
-                        metadata.getProcessingStartedAt(),
-                        metadata.getProcessingCompletedAt()
-                );
-                model.addAttribute("processingDuration", duration.getSeconds());
-            }
+            // Получаем операцию импорта для данного файла
+//            ImportOperation operation = operationStatsService.findImportOperationBySourceIdentifier(
+//                    metadata.getOriginalFilename()
+//            );
+            ImportOperation operation = operationStatsService.findLastOperationBySourceAndClient(
+                    metadata.getOriginalFilename(),
+                    clientId
+            );
 
-            // Загружаем статистику из JSON
-            if (metadata.getProcessingResults() != null) {
-                Map<String, Object> statistics = objectMapper.readValue(
-                        metadata.getProcessingResults(),
-                        objectMapper.getTypeFactory().constructMapType(
-                                Map.class, String.class, Object.class)
-                );
+            if (operation != null) {
+                // Базовая статистика
+                Map<String, Object> statistics = new HashMap<>();
+                statistics.put("totalRecords", operation.getTotalRecords());
+                statistics.put("processedRecords", operation.getProcessedRecords());
+                statistics.put("failedRecords", operation.getFailedRecords());
+                statistics.put("processingTimeSeconds", operation.getProcessingTimeSeconds());
+                statistics.put("processingSpeed", operation.getProcessingSpeed());
+
+                // Статистика ошибок
+                if (!operation.getErrorTypes().isEmpty()) {
+                    statistics.put("errorTypes", operation.getErrorTypes());
+                }
+
+                // Расчет времени обработки
+                if (operation.getStartTime() != null && operation.getEndTime() != null) {
+                    Duration duration = Duration.between(operation.getStartTime(), operation.getEndTime());
+                    statistics.put("processingDuration", duration.getSeconds());
+                }
+
+                // Добавляем метаданные операции
+                if (operation.getMetadata() != null && !operation.getMetadata().isEmpty()) {
+                    // Фильтруем и преобразуем метаданные для отображения
+                    Map<String, Object> displayMetadata = new HashMap<>();
+
+                    // Добавляем метрики производительности
+                    if (operation.getMetadata().containsKey("performanceMetrics")) {
+                        displayMetadata.put("performance", operation.getMetadata().get("performanceMetrics"));
+                    }
+
+                    // Добавляем прогресс обработки
+                    if (operation.getMetadata().containsKey("progressMetrics")) {
+                        displayMetadata.put("progress", operation.getMetadata().get("progressMetrics"));
+                    }
+
+                    // Добавляем конфигурацию обработки
+                    if (operation.getMetadata().containsKey("processorConfig")) {
+                        displayMetadata.put("configuration", operation.getMetadata().get("processorConfig"));
+                    }
+
+                    statistics.put("metadata", displayMetadata);
+                }
+
                 model.addAttribute("statistics", statistics);
+                model.addAttribute("operation", operation);
             }
 
             model.addAttribute("file", metadata);
@@ -122,7 +208,7 @@ public class UploadController {
             return "files/statistics";
         } catch (Exception e) {
             log.error("Ошибка при получении статистики обработки файла: {}", e.getMessage(), e);
-            model.addAttribute("error", "Ошибка при получении статистики");
+            model.addAttribute("error", "Ошибка при получении статистики: " + e.getMessage());
             return "error";
         }
     }
