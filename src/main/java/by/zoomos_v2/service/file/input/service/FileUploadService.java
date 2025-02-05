@@ -5,6 +5,7 @@ import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
 import by.zoomos_v2.model.TextFileParameters;
 import by.zoomos_v2.model.enums.OperationStatus;
+import by.zoomos_v2.model.operation.ImportOperation;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.util.FileTypeDetector;
 import by.zoomos_v2.util.FileUtils;
@@ -33,6 +34,7 @@ public class FileUploadService {
     private final FileValidationService fileValidationService;
     private final FileUtils fileUtils;
     private final PathResolver pathResolver;
+    private final FileProcessingService fileProcessingService;
 
     /**
      * Загружает файл и создает метаданные.
@@ -42,8 +44,8 @@ public class FileUploadService {
      * 3. Сохранение файла на диск
      * 4. Создание и сохранение метаданных
      *
-     * @param file загружаемый файл
-     * @param clientId идентификатор магазина
+     * @param file      загружаемый файл
+     * @param clientId  идентификатор магазина
      * @param mappingId идентификатор конфигурации маппинга (опционально)
      * @return метаданные загруженного файла
      * @throws FileProcessingException при ошибках обработки файла
@@ -51,8 +53,8 @@ public class FileUploadService {
     @Transactional
     public FileMetadata uploadFile(MultipartFile file, Long clientId, Long mappingId) {
         log.debug("Начало загрузки файла {} для магазина {}", file.getOriginalFilename(), clientId);
-
         try {
+
             // Валидация файла
             fileValidationService.validateFile(file);
 
@@ -64,7 +66,6 @@ public class FileUploadService {
 
             // Создание директории для магазина если не существует
             fileUtils.createDirectoryIfNotExists(pathResolver.getClientDirectory(clientId));
-
             // Сохранение файла
             String storedFilename = fileUtils.saveFile(file, pathResolver.getClientDirectory(clientId));
 
@@ -72,18 +73,20 @@ public class FileUploadService {
             FileMetadata metadata = new FileMetadata();
             metadata.setClientId(clientId);
             metadata.setOriginalFilename(file.getOriginalFilename());
-            metadata.setStoredFilename(storedFilename);
             metadata.setFileType(fileType);
             metadata.setSize(file.getSize());
             metadata.setContentType(file.getContentType());
             metadata.setMappingConfigId(mappingId);
+            metadata.setStoredFilename(storedFilename);
+
             // Анализируем параметры текстового файла
             if (isTextFile(fileType)) {
                 TextFileParameters parameters = TextFileAnalyzer.analyzeFile(pathResolver.getFilePath(clientId, metadata.getStoredFilename()));
                 metadata.updateTextParameters(parameters);
                 log.info("Определены параметры текстового файла {}: кодировка - {}, разделитель - {}",
-                         metadata.getOriginalFilename(), parameters.getEncoding(), parameters.getDelimiter());
+                        metadata.getOriginalFilename(), parameters.getEncoding(), parameters.getDelimiter());
             }
+
             // Сохранение метаданных
             metadata = fileMetadataRepository.save(metadata);
             log.info("Файл {} успешно загружен и сохранен с ID: {}",
@@ -131,7 +134,7 @@ public class FileUploadService {
     /**
      * Удаляет файл и его метаданные
      *
-     * @param fileId идентификатор файла
+     * @param fileId   идентификатор файла
      * @param clientId идентификатор магазина
      * @throws FileProcessingException при ошибках удаления или если файл не принадлежит магазину
      */

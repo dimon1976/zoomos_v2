@@ -43,6 +43,15 @@ public class StatisticsProcessor {
     public void handleOperationError(BaseOperation operation, String error, String errorType) {
         log.debug("Обработка ошибки операции {}: {} ({})", operation.getId(), error, errorType);
         operation.addError(error, errorType);
+
+        // Сохраняем текущий статус для логирования
+        OperationStatus oldStatus = operation.getStatus();
+        operation.addError(error, errorType);
+        operation.setStatus(OperationStatus.FAILED);
+
+        log.debug("Изменен статус операции {} с {} на {}",
+                operation.getId(), oldStatus, operation.getStatus());
+
         updateOperationStatus(operation.getId(), OperationStatus.FAILED, error, errorType);
     }
 
@@ -51,7 +60,9 @@ public class StatisticsProcessor {
      * @param operation операция
      */
     public void updateOperationStats(BaseOperation operation) {
-        log.debug("Обновление статистики операции {}", operation.getId());
+        log.debug("Обновление статистики операции {}: статус={}, обработано={}, всего={}",
+                operation.getId(), operation.getStatus(),
+                operation.getProcessedRecords(), operation.getTotalRecords());
 
         try {
             // Обновляем основную статистику

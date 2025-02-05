@@ -53,7 +53,7 @@ import static by.zoomos_v2.constant.BatchSize.BATCH_SIZE_FILE_RECORD;
 @Service
 @RequiredArgsConstructor
 public class FileProcessingService {
-    private final FileMetadataService fileMetadataService;
+
     private final FileMetadataRepository fileMetadataRepository;
     private final DataPersistenceService dataPersistenceService;
     private final FileProcessorFactory processorFactory;
@@ -82,32 +82,39 @@ public class FileProcessingService {
 
             // Инициализация операции
             operation = initializeImportOperation(metadata);
+            log.debug("Создана операция импорта с ID: {}", operation.getId());
 
-//            operationStatsService.updateOperationStatus(operation.getId(),
-//                    OperationStatus.IN_PROGRESS, null, null);
-
-
-            // Обновление статуса через StatisticsProcessor
-            statisticsProcessor.updateOperationStatus(
+            // Обновляем статус на IN_PROGRESS - используем непосредственно сервис
+            operationStatsService.updateOperationStatus(
                     operation.getId(),
                     OperationStatus.IN_PROGRESS,
-                    "Начало обработки файла",
-                    "PROCESSING_START"  // добавляем errorType
+                    null,
+                    null
             );
 
-            // Обновление статуса обработки
+            // Обновляем статус в памяти
             updateProcessingStatus(fileId, 0, "Инициализация обработки");
 
             // Основной процесс обработки
             batchData = processFile(metadata, operation);
 
-            // Обновление статистики через StatisticsProcessor
+            // Если дошли до этой точки - обработка успешна
+            log.debug("Файл {} успешно обработан, обновляем статус", fileId);
+
+            // Проверяем на наличие ошибок
+            boolean hasErrors = !operation.getErrors().isEmpty();
+            OperationStatus finalStatus = hasErrors ?
+                    OperationStatus.PARTIAL_SUCCESS : OperationStatus.COMPLETED;
+
+            operation.setStatus(finalStatus);
+            operation.setEndTime(LocalDateTime.now());
             statisticsProcessor.updateOperationStats(operation);
 
-            // Обновление результатов
-//            fileMetadataService.updateProcessingResults(metadata, operation);
-            updateProcessingStatus(fileId, 100, "Обработка завершена");
+            // Обновляем статус в памяти
+            updateProcessingStatus(fileId, 100, hasErrors ?
+                    "Обработка завершена с ошибками" : "Обработка завершена успешно");
 
+            log.info("Файл {} обработан. Прогресс: 100%, Статус: {}", fileId, finalStatus);
         } catch (Exception e) {
             handleProcessingError(fileId, e, operation);
         } finally {
@@ -116,13 +123,20 @@ public class FileProcessingService {
             }
             processingStatuses.remove(fileId);
 
-            log.info("Завершена обработка файла с ID: {}. Статус: {}",
-                    fileId,
-                    operation != null ? operation.getStatus() : "UNKNOWN");
+            // Логируем финальный статус
+            if (operation != null) {
+                updateProcessingStatus(
+                        fileId,
+                        100,
+                        operation.getStatus().name() + ": " + operation.getStatus()
+                );
+                log.info("Завершена обработка файла с ID: {}. Статус: {}",
+                        fileId, operation.getStatus());
+            }
         }
     }
 
-    private ImportOperation initializeImportOperation(FileMetadata metadata) {
+    public ImportOperation initializeImportOperation(FileMetadata metadata) {
         log.debug("Инициализация операции импорта для файла: {}", metadata.getOriginalFilename());
 
         ImportOperation operation = new ImportOperation();
@@ -166,11 +180,6 @@ public class FileProcessingService {
             // Сохранение обработанных данных
             persistData(metadata, operation, batchData);
             log.debug("Сохранение данных завершено. Успешно обработано: {}", operation.getProcessedRecords());
-
-            // Обновление итоговой статистики операции
-            operation.setEndTime(LocalDateTime.now());
-            statisticsProcessor.addPerformanceMetrics(operation, startTime);
-            statisticsProcessor.updateOperationStats(operation);
 
             return batchData;
 
@@ -262,7 +271,7 @@ public class FileProcessingService {
                 // Обновляем статус только если прошло достаточно времени с последнего обновления
                 if (ChronoUnit.MILLIS.between(lastUpdate, now) >= UPDATE_INTERVAL_MS) {
                     // Пересчитываем прогресс для текущего этапа (чтение файла - 10-30%)
-                    int totalProgress = 10 + (progress * 20 / 100);
+                    int totalProgress = (int) (progress * 0.3);
                     updateProcessingStatus(metadata.getId(), totalProgress, message);
 
                     // Сохраняем метрики прогресса
@@ -369,6 +378,10 @@ public class FileProcessingService {
                         processBatch(metadata, operation, currentBatch, columnsMapping, totalProcessed);
                         totalProcessed += currentBatch.size();
                         currentBatch.clear();
+
+                        // Обновляем прогресс: 30% + (сохраненные записи / общее количество * 70%)
+                        int saveProgress = 30 + (int) ((totalProcessed / (double) operation.getTotalRecords()) * 70);
+                        updateProcessingStatus(metadata.getId(), saveProgress, "Сохранение данных");
                     }
                 }
 
@@ -423,20 +436,18 @@ public class FileProcessingService {
      * Обрабатывает ошибки процесса обработки
      */
     private void handleProcessingError(Long fileId, Exception e, ImportOperation operation) {
-        String errorMessage = String.format("Ошибка при обработке файла %d: %s", fileId, e.getMessage());
+        String errorMessage = String.format("Ошибка при обработке файла %d: %s",
+                fileId, e.getMessage());
         log.error(errorMessage, e);
 
         if (operation != null) {
-            // Обновление статуса через StatisticsProcessor
-            statisticsProcessor.handleOperationError(
-                    operation,
-                    errorMessage,
-                    e instanceof FileProcessingException ? "PROCESSING_ERROR" : "SYSTEM_ERROR"
-            );
+            operation.setStatus(OperationStatus.FAILED);
+            operation.setEndTime(LocalDateTime.now());
+            operation.addError(errorMessage,
+                    e instanceof FileProcessingException ? "PROCESSING_ERROR" : "SYSTEM_ERROR");
+            statisticsProcessor.updateOperationStats(operation);
         }
 
-        // Обновление статуса файла
-//        fileMetadataService.markAsError(fileId, errorMessage);
         updateProcessingStatus(fileId, -1, "Ошибка: " + e.getMessage());
     }
 
@@ -455,7 +466,7 @@ public class FileProcessingService {
         log.debug("Обработка батча {} записей (с {} по {}) из {}",
                 batch.size(), processedSoFar + 1,
                 processedSoFar + batch.size(), operation.getTotalRecords());
-        int progress = (int)((processedSoFar * 100.0) / operation.getTotalRecords());
+        int progress = (int) ((processedSoFar * 100.0) / operation.getTotalRecords());
         updateProcessingStatus(metadata.getId(), progress,
                 String.format("Обработано %d из %d записей", processedSoFar, operation.getTotalRecords()));
         try {
@@ -506,8 +517,11 @@ public class FileProcessingService {
 
 
     private void updateProcessingStatus(Long fileId, int progress, String message) {
-        ProcessingStatus status = new ProcessingStatus(progress, message);
-        processingStatuses.put(fileId, status);
+        // Не обновляем статус на COMPLETED, пока прогресс не достиг 100%
+        if (progress < 100) {
+            ProcessingStatus status = new ProcessingStatus(progress, message);
+            processingStatuses.put(fileId, status);
+        }
         log.debug("Обновлен статус обработки файла {}: {}% - {}", fileId, progress, message);
     }
 
@@ -545,6 +559,4 @@ public class FileProcessingService {
         private int progress;
         private String message;
     }
-
-
 }

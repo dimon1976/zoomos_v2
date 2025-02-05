@@ -110,8 +110,12 @@ public abstract class BaseOperation {
     private Map<String, Object> metadata = new HashMap<>();
 
     public void addError(String error, String errorType) {
-        errors.add(error);
-        errorTypes.merge(errorType, 1, Integer::sum);
+        if (error != null) {
+            errors.add(error);
+        }
+        if (errorType != null) {
+            errorTypes.merge(errorType, 1, Integer::sum);
+        }
     }
 
     public void updateProcessingStatistics(Integer totalRecords, Integer processedRecords, Integer failedRecords) {

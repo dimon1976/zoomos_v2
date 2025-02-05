@@ -18,6 +18,10 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -33,6 +37,26 @@ public class BatchProcessingData {
     private Path tempFilePath;
     private List<String> headers = new ArrayList<>();
     private List<Map<String, String>> processedData;
+    private ExecutorService executorService = Executors.newFixedThreadPool(4);
+    private List<Future<?>> futures = new ArrayList<>();
+
+    // Добавление задачи в пул
+    public void submitTask(Runnable task) {
+        futures.add(executorService.submit(task));
+    }
+
+    // Ожидание завершения всех задач
+    public void awaitCompletion() throws InterruptedException {
+        executorService.shutdown();
+        executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+    }
+
+    // Очистка ресурсов
+    public void clean() {
+        executorService.shutdownNow();
+    }
+
+
 
     public synchronized void writeRecord(Map<String, String> record) throws IOException {
         if (tempFilePath == null) {
@@ -56,7 +80,7 @@ public class BatchProcessingData {
             String line;
             ObjectMapper mapper = new ObjectMapper();
             while ((line = reader.readLine()) != null) {
-                batch.add(mapper.readValue(line, new TypeReference<Map<String, String>>() {
+                batch.add(mapper.readValue(line, new TypeReference<>() {
                 }));
 
                 if (batch.size() >= batchSize) {

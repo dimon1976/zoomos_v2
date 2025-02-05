@@ -51,11 +51,12 @@ public class OperationStatsService {
      */
     @Transactional
     public void updateOperationStatus(Long operationId, OperationStatus status, String error, String errorType) {
+        log.debug("Обновление статуса операции {}: {} ({})", operationId, status, error);
         Optional<? extends BaseOperation> operationOpt = findOperation(operationId);
         if (operationOpt.isPresent()) {
             BaseOperation operation = operationOpt.get();
             operation.setStatus(status);
-            if (error != null) {
+            if (error != null && errorType != null) {
                 operation.addError(error, errorType);
             }
             if (status.equals(OperationStatus.COMPLETED) ||
@@ -63,6 +64,8 @@ public class OperationStatsService {
                     status.equals(OperationStatus.CANCELLED)) {
                 operation.setEndTime(LocalDateTime.now());
             }
+            log.debug("Обновлен статус операции {}: {} (error: {}, type: {})",
+                    operationId, status, error, errorType);
             getRepositoryForType((Class<BaseOperation>) operation.getClass()).save(operation);
         }
     }
@@ -244,10 +247,6 @@ public class OperationStatsService {
                 .build();
     }
 
-    //    @Transactional(readOnly = true)
-//    public ImportOperation findImportOperationBySourceIdentifier(String sourceIdentifier) {
-//        return importOperationRepository.findFirstBySourceIdentifierOrderByStartTimeDesc(sourceIdentifier);
-//    }
     @Transactional(readOnly = true)
     public ImportOperation findLastOperationBySourceAndClient(String sourceIdentifier, Long clientId) {
         return importOperationRepository.findLastOperationBySourceAndClient(sourceIdentifier, clientId);
