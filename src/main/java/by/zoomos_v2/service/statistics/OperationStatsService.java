@@ -191,7 +191,7 @@ public class OperationStatsService {
     /**
      * Находит операцию по ID
      */
-    private Optional<? extends BaseOperation> findOperation(Long operationId) {
+    public Optional<? extends BaseOperation> findOperation(Long operationId) {
         return repositories.stream()
                 .map(repo -> repo.findById(operationId))
                 .filter(Optional::isPresent)

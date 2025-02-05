@@ -139,8 +139,6 @@ public abstract class BaseOperation {
     @PrePersist
     protected void onCreate() {
         startTime = LocalDateTime.now();
-        if (status == null) {
-            status = OperationStatus.PENDING;
-        }
+        status = status == null ? OperationStatus.PENDING : status;
     }
 }

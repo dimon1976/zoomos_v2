@@ -83,6 +83,10 @@ public class FileProcessingService {
             // Инициализация операции
             operation = initializeImportOperation(metadata);
 
+//            operationStatsService.updateOperationStatus(operation.getId(),
+//                    OperationStatus.IN_PROGRESS, null, null);
+
+
             // Обновление статуса через StatisticsProcessor
             statisticsProcessor.updateOperationStatus(
                     operation.getId(),
@@ -451,7 +455,9 @@ public class FileProcessingService {
         log.debug("Обработка батча {} записей (с {} по {}) из {}",
                 batch.size(), processedSoFar + 1,
                 processedSoFar + batch.size(), operation.getTotalRecords());
-
+        int progress = (int)((processedSoFar * 100.0) / operation.getTotalRecords());
+        updateProcessingStatus(metadata.getId(), progress,
+                String.format("Обработано %d из %d записей", processedSoFar, operation.getTotalRecords()));
         try {
             // Сохраняем батч
             Map<String, Object> results = dataPersistenceService.saveEntities(

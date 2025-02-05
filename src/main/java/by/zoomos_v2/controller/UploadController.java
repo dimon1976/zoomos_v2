@@ -90,49 +90,6 @@ public class UploadController {
         }
     }
 
-//    /**
-//     * Страница статистики обработки файла
-//     */
-//    @GetMapping("/{fileId}/statistics")
-//    public String showFileStatistics(@PathVariable Long clientId,
-//                                     @PathVariable Long fileId,
-//                                     Model model) {
-//        log.debug("Запрошена статистика обработки файла {} для клиента {}", fileId, clientId);
-//
-//        try {
-//            FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-//            validateFileOwnership(metadata, clientId);
-//
-//            // Рассчитываем время обработки
-//            if (metadata.getProcessingStartedAt() != null && metadata.getProcessingCompletedAt() != null) {
-//                Duration duration = Duration.between(
-//                        metadata.getProcessingStartedAt(),
-//                        metadata.getProcessingCompletedAt()
-//                );
-//                model.addAttribute("processingDuration", duration.getSeconds());
-//            }
-//
-//            // Загружаем статистику из JSON
-//            if (metadata.getProcessingResults() != null) {
-//                Map<String, Object> statistics = objectMapper.readValue(
-//                        metadata.getProcessingResults(),
-//                        objectMapper.getTypeFactory().constructMapType(
-//                                Map.class, String.class, Object.class)
-//                );
-//                model.addAttribute("statistics", statistics);
-//            }
-//
-//            model.addAttribute("file", metadata);
-//            model.addAttribute("clientId", clientId);
-//
-//            return "files/statistics";
-//        } catch (Exception e) {
-//            log.error("Ошибка при получении статистики обработки файла: {}", e.getMessage(), e);
-//            model.addAttribute("error", "Ошибка при получении статистики");
-//            return "error";
-//        }
-//    }
-
     /**
      * Страница статистики обработки файла
      */
