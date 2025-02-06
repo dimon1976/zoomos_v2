@@ -12,23 +12,27 @@ import java.util.Map;
 @Data
 @Builder
 public class ProcessingStatsDTO {
+    private String status;
     private int progress;
     private String message;
-    private String status;
     private Integer totalRecords;
     private Integer processedRecords;
     private Double processingSpeed;
-    private Map<String, Object> metadata;
 
-    public static ProcessingStatsDTO fromOperation(BaseOperation operation, FileProcessingService.ProcessingStatus currentStatus) {
+    public static ProcessingStatsDTO fromOperation(BaseOperation operation, String currentStatus) {
         return ProcessingStatsDTO.builder()
-                .progress(currentStatus.getProgress())
-                .message(currentStatus.getMessage())
                 .status(operation.getStatus().name())
+                .progress(calculateProgress(operation))
+                .message(currentStatus)
                 .totalRecords(operation.getTotalRecords())
                 .processedRecords(operation.getProcessedRecords())
                 .processingSpeed(operation.getProcessingSpeed())
-                .metadata(operation.getMetadata())
                 .build();
+    }
+    private static int calculateProgress(BaseOperation operation) {
+        if (operation.getTotalRecords() == null || operation.getTotalRecords() == 0) {
+            return 0;
+        }
+        return (int) ((operation.getProcessedRecords() * 100.0) / operation.getTotalRecords());
     }
 }

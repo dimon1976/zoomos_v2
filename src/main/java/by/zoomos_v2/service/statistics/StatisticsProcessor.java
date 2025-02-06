@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Сервис для обработки и агрегации статистики
@@ -21,6 +22,77 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StatisticsProcessor {
     private final OperationStatsService operationStatsService;
+
+
+    /**
+     * Метод расчета всех метрик операции
+     */
+    private void calculateOperationMetrics(BaseOperation operation) {
+        if (operation.getStartTime() != null && operation.getEndTime() != null) {
+            long processingTimeSeconds = ChronoUnit.SECONDS.between(
+                    operation.getStartTime(),
+                    operation.getEndTime()
+            );
+            operation.setProcessingTimeSeconds(processingTimeSeconds);
+
+            // Расчет скорости обработки
+            if (operation.getProcessedRecords() != null && processingTimeSeconds > 0) {
+                double recordsPerSecond = operation.getProcessedRecords().doubleValue() / processingTimeSeconds;
+                operation.setProcessingSpeed(recordsPerSecond);
+            }
+        }
+    }
+
+    /**
+     * Централизованный сбор и обновление метрик операции
+     */
+    public void updateMetrics(BaseOperation operation) {
+        // Базовые метрики
+        calculateOperationMetrics(operation);
+
+        // Метрики производительности
+        Map<String, Object> performanceMetrics = new HashMap<>();
+        performanceMetrics.put("processingTimeSeconds", operation.getProcessingTimeSeconds());
+        performanceMetrics.put("recordsPerSecond", operation.getProcessingSpeed());
+        performanceMetrics.put("peakMemoryUsage", getPeakMemoryUsage());
+        performanceMetrics.put("timestamp", LocalDateTime.now());
+
+        // Метрики прогресса
+        Map<String, Object> progressMetrics = new HashMap<>();
+        progressMetrics.put("totalRecords", operation.getTotalRecords());
+        progressMetrics.put("processedRecords", operation.getProcessedRecords());
+        progressMetrics.put("failedRecords", operation.getFailedRecords());
+        progressMetrics.put("completionRate", calculateCompletionRate(operation));
+
+        operation.getMetadata().put("performanceMetrics", performanceMetrics);
+        operation.getMetadata().put("progressMetrics", progressMetrics);
+    }
+
+    private double calculateCompletionRate(BaseOperation operation) {
+        if (operation.getTotalRecords() == null || operation.getTotalRecords() == 0) {
+            return 0.0;
+        }
+        return (operation.getProcessedRecords() * 100.0) / operation.getTotalRecords();
+    }
+
+    /**
+     * Централизованный обработчик статуса операции
+     */
+    public void handleOperationStatus(BaseOperation operation) {
+        updateMetrics(operation);
+
+        OperationStatus status = determineOperationStatus(operation);
+        String errorSummary = operation.getErrors().isEmpty() ? null
+                : String.join("; ", operation.getErrors());
+
+        operationStatsService.updateOperationStatus(
+                operation.getId(),
+                status,
+                errorSummary,
+                "PROCESSING_SUMMARY"
+        );
+    }
+
 
     /**
      * Обновляет статус операции
@@ -43,17 +115,27 @@ public class StatisticsProcessor {
     public void handleOperationError(BaseOperation operation, String error, String errorType) {
         log.debug("Обработка ошибки операции {}: {} ({})", operation.getId(), error, errorType);
         operation.addError(error, errorType);
-
-        // Сохраняем текущий статус для логирования
-        OperationStatus oldStatus = operation.getStatus();
-        operation.addError(error, errorType);
         operation.setStatus(OperationStatus.FAILED);
+        operation.setEndTime(LocalDateTime.now());
 
-        log.debug("Изменен статус операции {} с {} на {}",
-                operation.getId(), oldStatus, operation.getStatus());
-
-        updateOperationStatus(operation.getId(), OperationStatus.FAILED, error, errorType);
+        updateMetrics(operation);
+        operationStatsService.updateOperationStatus(operation.getId(), operation.getStatus(), error, errorType);
     }
+
+    /**
+     * Обработчик прогресса операции
+     */
+    public void handleProgress(BaseOperation operation, int progress, String message) {
+        updateMetrics(operation);
+
+        Map<String, Object> progressData = new HashMap<>();
+        progressData.put("currentProgress", progress);
+        progressData.put("message", message);
+        progressData.put("timestamp", LocalDateTime.now());
+
+        operation.getMetadata().put("currentProgress", progressData);
+    }
+
 
     /**
      * Обновляет статистику операции
@@ -64,36 +146,7 @@ public class StatisticsProcessor {
                 operation.getId(), operation.getStatus(),
                 operation.getProcessedRecords(), operation.getTotalRecords());
 
-        try {
-            // Обновляем основную статистику
-            operationStatsService.updateProcessingStats(
-                    operation.getId(),
-                    operation.getTotalRecords(),
-                    operation.getProcessedRecords(),
-                    operation.getFailedRecords()
-            );
-
-            // Определяем финальный статус
-            OperationStatus finalStatus = determineOperationStatus(operation);
-
-            // Обновляем статус с учетом ошибок
-            String errorSummary = operation.getErrors().isEmpty() ? null
-                    : String.join("; ", operation.getErrors());
-
-            updateOperationStatus(
-                    operation.getId(),
-                    finalStatus,
-                    errorSummary,
-                    "PROCESSING_SUMMARY"
-            );
-
-        } catch (Exception e) {
-            log.error("Ошибка при обновлении статистики операции {}: {}",
-                    operation.getId(), e.getMessage(), e);
-            handleOperationError(operation,
-                    "Ошибка обновления статистики: " + e.getMessage(),
-                    "STATISTICS_ERROR");
-        }
+        handleOperationStatus(operation);
     }
 
     /**
@@ -110,29 +163,6 @@ public class StatisticsProcessor {
         return OperationStatus.FAILED;
     }
 
-    /**
-     * Добавляет метрики производительности в операцию
-     * @param operation операция
-     * @param startTime время начала
-     */
-    public void addPerformanceMetrics(BaseOperation operation, LocalDateTime startTime) {
-        if (startTime != null && operation.getEndTime() != null) {
-            long processingTimeSeconds = ChronoUnit.SECONDS.between(startTime, operation.getEndTime());
-
-            Map<String, Object> performanceMetrics = new HashMap<>();
-            performanceMetrics.put("processingTimeSeconds", processingTimeSeconds);
-
-            if (operation.getProcessedRecords() != null && processingTimeSeconds > 0) {
-                double recordsPerSecond = (double) operation.getProcessedRecords() / processingTimeSeconds;
-                performanceMetrics.put("recordsPerSecond", recordsPerSecond);
-            }
-
-            performanceMetrics.put("peakMemoryUsage", getPeakMemoryUsage());
-            performanceMetrics.put("timestamp", LocalDateTime.now());
-
-            operation.getMetadata().put("performanceMetrics", performanceMetrics);
-        }
-    }
 
     /**
      * Получает пиковое использование памяти

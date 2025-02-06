@@ -22,56 +22,13 @@ public class FileStatusController {
     private final OperationStatsService operationStatsService;
 
     @GetMapping("/{fileId}/status")
-//    public ProcessingStatsDTO getFileStatus(@PathVariable Long clientId,
-//                                            @PathVariable Long fileId) {
-//        var currentStatus = fileProcessingService.getProcessingStatus(fileId);
-//        return operationStatsService.findOperation(fileId)
-//                .map(operation -> ProcessingStatsDTO.fromOperation(operation, currentStatus))
-//                .orElse(ProcessingStatsDTO.builder()
-//                        .progress(currentStatus.getProgress())
-//                        .message(currentStatus.getMessage())
-//                        .status("UNKNOWN")
-//                        .build());
-//    }
     public ProcessingStatsDTO getFileStatus(@PathVariable Long clientId, @PathVariable Long fileId) {
-        var currentStatus = fileProcessingService.getProcessingStatus(fileId);
         return operationStatsService.findOperation(fileId)
-                .map(operation -> {
-                    ProcessingStatsDTO dto = ProcessingStatsDTO.fromOperation(operation, currentStatus);
-                    // Добавляем данные из операции
-                    dto.setProcessedRecords(operation.getProcessedRecords());
-                    dto.setTotalRecords(operation.getTotalRecords());
-                    dto.setProcessingSpeed(calculateSpeed((ImportOperation) operation)); // Расчет скорости
-                    return dto;
-                })
+                .map(operation -> ProcessingStatsDTO.fromOperation(operation,
+                        fileProcessingService.getProcessingStatus(fileId)))
                 .orElse(ProcessingStatsDTO.builder()
                         .status("UNKNOWN")
                         .build());
-
-
-//        return operationStatsService.findOperation(fileId)
-//                .map(operation -> {
-//                    // Приоритет у данных из операции
-//                    int progress = operation.getProgress(); // Добавьте поле progress в ImportOperation
-//                    String status = operation.getStatus().name();
-//
-//                    return ProcessingStatsDTO.builder()
-//                            .progress(progress)
-//                            .status(status)
-//                            .message(operation.getStatus().name())
-//                            .build();
-//                })
-//                .orElseGet(() -> {
-//                    // Резервный вариант из processingStatuses
-//                    FileProcessingService.ProcessingStatus status = fileProcessingService.getProcessingStatus(fileId);
-//                    return ProcessingStatsDTO.fromStatus(status);
-//                });
-    }
-
-    private double calculateSpeed(ImportOperation operation) {
-        if (operation.getStartTime() == null || operation.getEndTime() == null) return 0.0;
-        long seconds = ChronoUnit.SECONDS.between(operation.getStartTime(), operation.getEndTime());
-        return seconds > 0 ? (double) operation.getProcessedRecords() / seconds : 0.0;
     }
 }
 
