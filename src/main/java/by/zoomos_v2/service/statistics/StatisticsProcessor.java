@@ -86,25 +86,13 @@ public class StatisticsProcessor {
                 : String.join("; ", operation.getErrors());
 
         operationStatsService.updateOperationStatus(
-                operation.getId(),
+                operation,
                 status,
                 errorSummary,
                 "PROCESSING_SUMMARY"
         );
     }
 
-
-    /**
-     * Обновляет статус операции
-     * @param operationId ID операции
-     * @param status новый статус
-     * @param message сообщение о статусе
-     * @param errorType тип ошибки (если есть)
-     */
-    public void updateOperationStatus(Long operationId, OperationStatus status, String message, String errorType) {
-        log.debug("Обновление статуса операции {}: {} - {}", operationId, status, message);
-        operationStatsService.updateOperationStatus(operationId, status, message, errorType);
-    }
 
     /**
      * Обрабатывает ошибку операции
@@ -119,7 +107,7 @@ public class StatisticsProcessor {
         operation.setEndTime(LocalDateTime.now());
 
         updateMetrics(operation);
-        operationStatsService.updateOperationStatus(operation.getId(), operation.getStatus(), error, errorType);
+        operationStatsService.updateOperationStatus(operation, operation.getStatus(), error, errorType);
     }
 
     /**
@@ -134,6 +122,7 @@ public class StatisticsProcessor {
         progressData.put("timestamp", LocalDateTime.now());
 
         operation.getMetadata().put("currentProgress", progressData);
+        operationStatsService.updateOperation(operation);
     }
 
 

@@ -116,7 +116,7 @@ public class FileExportService {
 
         if (operation != null) {
             operationStatsService.updateOperationStatus(
-                    operation.getId(),
+                    operation,
                     OperationStatus.FAILED,
                     e.getMessage(),
                     e.getClass().getSimpleName()

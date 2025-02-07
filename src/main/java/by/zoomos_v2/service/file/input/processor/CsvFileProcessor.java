@@ -74,8 +74,6 @@ public class CsvFileProcessor implements FileProcessor, StreamingFileProcessor {
             Map<String, Object> results = new HashMap<>();
             results.put("headers", headers);
             results.put("totalCount", totalLines);
-            results.put("successCount", totalLines);
-            results.put("errorCount", 0);
             results.put("tempFilePath", tempFile);
 
             log.info("Final heap processFile: {}", getHeapSizeAsString());

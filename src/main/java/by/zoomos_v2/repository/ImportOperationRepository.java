@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ImportOperationRepository extends BaseOperationRepository<ImportOperation> {
@@ -19,6 +20,8 @@ public interface ImportOperationRepository extends BaseOperationRepository<Impor
      * @return операция импорта или null
      */
     ImportOperation findFirstBySourceIdentifierOrderByStartTimeDesc(String sourceIdentifier);
+
+    Optional<ImportOperation> findByFileId(Long fileId);
 
     /**
      * Находит последнюю операцию импорта по идентификатору источника и клиенту

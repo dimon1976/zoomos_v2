@@ -123,9 +123,9 @@ public abstract class BaseOperation {
         this.processedRecords = processedRecords;
         this.failedRecords = failedRecords;
 
-//        if (processedRecords > 0 && processingTimeSeconds > 0) {
-//            this.processingSpeed = processedRecords.doubleValue() / processingTimeSeconds;
-//        }
+        if (processedRecords > 0 && processingTimeSeconds > 0) {
+            this.processingSpeed = processedRecords.doubleValue() / processingTimeSeconds;
+        }
     }
 
     /**

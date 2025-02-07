@@ -20,6 +20,10 @@ public class ImportOperation extends BaseOperation {
      */
     @Column(name = "file_name")
     private String fileName;
+
+    @Column(name = "file_id")
+    private Long fileId;
+
     /**
      * Размер файла в байтах
      */

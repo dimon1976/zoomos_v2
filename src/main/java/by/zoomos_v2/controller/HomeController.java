@@ -32,11 +32,6 @@ public class HomeController {
     public String index(Model model) {
         try {
             long clientsCount = clientService.getAllClients().size();
-//            List<BaseOperation> recentOperations = operationStatsService.getClientOperations(null, null)
-//                    .stream()
-//                    .sorted(Comparator.comparing(BaseOperation::getStartTime).reversed())
-//                    .limit(10)
-//                    .toList();
             List<BaseOperation> recentOperations = operationStatsService.getClientOperations(null, null)
                     .stream()
                     .<BaseOperation>map(op -> op) // Явное указание типа для map

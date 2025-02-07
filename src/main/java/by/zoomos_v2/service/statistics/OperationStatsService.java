@@ -13,6 +13,7 @@ import by.zoomos_v2.repository.ExportOperationRepository;
 import by.zoomos_v2.repository.ImportOperationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.formula.functions.T;
 import org.springframework.core.ResolvableType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,26 +49,75 @@ public class OperationStatsService {
 
     /**
      * Обновляет статус операции
+     * @param operation Операция
+     * @param status новый статус
+     * @param error сообщение об ошибке
+     * @param errorType тип ошибки (если есть)
      */
     @Transactional
-    public void updateOperationStatus(Long operationId, OperationStatus status, String error, String errorType) {
-        log.debug("Обновление статуса операции {}: {} ({})", operationId, status, error);
-        Optional<? extends BaseOperation> operationOpt = findOperation(operationId);
-        if (operationOpt.isPresent()) {
-            BaseOperation operation = operationOpt.get();
-            operation.setStatus(status);
-            if (error != null && errorType != null) {
-                operation.addError(error, errorType);
-            }
-            if (status.equals(OperationStatus.COMPLETED) ||
-                    status.equals(OperationStatus.FAILED) ||
-                    status.equals(OperationStatus.CANCELLED)) {
-                operation.setEndTime(LocalDateTime.now());
-            }
-            log.debug("Обновлен статус операции {}: {} (error: {}, type: {})",
-                    operationId, status, error, errorType);
-            getRepositoryForType((Class<BaseOperation>) operation.getClass()).save(operation);
+    public <T extends BaseOperation> void updateOperationStatus(BaseOperation operation, OperationStatus status,
+                                                                String error, String errorType) {
+        log.debug("Обновление статуса операции {}: {} ({})", operation.getId(), status, error);
+        BaseOperationRepository<BaseOperation> repository = getRepositoryForType((Class<BaseOperation>) operation.getClass());
+//        BaseOperationRepository<T> repository = getRepositoryForType(operationType);
+//        T operation = repository.findById(operationId)
+//                .orElseThrow(() -> new IllegalArgumentException("Operation not found: " + operationId));
+
+        operation.setStatus(status);
+        if (error != null && errorType != null) {
+            operation.addError(error, errorType);
         }
+
+        if (status.equals(OperationStatus.COMPLETED) ||
+                status.equals(OperationStatus.FAILED) ||
+                status.equals(OperationStatus.CANCELLED)) {
+            operation.setEndTime(LocalDateTime.now());
+        }
+
+        log.debug("Обновлен статус операции {}: {} (error: {}, type: {})",
+                operation.getId(), status, error, errorType);
+
+        repository.save(operation);
+    }
+
+//    @Transactional
+//    public void updateOperationStatus(Long operationId, OperationStatus status, String error, String errorType) {
+//        Optional<? extends BaseOperation> operationOpt = findOperation(operationId);
+//        if (operationOpt.isPresent()) {
+//            BaseOperation operation = operationOpt.get();
+//            updateOperationStatus(operationId, status, error, errorType,
+//                    (Class<? extends BaseOperation>) operation.getClass());
+//        }
+//    }
+
+//    public void updateOperationStatus(Long operationId, OperationStatus status, String error, String errorType) {
+//        log.debug("Обновление статуса операции {}: {} ({})", operationId, status, error);
+//        Optional<? extends BaseOperation> operationOpt = findOperation(operationId);
+//        if (operationOpt.isPresent()) {
+//            BaseOperation operation = operationOpt.get();
+//            operation.setStatus(status);
+//            if (error != null && errorType != null) {
+//                operation.addError(error, errorType);
+//            }
+//            if (status.equals(OperationStatus.COMPLETED) ||
+//                    status.equals(OperationStatus.FAILED) ||
+//                    status.equals(OperationStatus.CANCELLED)) {
+//                operation.setEndTime(LocalDateTime.now());
+//            }
+//            log.debug("Обновлен статус операции {}: {} (error: {}, type: {})",
+//                    operationId, status, error, errorType);
+//            getRepositoryForType((Class<BaseOperation>) operation.getClass()).save(operation);
+//        }
+//    }
+
+    @Transactional
+    public void updateOperation(BaseOperation operation) {
+        BaseOperationRepository<BaseOperation> repository = getRepositoryForType((Class<BaseOperation>) operation.getClass());
+        repository.save(operation);
+        log.debug("Обновлена операция {}, статус: {}, прогресс: {}",
+                operation.getId(),
+                operation.getStatus(),
+                operation.getMetadata().get("currentProgress"));
     }
 
     public ImportStatsSummaryDTO getImportStatsSummary(Long clientId) {
@@ -200,6 +250,11 @@ public class OperationStatsService {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst();
+    }
+
+
+    public Optional<ImportOperation> findOperationByFileId(Long fileId) {
+        return importOperationRepository.findByFileId(fileId);
     }
 
     /**

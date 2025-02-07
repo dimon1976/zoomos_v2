@@ -7,7 +7,6 @@ import by.zoomos_v2.service.file.input.service.FileProcessingService;
 import by.zoomos_v2.service.file.input.service.FileUploadService;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.statistics.OperationStatsService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -78,7 +77,7 @@ public class UploadController {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
             validateFileOwnership(metadata, clientId);
 
-            operationStatsService.findOperation(fileId).ifPresent(operation -> {
+            operationStatsService.findOperationByFileId(fileId).ifPresent(operation -> {
                 Map<String, Object> currentProgress =
                         (Map<String, Object>) operation.getMetadata().getOrDefault("currentProgress", new HashMap<>());
 
@@ -110,9 +109,6 @@ public class UploadController {
             validateFileOwnership(metadata, clientId);
 
             // Получаем операцию импорта для данного файла
-//            ImportOperation operation = operationStatsService.findImportOperationBySourceIdentifier(
-//                    metadata.getOriginalFilename()
-//            );
             ImportOperation operation = operationStatsService.findLastOperationBySourceAndClient(
                     metadata.getOriginalFilename(),
                     clientId

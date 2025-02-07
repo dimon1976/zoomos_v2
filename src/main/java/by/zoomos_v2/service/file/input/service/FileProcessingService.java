@@ -84,7 +84,7 @@ public class FileProcessingService {
 
             // Обновляем статус на IN_PROGRESS - используем непосредственно сервис
             operationStatsService.updateOperationStatus(
-                    operation.getId(),
+                    operation,
                     OperationStatus.IN_PROGRESS,
                     null,
                     null
@@ -139,6 +139,7 @@ public class FileProcessingService {
         ImportOperation operation = new ImportOperation();
 
         // Основные параметры операции
+        operation.setFileId(metadata.getId());
         operation.setClientId(metadata.getClientId());
         operation.setType(OperationType.IMPORT);
         operation.setStatus(OperationStatus.PENDING);
@@ -147,6 +148,7 @@ public class FileProcessingService {
         // Параметры файла
         operation.setFileName(metadata.getOriginalFilename());
         operation.setFileSize(metadata.getSize());
+        operation.setProcessedRecords(0);
         operation.setFileFormat(metadata.getFileType().name());
         operation.setContentType(metadata.getContentType());
         operation.setMappingConfigId(metadata.getMappingConfigId());
@@ -259,14 +261,6 @@ public class FileProcessingService {
         // Обновляем статистику операции
         Long totalCount = (Long) results.getOrDefault("totalCount", 0L);
         operation.setTotalRecords(totalCount.intValue());
-        Long successCount = (Long) results.getOrDefault("successCount", 0L);
-        operation.setProcessedRecords(successCount.intValue());
-        if (successCount > 0) {
-            operation.setProcessedRecords(
-                    (int) ((operation.getProcessedRecords() != null ? operation.getProcessedRecords() : 0) + successCount)
-            );
-        }
-
         // Обрабатываем ошибки валидации
         if (results.containsKey("validationErrors")) {
             @SuppressWarnings("unchecked")
@@ -437,13 +431,13 @@ public class FileProcessingService {
             FileMetadata metadata = fileMetadataRepository.findById(fileId)
                     .orElseThrow(() -> new FileProcessingException("Файл не найден"));
 
-            ImportOperation operation = operationStatsService.findOperation(fileId)
+            ImportOperation operation = operationStatsService.findOperationByFileId(fileId)
                     .map(op -> (ImportOperation) op)
                     .orElseThrow(() -> new FileProcessingException("Операция не найдена"));
 
             progressTracker.trackProgress(operation, -1, "Обработка отменена");
             operation.setStatus(OperationStatus.CANCELLED);
-            operationStatsService.updateOperationStatus(operation.getId(), OperationStatus.CANCELLED,
+            operationStatsService.updateOperationStatus(operation, OperationStatus.CANCELLED,
                     "Обработка отменена пользователем", null);
 
             log.info("Обработка файла {} успешно отменена", fileId);

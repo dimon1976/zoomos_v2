@@ -105,38 +105,39 @@
                         <div class="progress mb-2" style="height: 25px;">
                             <div class="progress-bar progress-bar-striped progress-bar-animated"
                                  role="progressbar"
-                                 th:style="'width: ' + ${currentProgress.currentProgress ?: 0} + '%'"
-                                 th:attr="aria-valuenow=${currentProgress.currentProgress ?: 0}"
+                                 th:style="'width: ' + ${currentProgress.get('currentProgress') ?: 0} + '%'"
+                                 th:attr="aria-valuenow=${currentProgress.get('currentProgress') ?: 0}"
                                  aria-valuemin="0"
                                  aria-valuemax="100">
-                                <span th:text="${currentProgress.currentProgress ?: 0} + '%'"></span>
+                                <span th:text="${currentProgress.get('currentProgress') ?: 0} + '%'"></span>
                             </div>
                             <p class="text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
-                                <span th:text="${currentProgress.message ?: 'Инициализация...'}"></span>
+                                <span th:text="${currentProgress.get('message') ?: 'Инициализация...'}"></span>
                             </p>
-                    </div>
+                        </div>
 
-                    <!-- Кнопки действий -->
-                    <div class="d-flex gap-2 justify-content-end">
-                        <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
-                           class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-2"></i>К панели управления
-                        </a>
+                        <!-- Кнопки действий -->
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>К панели управления
+                            </a>
 
-                        <form th:if="${file.status == 'IN_PROGRESS'}"
-                              th:action="@{/client/{id}/files/status/{fileId}/cancel(id=${clientId},fileId=${file.id})}"
-                              method="post" class="d-inline">
-                            <button type="submit" class="btn btn-warning">
-                                <i class="fas fa-stop-circle me-2"></i>Отменить обработку
-                            </button>
-                        </form>
+                            <form th:if="${file.status == 'IN_PROGRESS'}"
+                                  th:action="@{/client/{id}/files/status/{fileId}/cancel(id=${clientId},fileId=${file.id})}"
+                                  method="post" class="d-inline">
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-stop-circle me-2"></i>Отменить обработку
+                                </button>
+                            </form>
 
-                        <a th:if="${file.status == 'COMPLETED'}"
-                           th:href="@{/client/{id}/files/{fileId}/statistics(id=${clientId},fileId=${file.id})}"
-                           class="btn btn-primary">
-                            <i class="fas fa-chart-bar me-2"></i>Просмотр результатов
-                        </a>
+                            <a th:if="${file.status == 'COMPLETED'}"
+                               th:href="@{/client/{id}/files/{fileId}/statistics(id=${clientId},fileId=${file.id})}"
+                               class="btn btn-primary">
+                                <i class="fas fa-chart-bar me-2"></i>Просмотр результатов
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -150,21 +151,18 @@
     const fileId = /*[[${file.id}]]*/ '';
     const clientId = /*[[${clientId}]]*/ '';
     let updateInterval;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
 
     function initStatusUpdate() {
-        // Очищаем предыдущий интервал если есть
         if (updateInterval) {
             clearInterval(updateInterval);
         }
 
-        // Проверяем текущий статус
         fetch(`/api/client/${clientId}/files/${fileId}/status`)
             .then(response => response.json())
             .then(data => {
-                // Обновляем UI с текущими данными
                 updateUI(data);
-
-                // Запускаем обновление если файл все еще обрабатывается
                 if (['PENDING', 'IN_PROGRESS'].includes(data.status)) {
                     updateInterval = setInterval(fetchStatus, 2000);
                 }
@@ -176,7 +174,7 @@
         // Обновление прогресс-бара
         const progressBar = document.querySelector('.progress-bar');
         if (progressBar) {
-            const progress = data.progress || 0;
+            const progress = Math.min(data.progress || 0, 100); // Не больше 100%
             progressBar.style.width = `${progress}%`;
             progressBar.setAttribute('aria-valuenow', progress);
             progressBar.querySelector('span').textContent = `${progress}%`;
@@ -211,7 +209,7 @@
         updateButtons(data.status);
     }
 
-        function updateButtons(status) {
+    function updateButtons(status) {
         const cancelButton = document.querySelector('form[method="post"] button');
         const viewResultsButton = document.querySelector('a.btn-primary');
 
@@ -244,46 +242,37 @@
     }
 
     async function fetchStatus() {
-        const timestamp = new Date().getTime(); // Уникальная метка для избежания кэширования
         try {
             const response = await fetch(
-                `/api/client/${clientId}/files/${fileId}/status?t=${timestamp}`,
+                `/api/client/${clientId}/files/${fileId}/status?t=${Date.now()}`,
                 {
                     headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
+                        'Cache-Control': 'no-cache'
                     }
                 }
             );
 
-            // Обработка HTTP-ошибок
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP Error ${response.status}: ${errorText}`);
+                throw new Error(`HTTP Error ${response.status}`);
             }
 
+            reconnectAttempts = 0; // Сбрасываем счетчик при успешном подключении
             const data = await response.json();
-
-            // Обновляем UI новыми данными
             updateUI(data);
 
             // Обработка финальных статусов
-            if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(data.status) && data.progress >= 100) {
+            if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(data.status)) {
                 clearInterval(updateInterval);
 
                 // Дополнительные действия для завершенных статусов
                 switch (data.status) {
                     case 'COMPLETED':
-                        // Обновляем статистику перед перезагрузкой
                         updateProcessingStats(data);
                         setTimeout(() => window.location.reload(), 1500);
                         break;
-
                     case 'FAILED':
                         showErrorNotification(data.message || "Ошибка обработки файла");
                         break;
-
                     case 'CANCELLED':
                         showWarningNotification("Обработка отменена пользователем");
                         break;
@@ -291,11 +280,17 @@
             }
         } catch (error) {
             console.error('Ошибка при получении статуса:', error);
-            handleFetchError(error);
+            reconnectAttempts++;
+
+            if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+                handleFetchError(error);
+            } else {
+                clearInterval(updateInterval);
+                showErrorNotification('Превышено количество попыток переподключения');
+            }
         }
     }
 
-    // Вспомогательные функции
     function updateProcessingStats(data) {
         if (data.processedRecords !== undefined && data.totalRecords !== undefined) {
             document.querySelector('.processed-records').textContent =
@@ -323,55 +318,13 @@
         setTimeout(initStatusUpdate, 5000); // Попытка переподключения через 5 секунд
     }
 
-    // Добавить обработку потери соединения
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 5;
-
-    async function fetchStatus() {
-        try {
-            const response = await fetch(
-                `/api/client/${clientId}/files/${fileId}/status?t=${Date.now()}`,
-                {
-                    headers: {
-                        'Cache-Control': 'no-cache'
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`HTTP Error ${response.status}`);
-            }
-
-            reconnectAttempts = 0; // Сбрасываем счетчик при успешном подключении
-            const data = await response.json();
-            updateUI(data);
-
-            // Обработка завершения
-            if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(data.status)) {
-                clearInterval(updateInterval);
-                setTimeout(() => window.location.reload(), 1500);
-            }
-
-        } catch (error) {
-            console.error('Ошибка при получении статуса:', error);
-            reconnectAttempts++;
-
-            if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
-                handleFetchError(error);
-            } else {
-                clearInterval(updateInterval);
-                showErrorNotification('Превышено количество попыток переподключения');
-            }
-        }
-    }
-
     function showErrorNotification(message) {
         const notification = document.createElement('div');
         notification.className = 'alert alert-danger mt-3';
         notification.innerHTML = `
-        <i class="fas fa-exclamation-circle me-2"></i>
-        ${message}
-    `;
+           <i class="fas fa-exclamation-circle me-2"></i>
+           ${message}
+       `;
         document.querySelector('.card-body').appendChild(notification);
     }
 
@@ -379,9 +332,9 @@
         const notification = document.createElement('div');
         notification.className = 'alert alert-warning mt-3';
         notification.innerHTML = `
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        ${message}
-    `;
+           <i class="fas fa-exclamation-triangle me-2"></i>
+           ${message}
+       `;
         document.querySelector('.card-body').appendChild(notification);
     }
 
