@@ -78,9 +78,15 @@ public class UploadController {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
             validateFileOwnership(metadata, clientId);
 
-            model.addAttribute("file", fileMetadataService.createFileInfo(metadata, clientId));
-            model.addAttribute("processingStatus", fileProcessingService.getProcessingStatus(fileId));
-            model.addAttribute("clientId", clientId);
+            operationStatsService.findOperation(fileId).ifPresent(operation -> {
+                Map<String, Object> currentProgress =
+                        (Map<String, Object>) operation.getMetadata().getOrDefault("currentProgress", new HashMap<>());
+
+                model.addAttribute("file", fileMetadataService.createFileInfo(metadata, clientId));
+                model.addAttribute("operation", operation);
+                model.addAttribute("currentProgress", currentProgress);
+                model.addAttribute("clientId", clientId);
+            });
 
             return "files/status";
         } catch (Exception e) {

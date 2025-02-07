@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/client/{clientId}/files")
@@ -24,8 +26,13 @@ public class FileStatusController {
     @GetMapping("/{fileId}/status")
     public ProcessingStatsDTO getFileStatus(@PathVariable Long clientId, @PathVariable Long fileId) {
         return operationStatsService.findOperation(fileId)
-                .map(operation -> ProcessingStatsDTO.fromOperation(operation,
-                        fileProcessingService.getProcessingStatus(fileId)))
+                .map(operation -> {
+                    Map<String, Object> currentProgress =
+                            (Map<String, Object>) operation.getMetadata().getOrDefault("currentProgress", new HashMap<>());
+                    String message = (String) currentProgress.getOrDefault("message", "Статус неизвестен");
+
+                    return ProcessingStatsDTO.fromOperation(operation, message);
+                })
                 .orElse(ProcessingStatsDTO.builder()
                         .status("UNKNOWN")
                         .build());
