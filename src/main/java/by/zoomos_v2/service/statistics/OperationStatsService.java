@@ -59,10 +59,6 @@ public class OperationStatsService {
                                                                 String error, String errorType) {
         log.debug("Обновление статуса операции {}: {} ({})", operation.getId(), status, error);
         BaseOperationRepository<BaseOperation> repository = getRepositoryForType((Class<BaseOperation>) operation.getClass());
-//        BaseOperationRepository<T> repository = getRepositoryForType(operationType);
-//        T operation = repository.findById(operationId)
-//                .orElseThrow(() -> new IllegalArgumentException("Operation not found: " + operationId));
-
         operation.setStatus(status);
         if (error != null && errorType != null) {
             operation.addError(error, errorType);

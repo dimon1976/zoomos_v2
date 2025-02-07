@@ -177,6 +177,7 @@ public class FileProcessingService {
             log.debug("Базовая обработка файла завершена. Прочитано записей: {}", operation.getTotalRecords());
 
             // Сохранение обработанных данных
+            progressTracker.trackProgress(operation, 30, "Сохраняю записи");
             persistData(metadata, operation, batchData);
             log.debug("Сохранение данных завершено. Успешно обработано: {}", operation.getProcessedRecords());
 

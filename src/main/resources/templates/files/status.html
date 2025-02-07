@@ -111,10 +111,12 @@
                                  aria-valuemax="100">
                                 <span th:text="${currentProgress.get('currentProgress') ?: 0} + '%'"></span>
                             </div>
-                            <p class="text-muted">
+                            </div>
+                            <!-- Статус обработки отдельно -->
+                            <div class="alert alert-info mt-2">
                                 <i class="fas fa-info-circle me-1"></i>
                                 <span th:text="${currentProgress.get('message') ?: 'Инициализация...'}"></span>
-                            </p>
+                            </div>
                         </div>
 
                         <!-- Кнопки действий -->
@@ -201,8 +203,10 @@
         }
 
         const speedEl = document.querySelector('.processing-speed');
-        if (speedEl && data.processingSpeed) {
+        if (speedEl && data.processingSpeed !== undefined && data.processingSpeed !== null) {
             speedEl.textContent = `${data.processingSpeed.toFixed(2)} записей/сек`;
+        } else {
+            speedEl.textContent = '0 записей/сек';
         }
 
         // Обновляем видимость кнопок в зависимости от статуса
