@@ -1,5 +1,6 @@
 package by.zoomos_v2.DTO.statistics;
 
+import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.model.operation.BaseOperation;
 import by.zoomos_v2.service.file.input.service.FileProcessingService;
 import lombok.Builder;
@@ -42,9 +43,14 @@ public class ProcessingStatsDTO {
                 speed = operation.getProcessedRecords().doubleValue() / seconds;
             }
         }
+
+        // Гарантируем, что прогресс будет 100% для завершенных операций
+        int progress = operation.getStatus() == OperationStatus.COMPLETED ? 100 :
+                calculateProgress(operation);
+
         return ProcessingStatsDTO.builder()
                 .status(operation.getStatus().name())
-                .progress(calculateProgress(operation))
+                .progress(progress)
                 .message(message)
                 .totalRecords(operation.getTotalRecords())
                 .processedRecords(operation.getProcessedRecords())

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,8 +23,22 @@ public class OperationProgressTracker {
 
 
     public void trackProgress(BaseOperation operation, int progress, String message) {
+//        if (shouldUpdate(operation.getId()) || isSignificantChange(operation.getId(), progress)) {
+//            statisticsProcessor.handleProgress(operation, progress, message);
+//            lastUpdates.put(operation.getId(), LocalDateTime.now());
+//            lastProgress.put(operation.getId(), progress);
+//        }
+
         if (shouldUpdate(operation.getId()) || isSignificantChange(operation.getId(), progress)) {
+            Map<String, Object> progressData = new HashMap<>();
+            // Убеждаемся, что прогресс не превышает 100%
+            progressData.put("currentProgress", Math.min(progress, 100));
+            progressData.put("message", message);
+            progressData.put("timestamp", LocalDateTime.now());
+
+            operation.getMetadata().put("currentProgress", progressData);
             statisticsProcessor.handleProgress(operation, progress, message);
+
             lastUpdates.put(operation.getId(), LocalDateTime.now());
             lastProgress.put(operation.getId(), progress);
         }

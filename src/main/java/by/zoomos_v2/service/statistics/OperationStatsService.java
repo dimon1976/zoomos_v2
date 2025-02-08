@@ -76,36 +76,6 @@ public class OperationStatsService {
         repository.save(operation);
     }
 
-//    @Transactional
-//    public void updateOperationStatus(Long operationId, OperationStatus status, String error, String errorType) {
-//        Optional<? extends BaseOperation> operationOpt = findOperation(operationId);
-//        if (operationOpt.isPresent()) {
-//            BaseOperation operation = operationOpt.get();
-//            updateOperationStatus(operationId, status, error, errorType,
-//                    (Class<? extends BaseOperation>) operation.getClass());
-//        }
-//    }
-
-//    public void updateOperationStatus(Long operationId, OperationStatus status, String error, String errorType) {
-//        log.debug("Обновление статуса операции {}: {} ({})", operationId, status, error);
-//        Optional<? extends BaseOperation> operationOpt = findOperation(operationId);
-//        if (operationOpt.isPresent()) {
-//            BaseOperation operation = operationOpt.get();
-//            operation.setStatus(status);
-//            if (error != null && errorType != null) {
-//                operation.addError(error, errorType);
-//            }
-//            if (status.equals(OperationStatus.COMPLETED) ||
-//                    status.equals(OperationStatus.FAILED) ||
-//                    status.equals(OperationStatus.CANCELLED)) {
-//                operation.setEndTime(LocalDateTime.now());
-//            }
-//            log.debug("Обновлен статус операции {}: {} (error: {}, type: {})",
-//                    operationId, status, error, errorType);
-//            getRepositoryForType((Class<BaseOperation>) operation.getClass()).save(operation);
-//        }
-//    }
-
     @Transactional
     public void updateOperation(BaseOperation operation) {
         BaseOperationRepository<BaseOperation> repository = getRepositoryForType((Class<BaseOperation>) operation.getClass());

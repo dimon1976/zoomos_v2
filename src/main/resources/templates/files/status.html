@@ -113,10 +113,10 @@
                             </div>
                             </div>
                             <!-- Статус обработки отдельно -->
-                            <div class="alert alert-info mt-2">
-                                <i class="fas fa-info-circle me-1"></i>
-                                <span th:text="${currentProgress.get('message') ?: 'Инициализация...'}"></span>
-                            </div>
+                        <div class="alert alert-info mt-2" th:with="message=${currentProgress.get('message')}">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <span th:text="${message ?: 'Инициализация...'}"></span>
+                        </div>
                         </div>
 
                         <!-- Кнопки действий -->
@@ -176,14 +176,14 @@
         // Обновление прогресс-бара
         const progressBar = document.querySelector('.progress-bar');
         if (progressBar) {
-            const progress = Math.min(data.progress || 0, 100); // Не больше 100%
+            const progress = Math.min(data.progress || 0, 100); // Гарантируем максимум 100%
             progressBar.style.width = `${progress}%`;
             progressBar.setAttribute('aria-valuenow', progress);
             progressBar.querySelector('span').textContent = `${progress}%`;
         }
 
         // Обновление сообщения
-        const statusMessage = document.querySelector('.text-muted span');
+        const statusMessage = document.querySelector('.alert.alert-info span');
         if (statusMessage && data.message) {
             statusMessage.textContent = data.message;
         }
