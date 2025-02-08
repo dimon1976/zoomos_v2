@@ -23,13 +23,8 @@ public class OperationProgressTracker {
 
 
     public void trackProgress(BaseOperation operation, int progress, String message) {
-//        if (shouldUpdate(operation.getId()) || isSignificantChange(operation.getId(), progress)) {
-//            statisticsProcessor.handleProgress(operation, progress, message);
-//            lastUpdates.put(operation.getId(), LocalDateTime.now());
-//            lastProgress.put(operation.getId(), progress);
-//        }
-
-        if (shouldUpdate(operation.getId()) || isSignificantChange(operation.getId(), progress)) {
+        // Всегда обновляем для финального прогресса или существенных изменений
+        if (progress >= 100 || shouldUpdate(operation.getId()) || isSignificantChange(operation.getId(), progress)) {
             Map<String, Object> progressData = new HashMap<>();
             // Убеждаемся, что прогресс не превышает 100%
             progressData.put("currentProgress", Math.min(progress, 100));

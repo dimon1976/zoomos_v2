@@ -105,8 +105,11 @@ public class FileProcessingService {
             // Записываем завершающий статус операции
             statisticsProcessor.updateOperationStats(operation);
 
-            // Обновляем статус в памяти
-            progressTracker.trackProgress(operation,100,"Завершено");
+            // Устанавливаем окончательный прогресс и статус
+            String finalMessage = hasErrors ?
+                    "Обработка завершена с ошибками" :
+                    String.format("Обработано записей: %d из %d", operation.getProcessedRecords(), operation.getTotalRecords());
+            progressTracker.trackProgress(operation, 100, finalMessage);
             log.info("Файл {} обработан. Прогресс: 100%, Статус: {}", fileId, finalStatus);
         } catch (Exception e) {
             statisticsProcessor.handleOperationError(operation, e.getMessage(),
@@ -117,11 +120,6 @@ public class FileProcessingService {
             }
             // Логируем финальный статус
             if (operation != null) {
-                progressTracker.trackProgress(
-                        operation,
-                        100,
-                        operation.getStatus().name() + ": " + operation.getStatus().getDescription()
-                );
                 log.info("Завершена обработка файла с ID: {}. Статус: {}",
                         fileId, operation.getStatus());
             }
@@ -289,59 +287,13 @@ public class FileProcessingService {
      * @throws FileProcessingException при ошибках сохранения данных
      */
     private void persistData(FileMetadata metadata, ImportOperation operation, BatchProcessingData batchData) {
-//        log.debug("Начало сохранения данных для файла: {}", metadata.getOriginalFilename());
-//        LocalDateTime startSave = LocalDateTime.now();
-//
-//        try {
-//            Map<String, String> columnsMapping = getMappingConfig(metadata.getMappingConfigId());
-//            List<Map<String, String>> currentBatch = new ArrayList<>();
-//            int totalProcessed = 0;
-//
-//            // Читаем и обрабатываем данные из временного файла
-//            try (BufferedReader reader = Files.newBufferedReader(batchData.getTempFilePath())) {
-//                String line;
-//                while ((line = reader.readLine()) != null) {
-//                    Map<String, String> record = objectMapper.readValue(line, new TypeReference<>() {
-//                    });
-//                    currentBatch.add(record);
-//
-//                    if (shouldProcessBatch(currentBatch, totalProcessed, operation.getTotalRecords())) {
-//                        processBatch(metadata, operation, currentBatch, columnsMapping, totalProcessed);
-//                        totalProcessed += currentBatch.size();
-//                        currentBatch.clear();
-//
-//                         // Обновляем прогресс: 30% + (сохраненные записи / общее количество * 70%)
-//                        int saveProgress =30+ (int) ((totalProcessed / (double) operation.getTotalRecords()) * 70);
-//                        progressTracker.trackProgress(operation, saveProgress, "Сохраняем в БД");
-//                    }
-//                }
-//
-//                // Обрабатываем оставшийся батч
-//                if (!currentBatch.isEmpty()) {
-//                    processBatch(metadata, operation, currentBatch, columnsMapping, totalProcessed);
-//                    totalProcessed += currentBatch.size();
-//                }
-//            }
-//
-//            // Добавляем метрики сохранения
-//            Map<String, Object> saveMetrics = new HashMap<>();
-//            saveMetrics.put("totalProcessed", totalProcessed);
-//            saveMetrics.put("saveTimeSeconds",
-//                    ChronoUnit.SECONDS.between(startSave, LocalDateTime.now()));
-//            operation.getMetadata().put("saveMetrics", saveMetrics);
-//
-//        } catch (Exception e) {
-//            String errorMsg = "Ошибка при сохранении данных: " + e.getMessage();
-//            statisticsProcessor.handleOperationError(operation, errorMsg, "DATA_SAVE_ERROR");
-//            throw new FileProcessingException(errorMsg, e);
-//        }
         log.debug("Начало сохранения данных для файла: {}", metadata.getOriginalFilename());
         LocalDateTime startSave = LocalDateTime.now();
 
         try {
             Map<String, String> columnsMapping = getMappingConfig(metadata.getMappingConfigId());
             List<Map<String, String>> currentBatch = new ArrayList<>();
-            long totalProcessed = 0; // Изменен тип на long для больших файлов
+            long totalProcessed = 0;
 
             // Читаем и обрабатываем данные из временного файла
             try (BufferedReader reader = Files.newBufferedReader(batchData.getTempFilePath())) {
@@ -355,14 +307,10 @@ public class FileProcessingService {
                         totalProcessed += currentBatch.size();
                         currentBatch.clear();
 
-                        // Обновляем прогресс: 30% + (сохраненные записи / общее количество * 70%)
-                        double progressPercentage = (totalProcessed * 100.0) / operation.getTotalRecords();
-                        int saveProgress = 30 + (int) ((progressPercentage * 70) / 100);
-                        log.debug("Прогресс сохранения: {}%, totalProcessed: {}, total: {}",
-                                saveProgress, totalProcessed, operation.getTotalRecords());
-                        progressTracker.trackProgress(operation, saveProgress,
-                                String.format("Сохраняем в БД: %d из %d записей",
-                                        totalProcessed, operation.getTotalRecords()));
+                        // Обновляем промежуточный прогресс только если не все записи обработаны
+                        if (totalProcessed < operation.getTotalRecords()) {
+                            updateIntermediateProgress(operation, totalProcessed);
+                        }
                     }
                 }
 
@@ -371,10 +319,12 @@ public class FileProcessingService {
                     processBatch(metadata, operation, currentBatch, columnsMapping, totalProcessed);
                     totalProcessed += currentBatch.size();
 
-                    // Финальное обновление прогресса
-                    double progressPercentage = (totalProcessed * 100.0) / operation.getTotalRecords();
-                    int finalProgress = 30 + (int) ((progressPercentage * 70) / 100);
-                    progressTracker.trackProgress(operation, finalProgress, "Завершение сохранения в БД");
+                    // Обновляем прогресс после обработки последнего батча
+                    updateIntermediateProgress(operation, totalProcessed);
+
+                    // После последнего батча устанавливаем сообщение о завершении сохранения
+                    progressTracker.trackProgress(operation, 99,
+                            String.format("Обработка завершена: сохранено %d записей", totalProcessed));
                 }
             }
 
@@ -384,12 +334,43 @@ public class FileProcessingService {
             saveMetrics.put("saveTimeSeconds", ChronoUnit.SECONDS.between(startSave, LocalDateTime.now()));
             operation.getMetadata().put("saveMetrics", saveMetrics);
 
+            // После сохранения всех данных устанавливаем прогресс в 99%
+            // оставляя 1% для финальных операций в основном методе
+            progressTracker.trackProgress(operation, 99, "Сохранение в БД завершено");
+
         } catch (Exception e) {
             String errorMsg = "Ошибка при сохранении данных: " + e.getMessage();
             log.error(errorMsg, e);
             statisticsProcessor.handleOperationError(operation, errorMsg, "DATA_SAVE_ERROR");
             throw new FileProcessingException(errorMsg, e);
         }
+    }
+
+    /**
+     * Обновляет промежуточный прогресс обработки
+     *
+     * @param operation      Текущая операция импорта
+     * @param totalProcessed Количество обработанных записей
+     */
+    private void updateIntermediateProgress(ImportOperation operation, long totalProcessed) {
+        double progressPercentage = (totalProcessed * 100.0) / operation.getTotalRecords();
+        int saveProgress = 30 + (int) ((progressPercentage * 69) / 100); // Максимум 99%
+
+        // Формируем сообщение в зависимости от прогресса
+        String statusMessage;
+        if (totalProcessed >= operation.getTotalRecords()) {
+            statusMessage = String.format("Обработка завершена: сохранено %d записей", totalProcessed);
+            saveProgress = 99; // Устанавливаем 99% для завершающего этапа
+            log.info("Устанавливаем финальное сообщение о сохранении: {}", statusMessage);
+        } else {
+            statusMessage = String.format("Сохраняем в БД: %d из %d записей",
+                    totalProcessed, operation.getTotalRecords());
+            log.debug("Устанавливаем промежуточное сообщение о сохранении: {}", statusMessage);
+        }
+
+        log.debug("Прогресс сохранения: {}%, totalProcessed: {}, total: {}",
+                saveProgress, totalProcessed, operation.getTotalRecords());
+        progressTracker.trackProgress(operation, saveProgress, statusMessage);
     }
 
     /**
