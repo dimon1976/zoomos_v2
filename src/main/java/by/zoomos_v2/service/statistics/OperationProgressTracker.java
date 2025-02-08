@@ -27,10 +27,11 @@ public class OperationProgressTracker {
         if (progress >= 100 || shouldUpdate(operation.getId()) || isSignificantChange(operation.getId(), progress)) {
             Map<String, Object> progressData = new HashMap<>();
             // Убеждаемся, что прогресс не превышает 100%
+            int normalizedProgress = Math.min(progress, 100);
             progressData.put("currentProgress", Math.min(progress, 100));
             progressData.put("message", message);
             progressData.put("timestamp", LocalDateTime.now());
-
+            operation.setCurrentProgress(normalizedProgress);
             operation.getMetadata().put("currentProgress", progressData);
             statisticsProcessor.handleProgress(operation, progress, message);
 

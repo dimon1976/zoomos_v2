@@ -23,21 +23,6 @@ public class FileStatusController {
     private final OperationStatsService operationStatsService;
 
     @GetMapping("/{fileId}/status")
-//    public ProcessingStatsDTO getFileStatus(@PathVariable Long clientId, @PathVariable Long fileId) {
-//        log.debug("Запрос статуса файла. Client ID: {}, File ID: {}", clientId, fileId);
-//        return operationStatsService.findOperationByFileId(fileId)
-//                .map(operation -> {
-//                    Map<String, Object> currentProgress =
-//                            (Map<String, Object>) operation.getMetadata().getOrDefault("currentProgress", new HashMap<>());
-//                    String message = (String) currentProgress.getOrDefault("message", "Статус неизвестен");
-//
-//                    return ProcessingStatsDTO.fromOperation(operation, message);
-//                })
-//                .orElse(ProcessingStatsDTO.builder()
-//                        .status("UNKNOWN")
-//                        .build());
-//    }
-
     public ProcessingStatsDTO getFileStatus(@PathVariable Long clientId, @PathVariable Long fileId) {
         log.debug("Запрос статуса файла. Client ID: {}, File ID: {}", clientId, fileId);
 

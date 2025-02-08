@@ -3,6 +3,8 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Статус обработки файла</title>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <div th:replace="~{fragments/navbar :: header-css}"></div>
 </head>
 <body>
@@ -101,7 +103,9 @@
 
                     <!-- Прогресс обработки -->
                     <div class="mb-4">
-                        <h5><i class="fas fa-spinner me-2"></i>Прогресс обработки</h5>
+                        <h5>
+                            <i class="fas fa-spinner me-2" id="progress-spinner"></i>Прогресс обработки
+                        </h5>
                         <div class="progress mb-2" style="height: 25px;">
                             <div class="progress-bar progress-bar-striped progress-bar-animated"
                                  role="progressbar"
@@ -111,35 +115,32 @@
                                  aria-valuemax="100">
                                 <span th:text="${currentProgress.get('currentProgress') ?: 0} + '%'"></span>
                             </div>
-                            </div>
-                            <!-- Статус обработки отдельно -->
+                        </div>
+                        <!-- Статус обработки отдельно -->
                         <div class="alert alert-info mt-2" th:with="message=${currentProgress.get('message')}">
                             <i class="fas fa-info-circle me-1"></i>
                             <span th:text="${message ?: 'Инициализация...'}"></span>
                         </div>
-                        </div>
+                    </div>
 
-                        <!-- Кнопки действий -->
-                        <div class="d-flex gap-2 justify-content-end">
-                            <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
-                               class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>К панели управления
-                            </a>
+                    <!-- Кнопки действий -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>К панели управления
+                        </a>
 
-                            <form th:if="${file.status == 'IN_PROGRESS'}"
-                                  th:action="@{/client/{id}/files/status/{fileId}/cancel(id=${clientId},fileId=${file.id})}"
-                                  method="post" class="d-inline">
-                                <button type="submit" class="btn btn-warning">
-                                    <i class="fas fa-stop-circle me-2"></i>Отменить обработку
-                                </button>
-                            </form>
+                        <button class="btn btn-warning cancel-button"
+                                onclick="cancelProcessing()"
+                                style="display: none;">
+                            <i class="fas fa-stop-circle me-2"></i>Отменить обработку
+                        </button>
 
-                            <a th:if="${file.status == 'COMPLETED'}"
-                               th:href="@{/client/{id}/files/{fileId}/statistics(id=${clientId},fileId=${file.id})}"
-                               class="btn btn-primary">
-                                <i class="fas fa-chart-bar me-2"></i>Просмотр результатов
-                            </a>
-                        </div>
+                        <a th:href="@{/client/{id}/files/{fileId}/statistics(id=${clientId},fileId=${file.id})}"
+                           class="btn btn-primary view-results-button"
+                           style="display: none;">
+                            <i class="fas fa-chart-bar me-2"></i>Просмотр результатов
+                        </a>
                     </div>
                 </div>
             </div>
@@ -156,68 +157,34 @@
     let reconnectAttempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 5;
 
-    function initStatusUpdate() {
-        if (updateInterval) {
-            clearInterval(updateInterval);
-        }
+    function cancelProcessing() {
+        if (confirm('Вы уверены, что хотите отменить обработку файла?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/client/${clientId}/files/status/${fileId}/cancel`;
 
-        fetch(`/api/client/${clientId}/files/${fileId}/status`)
-            .then(response => response.json())
-            .then(data => {
-                updateUI(data);
-                if (['PENDING', 'IN_PROGRESS'].includes(data.status)) {
-                    updateInterval = setInterval(fetchStatus, 2000);
-                }
-            })
-            .catch(error => console.error('Ошибка при получении статуса:', error));
+            // Добавляем CSRF токен если он есть
+            const csrfElement = document.querySelector('meta[name="_csrf"]');
+            if (csrfElement) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_csrf';
+                csrfInput.value = csrfElement.content;
+                form.appendChild(csrfInput);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+        }
     }
 
-    function updateUI(data) {
-        // Обновление прогресс-бара
-        const progressBar = document.querySelector('.progress-bar');
-        if (progressBar) {
-            const progress = Math.min(data.progress || 0, 100); // Гарантируем максимум 100%
-            progressBar.style.width = `${progress}%`;
-            progressBar.setAttribute('aria-valuenow', progress);
-            progressBar.querySelector('span').textContent = `${progress}%`;
-        }
-
-        // Обновление сообщения
-        const statusMessage = document.querySelector('.alert.alert-info span');
-        if (statusMessage && data.message) {
-            statusMessage.textContent = data.message;
-        }
-
-        // Обновление статуса
-        const statusBadge = document.querySelector('.badge');
-        if (statusBadge && data.status) {
-            statusBadge.textContent = data.status;
-            const statusClass = getStatusClass(data.status);
-            updateStatusClass(statusBadge, statusClass);
-        }
-
-        // Обновление статистики обработки
-        const processedEl = document.querySelector('.processed-records');
-        if (processedEl) {
-            processedEl.textContent = `${data.processedRecords || 0} из ${data.totalRecords || 0}`;
-        }
-
-        const speedEl = document.querySelector('.processing-speed');
-        if (speedEl && data.processingSpeed !== undefined && data.processingSpeed !== null) {
-            speedEl.textContent = `${data.processingSpeed.toFixed(2)} записей/сек`;
-        } else {
-            speedEl.textContent = '0 записей/сек';
-        }
-
-        // Обновляем видимость кнопок в зависимости от статуса
-        updateButtons(data.status);
-    }
-
+    // Вспомогательные функции (вынесены на верхний уровень)
     function updateButtons(status) {
-        const cancelButton = document.querySelector('form[method="post"] button');
-        const viewResultsButton = document.querySelector('a.btn-primary');
+        const cancelButton = document.querySelector('.cancel-button');
+        const viewResultsButton = document.querySelector('.view-results-button');
 
         if (cancelButton) {
+            console.log('Current status:', status); // Для отладки
             cancelButton.style.display = status === 'IN_PROGRESS' ? 'inline-block' : 'none';
         }
 
@@ -225,6 +192,82 @@
             viewResultsButton.style.display = status === 'COMPLETED' ? 'inline-block' : 'none';
         }
     }
+
+    function initStatusUpdate() {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+
+        fetchStatus(); // Первичный запрос статуса
+
+        // Устанавливаем интервал только если статус позволяет
+        const status = /*[[${file.status}]]*/ 'PENDING';
+        if (['PENDING', 'IN_PROGRESS'].includes(status)) {
+            updateInterval = setInterval(fetchStatus, 2000);
+        }
+    }
+
+    function updateUI(data) {
+        const progressBar = document.querySelector('.progress-bar');
+        const progressSpinner = document.getElementById('progress-spinner');
+        const statusMessage = document.querySelector('.alert.alert-info span');
+        const statusBadge = document.querySelector('.badge');
+        const cancelButton = document.querySelector('.cancel-button');
+        const viewResultsButton = document.querySelector('.view-results-button');
+
+        // Обновляем прогресс-бар
+        if (progressBar) {
+            const progress = Math.min(data.progress || 0, 100);
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressBar.querySelector('span').textContent = `${progress}%`;
+
+            // Обновляем стиль прогресс-бара в зависимости от статуса
+            if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(data.status)) {
+                progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                progressSpinner.classList.remove('fa-spin');
+
+                switch (data.status) {
+                    case 'COMPLETED':
+                        progressBar.classList.add('bg-success');
+                        break;
+                    case 'FAILED':
+                        progressBar.classList.add('bg-danger');
+                        break;
+                    case 'CANCELLED':
+                        progressBar.classList.add('bg-warning');
+                        break;
+                }
+            } else {
+                progressBar.classList.add('progress-bar-animated', 'progress-bar-striped');
+                progressSpinner.classList.add('fa-spin');
+            }
+        }
+
+        // Обновляем сообщение
+        if (statusMessage && data.message) {
+            statusMessage.textContent = data.message;
+        }
+
+        // Обновляем бейдж статуса
+        if (statusBadge && data.status) {
+            statusBadge.textContent = data.status;
+            const statusClass = getStatusClass(data.status);
+            updateStatusClass(statusBadge, statusClass);
+        }
+
+        // Обновляем отображение кнопок
+        if (cancelButton) {
+            cancelButton.style.display = data.status === 'IN_PROGRESS' ? 'inline-block' : 'none';
+        }
+
+        if (viewResultsButton) {
+            viewResultsButton.style.display = data.status === 'COMPLETED' ? 'inline-block' : 'none';
+        }
+
+        updateProcessingStats(data);
+    }
+
 
     function getStatusClass(status) {
         const statusClasses = {
@@ -239,8 +282,7 @@
     }
 
     function updateStatusClass(element, newClass) {
-        const classes = ['bg-secondary', 'bg-primary', 'bg-success',
-            'bg-danger', 'bg-warning'];
+        const classes = ['bg-secondary', 'bg-primary', 'bg-success', 'bg-danger', 'bg-warning'];
         classes.forEach(cls => element.classList.remove(cls));
         element.classList.add(newClass);
     }
@@ -251,7 +293,8 @@
                 `/api/client/${clientId}/files/${fileId}/status?t=${Date.now()}`,
                 {
                     headers: {
-                        'Cache-Control': 'no-cache'
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
                     }
                 }
             );
@@ -260,49 +303,47 @@
                 throw new Error(`HTTP Error ${response.status}`);
             }
 
-            reconnectAttempts = 0; // Сбрасываем счетчик при успешном подключении
+            reconnectAttempts = 0;
             const data = await response.json();
             updateUI(data);
 
-            // Обработка финальных статусов
+            // Обновляем интервал в зависимости от статуса
             if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(data.status)) {
-                clearInterval(updateInterval);
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                    updateInterval = null;
+                }
 
-                // Дополнительные действия для завершенных статусов
                 switch (data.status) {
-                    case 'COMPLETED':
-                        updateProcessingStats(data);
-                        setTimeout(() => window.location.reload(), 1500);
+                    case 'CANCELLED':
+                        showWarningNotification("Обработка отменена пользователем");
                         break;
                     case 'FAILED':
                         showErrorNotification(data.message || "Ошибка обработки файла");
                         break;
-                    case 'CANCELLED':
-                        showWarningNotification("Обработка отменена пользователем");
+                    case 'COMPLETED':
+                        setTimeout(() => window.location.reload(), 1500);
                         break;
                 }
             }
         } catch (error) {
             console.error('Ошибка при получении статуса:', error);
-            reconnectAttempts++;
-
-            if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
-                handleFetchError(error);
-            } else {
-                clearInterval(updateInterval);
-                showErrorNotification('Превышено количество попыток переподключения');
-            }
+            handleFetchError(error);
         }
     }
 
     function updateProcessingStats(data) {
         if (data.processedRecords !== undefined && data.totalRecords !== undefined) {
-            document.querySelector('.processed-records').textContent =
-                `${data.processedRecords} из ${data.totalRecords}`;
+            const processedEl = document.querySelector('.processed-records');
+            if (processedEl) {
+                processedEl.textContent = `${data.processedRecords} из ${data.totalRecords}`;
+            }
         }
         if (data.processingSpeed !== undefined) {
-            document.querySelector('.processing-speed').textContent =
-                `${data.processingSpeed.toFixed(2)} записей/сек`;
+            const speedEl = document.querySelector('.processing-speed');
+            if (speedEl) {
+                speedEl.textContent = `${data.processingSpeed.toFixed(2)} записей/сек`;
+            }
         }
     }
 
@@ -342,17 +383,32 @@
         document.querySelector('.card-body').appendChild(notification);
     }
 
-    // Инициализация при загрузке страницы
-    initStatusUpdate();
+    // При загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        const initialStatus = /*[[${file.status}]]*/ 'PENDING';
+        const progressSpinner = document.getElementById('progress-spinner');
 
-    // Обновляем при возвращении на страницу
+        // Применяем начальные стили
+        if (!['COMPLETED', 'FAILED', 'CANCELLED'].includes(initialStatus)) {
+            progressSpinner.classList.add('fa-spin');
+        }
+
+        // Всегда делаем начальный запрос
+        initStatusUpdate();
+    });
+
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
+            console.log('Страница стала видимой, обновляем статус...');
             initStatusUpdate();
+        } else {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
         }
     });
 
-    // Очищаем при уходе со страницы
     window.addEventListener('beforeunload', () => {
         if (updateInterval) {
             clearInterval(updateInterval);

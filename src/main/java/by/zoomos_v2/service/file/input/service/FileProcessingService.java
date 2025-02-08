@@ -13,6 +13,7 @@ import by.zoomos_v2.service.file.input.processor.FileProcessor;
 import by.zoomos_v2.service.file.input.processor.FileProcessorFactory;
 import by.zoomos_v2.service.mapping.MappingConfigService;
 import by.zoomos_v2.service.statistics.OperationProgressTracker;
+import by.zoomos_v2.service.statistics.OperationStateManager;
 import by.zoomos_v2.service.statistics.OperationStatsService;
 import by.zoomos_v2.service.statistics.StatisticsProcessor;
 import by.zoomos_v2.util.PathResolver;
@@ -59,12 +60,14 @@ public class FileProcessingService {
     private final OperationStatsService operationStatsService;
     private final StatisticsProcessor statisticsProcessor;
     private final OperationProgressTracker progressTracker;
+    private final OperationStateManager operationStateManager;
 
     /**
      * Асинхронно обрабатывает загруженный файл
      */
     @Async("fileProcessingExecutor")
     public void processFileAsync(Long fileId) {
+        // TODO Очистить код от дублирования и избыточности
         log.debug("Начало асинхронной обработки файла с ID: {}", fileId);
         ImportOperation operation = null;
         BatchProcessingData batchData = null;
@@ -86,7 +89,7 @@ public class FileProcessingService {
                     null
             );
             // Присваиваем начальный прогресс
-            progressTracker.trackProgress(operation,0,"Чтение файла");
+            progressTracker.trackProgress(operation, 0, "Чтение файла");
 
 
             // Основной процесс обработки
@@ -97,32 +100,41 @@ public class FileProcessingService {
 
             // Проверяем на наличие ошибок
             boolean hasErrors = !operation.getErrors().isEmpty();
-            OperationStatus finalStatus = hasErrors ?
-                    OperationStatus.PARTIAL_SUCCESS : OperationStatus.COMPLETED;
+            OperationStatus finalStatus = null;
+
+            if (operation.getStatus() != OperationStatus.CANCELLED) {
+                finalStatus = hasErrors ? OperationStatus.PARTIAL_SUCCESS : OperationStatus.COMPLETED;
+            } else {
+                finalStatus = OperationStatus.CANCELLED;
+            }
 
             operation.setStatus(finalStatus);
             operation.setEndTime(LocalDateTime.now());
             // Записываем завершающий статус операции
             statisticsProcessor.updateOperationStats(operation);
 
-            // Устанавливаем окончательный прогресс и статус
-            String finalMessage = hasErrors ?
-                    "Обработка завершена с ошибками" :
-                    String.format("Обработано записей: %d из %d", operation.getProcessedRecords(), operation.getTotalRecords());
-            progressTracker.trackProgress(operation, 100, finalMessage);
-            log.info("Файл {} обработан. Прогресс: 100%, Статус: {}", fileId, finalStatus);
+            // Обновляем прогресс только если не было отмены
+            if (!operationStateManager.isCancelled(operation.getId())) {
+                String finalMessage = String.format("Обработка завершена: обработано %d записей", operation.getProcessedRecords());
+                progressTracker.trackProgress(operation, 100, finalMessage);
+                log.info("Файл {} обработан. Прогресс: 100%, Статус: {}", fileId, finalStatus);
+            }
         } catch (Exception e) {
-            statisticsProcessor.handleOperationError(operation, e.getMessage(),
-                    e instanceof FileProcessingException ? "PROCESSING_ERROR" : "SYSTEM_ERROR");
+            // Проверяем, не была ли операция отменена перед обработкой ошибки
+            if (!operationStateManager.isCancelled(operation.getId())) {
+                statisticsProcessor.handleOperationError(operation, e.getMessage(),
+                        e instanceof FileProcessingException ? "PROCESSING_ERROR" : "SYSTEM_ERROR");
+            }
         } finally {
             if (batchData != null) {
                 batchData.cleanup();
             }
             // Логируем финальный статус
             if (operation != null) {
-                log.info("Завершена обработка файла с ID: {}. Статус: {}",
-                        fileId, operation.getStatus());
+                operationStateManager.cleanup(operation.getId()); // Очищаем состояние
             }
+            log.info("Завершена обработка файла с ID: {}. Статус: {}",
+                    fileId, operation != null ? operation.getStatus() : "UNKNOWN");
         }
     }
 
@@ -170,7 +182,7 @@ public class FileProcessingService {
             log.debug("Базовая обработка файла завершена. Прочитано записей: {}", operation.getTotalRecords());
 
             // Сохранение обработанных данных
-            progressTracker.trackProgress(operation,30,"Сохранение данных");
+            progressTracker.trackProgress(operation, 30, "Сохранение данных");
             persistData(metadata, operation, batchData);
             log.debug("Сохранение данных завершено. Успешно обработано: {}", operation.getProcessedRecords());
 
@@ -211,9 +223,6 @@ public class FileProcessingService {
             Map<String, Object> processorConfig = configureProcessor(metadata);
             operation.getMetadata().put("processorConfig", processorConfig);
             processor.configure(processorConfig);
-
-            // Создаем обработчик прогресса
-
 
             // Обработка файла
             Map<String, Object> results = processor.processFile(filePath, metadata, (progress, message) ->
@@ -281,9 +290,9 @@ public class FileProcessingService {
     /**
      * Сохраняет обработанные данные в постоянное хранилище
      *
-     * @param metadata     Метаданные импортируемого файла
-     * @param operation    Текущая операция импорта
-     * @param batchData    Данные для пакетной обработки
+     * @param metadata  Метаданные импортируемого файла
+     * @param operation Текущая операция импорта
+     * @param batchData Данные для пакетной обработки
      * @throws FileProcessingException при ошибках сохранения данных
      */
     private void persistData(FileMetadata metadata, ImportOperation operation, BatchProcessingData batchData) {
@@ -295,19 +304,34 @@ public class FileProcessingService {
             List<Map<String, String>> currentBatch = new ArrayList<>();
             long totalProcessed = 0;
 
-            // Читаем и обрабатываем данные из временного файла
             try (BufferedReader reader = Files.newBufferedReader(batchData.getTempFilePath())) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    Map<String, String> record = objectMapper.readValue(line, new TypeReference<>() {});
+                    // Проверяем флаг отмены перед каждой записью
+                    if (operationStateManager.isCancelled(operation.getId())) {
+                        log.info("Обнаружена отмена операции {}, прерываем обработку", operation.getId());
+                        operationStatsService.updateOperationStatus(operation, OperationStatus.CANCELLED,
+                                null, null);
+                        return;
+                    }
+
+                    Map<String, String> record = objectMapper.readValue(line, new TypeReference<>() {
+                    });
                     currentBatch.add(record);
 
                     if (shouldProcessBatch(currentBatch, totalProcessed, operation.getTotalRecords())) {
+                        // Проверяем флаг отмены перед обработкой батча
+                        if (operationStateManager.isCancelled(operation.getId())) {
+                            log.info("Операция отменена перед обработкой батча");
+                            operationStatsService.updateOperationStatus(operation, OperationStatus.CANCELLED,
+                                    null, null);
+                            return;
+                        }
+
                         processBatch(metadata, operation, currentBatch, columnsMapping, totalProcessed);
                         totalProcessed += currentBatch.size();
                         currentBatch.clear();
 
-                        // Обновляем промежуточный прогресс только если не все записи обработаны
                         if (totalProcessed < operation.getTotalRecords()) {
                             updateIntermediateProgress(operation, totalProcessed);
                         }
@@ -315,34 +339,43 @@ public class FileProcessingService {
                 }
 
                 // Обрабатываем оставшийся батч
-                if (!currentBatch.isEmpty()) {
+                if (!currentBatch.isEmpty() && !operationStateManager.isCancelled(operation.getId())) {
                     processBatch(metadata, operation, currentBatch, columnsMapping, totalProcessed);
                     totalProcessed += currentBatch.size();
-
-                    // Обновляем прогресс после обработки последнего батча
                     updateIntermediateProgress(operation, totalProcessed);
 
-                    // После последнего батча устанавливаем сообщение о завершении сохранения
-                    progressTracker.trackProgress(operation, 99,
-                            String.format("Обработка завершена: сохранено %d записей", totalProcessed));
+                    // Проверяем флаг отмены перед установкой финального сообщения
+                    if (!operationStateManager.isCancelled(operation.getId())) {
+                        progressTracker.trackProgress(operation, 99,
+                                String.format("Обработка завершена: сохранено %d записей", totalProcessed));
+                    } else {
+                        operationStatsService.updateOperationStatus(operation, OperationStatus.CANCELLED,
+                                null, null);
+                    }
                 }
             }
 
-            // Добавляем метрики сохранения
-            Map<String, Object> saveMetrics = new HashMap<>();
-            saveMetrics.put("totalProcessed", totalProcessed);
-            saveMetrics.put("saveTimeSeconds", ChronoUnit.SECONDS.between(startSave, LocalDateTime.now()));
-            operation.getMetadata().put("saveMetrics", saveMetrics);
+            // Сохраняем метрики только если операция не была отменена
+            if (!operationStateManager.isCancelled(operation.getId())) {
+                Map<String, Object> saveMetrics = new HashMap<>();
+                saveMetrics.put("totalProcessed", totalProcessed);
+                saveMetrics.put("saveTimeSeconds", ChronoUnit.SECONDS.between(startSave, LocalDateTime.now()));
+                operation.getMetadata().put("saveMetrics", saveMetrics);
 
-            // После сохранения всех данных устанавливаем прогресс в 99%
-            // оставляя 1% для финальных операций в основном методе
-            progressTracker.trackProgress(operation, 99, "Сохранение в БД завершено");
+                progressTracker.trackProgress(operation, 99, "Сохранение в БД завершено");
+            } else {
+                operationStatsService.updateOperationStatus(operation, OperationStatus.CANCELLED,
+                        null, null);
+            }
 
         } catch (Exception e) {
             String errorMsg = "Ошибка при сохранении данных: " + e.getMessage();
             log.error(errorMsg, e);
             statisticsProcessor.handleOperationError(operation, errorMsg, "DATA_SAVE_ERROR");
             throw new FileProcessingException(errorMsg, e);
+        } finally {
+            // Очищаем состояние операции
+            operationStateManager.cleanup(operation.getId());
         }
     }
 
@@ -396,7 +429,7 @@ public class FileProcessingService {
      *
      * @param metadata       Метаданные файла
      * @param operation      Текущая операция импорта
-     * @param batch         Пакет данных для обработки
+     * @param batch          Пакет данных для обработки
      * @param columnsMapping Маппинг колонок
      * @param processedSoFar Количество обработанных записей
      * @throws RuntimeException при ошибках обработки батча
@@ -404,40 +437,14 @@ public class FileProcessingService {
     private void processBatch(FileMetadata metadata, ImportOperation operation,
                               List<Map<String, String>> batch, Map<String, String> columnsMapping,
                               long processedSoFar) {
+        // Проверяем флаг отмены перед обработкой батча
+        if (operationStateManager.isCancelled(operation.getId())) {
+            log.info("Пропуск обработки батча - операция отменена");
+            operationStatsService.updateOperationStatus(operation, OperationStatus.CANCELLED,
+                    null, null);
+            return;
+        }
 
-//        log.debug("Обработка батча {} записей (с {} по {}) из {}",
-//                batch.size(), processedSoFar + 1,
-//                processedSoFar + batch.size(), operation.getTotalRecords());
-//        int progress = (int) ((processedSoFar * 100.0) / operation.getTotalRecords());
-//        progressTracker.trackProgress(operation, progress,
-//                String.format("Сохраняем в БД:  %d из %d записей", processedSoFar, operation.getTotalRecords()));
-//        try {
-//            // Сохраняем батч
-//            Map<String, Object> results = dataPersistenceService.saveEntities(
-//                    batch,
-//                    metadata.getClientId(),
-//                    columnsMapping,
-//                    metadata.getId()
-//            );
-//
-//            // Обновляем статистику в операции
-//            operation.incrementProcessedRecords((Integer) results.getOrDefault("successCount", 0));
-//
-//            // Обрабатываем ошибки, если они есть
-//            if (results.containsKey("errors")) {
-//                @SuppressWarnings("unchecked")
-//                List<String> errors = (List<String>) results.get("errors");
-//                errors.forEach(error -> operation.addError(error, "DATA_SAVE_ERROR"));
-//            }
-//
-//            // Добавляем информацию о батче в метаданные
-//            addBatchMetrics(operation, results, processedSoFar);
-//
-//        } catch (Exception e) {
-//            log.error("Ошибка при сохранении батча данных: {}", e.getMessage(), e);
-//            operation.addError("Ошибка сохранения батча: " + e.getMessage(), "BATCH_SAVE_ERROR");
-//            throw e;
-//        }
         log.debug("Обработка батча {} записей (с {} по {}) из {}",
                 batch.size(), processedSoFar + 1,
                 processedSoFar + batch.size(), operation.getTotalRecords());
@@ -450,6 +457,14 @@ public class FileProcessingService {
                     columnsMapping,
                     metadata.getId()
             );
+
+            // Проверка отмены после сохранения
+            if (operationStateManager.isCancelled(operation.getId())) {
+                log.info("Операция была отменена во время сохранения батча");
+                operationStatsService.updateOperationStatus(operation, OperationStatus.CANCELLED,
+                        null, null);
+                return;
+            }
 
             // Обновляем статистику в операции
             operation.incrementProcessedRecords((Integer) results.getOrDefault("successCount", 0));
@@ -498,17 +513,15 @@ public class FileProcessingService {
     @Transactional
     public void cancelProcessing(Long fileId) {
         try {
-            FileMetadata metadata = fileMetadataRepository.findById(fileId)
-                    .orElseThrow(() -> new FileProcessingException("Файл не найден"));
-
             ImportOperation operation = operationStatsService.findOperationByFileId(fileId)
                     .map(op -> (ImportOperation) op)
                     .orElseThrow(() -> new FileProcessingException("Операция не найдена"));
 
-//            progressTracker.trackProgress(operation, -1, "Обработка отменена");
-            operation.setStatus(OperationStatus.CANCELLED);
-            operationStatsService.updateOperationStatus(operation, OperationStatus.CANCELLED,
-                    "Обработка отменена пользователем", null);
+            // Устанавливаем флаг отмены
+            operationStateManager.markAsCancelled(operation.getId());
+
+            // Обновляем статус в БД
+            progressTracker.trackProgress(operation, operation.getCurrentProgress(), "Обработка отменена");
 
             log.info("Обработка файла {} успешно отменена", fileId);
         } catch (Exception e) {

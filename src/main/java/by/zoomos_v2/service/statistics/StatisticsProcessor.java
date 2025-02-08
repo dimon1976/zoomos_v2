@@ -96,8 +96,9 @@ public class StatisticsProcessor {
 
     /**
      * Обрабатывает ошибку операции
+     *
      * @param operation операция
-     * @param error сообщение об ошибке
+     * @param error     сообщение об ошибке
      * @param errorType тип ошибки
      */
     public void handleOperationError(BaseOperation operation, String error, String errorType) {
@@ -128,6 +129,7 @@ public class StatisticsProcessor {
 
     /**
      * Обновляет статистику операции
+     *
      * @param operation операция
      */
     public void updateOperationStats(BaseOperation operation) {
@@ -140,16 +142,20 @@ public class StatisticsProcessor {
 
     /**
      * Определяет финальный статус операции
+     *
      * @param operation операция
      * @return финальный статус операции
      */
     private OperationStatus determineOperationStatus(BaseOperation operation) {
-        if (operation.getErrors().isEmpty()) {
-            return OperationStatus.COMPLETED;
-        } else if (operation.getProcessedRecords() > 0) {
-            return OperationStatus.PARTIAL_SUCCESS;
+        if (operation.getStatus() != OperationStatus.CANCELLED) {
+            if (operation.getErrors().isEmpty()) {
+                return OperationStatus.COMPLETED;
+            } else if (operation.getProcessedRecords() > 0) {
+                return OperationStatus.PARTIAL_SUCCESS;
+            }
+            return OperationStatus.FAILED;
         }
-        return OperationStatus.FAILED;
+        return OperationStatus.CANCELLED;
     }
 
 
@@ -168,7 +174,7 @@ public class StatisticsProcessor {
     private String formatBytes(long bytes) {
         if (bytes < 1024) return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp-1) + "";
+        String pre = "KMGTPE".charAt(exp - 1) + "";
         return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 }

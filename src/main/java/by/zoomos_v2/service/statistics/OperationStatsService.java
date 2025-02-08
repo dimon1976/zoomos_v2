@@ -36,6 +36,13 @@ public class OperationStatsService {
     private final ExportOperationRepository exportOperationRepository;
     private final List<BaseOperationRepository<? extends BaseOperation>> repositories;
 
+    @Transactional
+    public void saveOperation(BaseOperation operation) {
+        BaseOperationRepository<BaseOperation> repository = getRepositoryForType((Class<BaseOperation>) operation.getClass());
+        repository.save(operation);
+    }
+
+
     /**
      * Создает новую операцию заданного типа
      */

@@ -5,6 +5,7 @@ import by.zoomos_v2.model.enums.OperationType;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
 import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
@@ -93,6 +94,14 @@ public abstract class BaseOperation {
      */
     @Column(name = "processing_speed")
     private Double processingSpeed;
+
+    @Column(name = "current_progress")
+    private Integer currentProgress = 0;
+
+    @Getter
+    @Column(name = "is_cancelled")
+    private boolean cancelled = false;
+
     /**
      * Типы ошибок и их количество
      */
