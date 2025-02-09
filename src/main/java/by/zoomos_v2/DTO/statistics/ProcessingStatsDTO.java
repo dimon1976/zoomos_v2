@@ -22,17 +22,6 @@ public class ProcessingStatsDTO {
     private Integer processedRecords;
     private Double processingSpeed;
 
-//    public static ProcessingStatsDTO fromOperation(BaseOperation operation, String currentStatus) {
-//        return ProcessingStatsDTO.builder()
-//                .status(operation.getStatus().name())
-//                .progress(calculateProgress(operation))
-//                .message(currentStatus)
-//                .totalRecords(operation.getTotalRecords())
-//                .processedRecords(operation.getProcessedRecords())
-//                .processingSpeed(operation.getProcessingSpeed())
-//                .build();
-//    }
-
     public static ProcessingStatsDTO fromOperation(BaseOperation operation, String message) {
         Double speed = operation.getProcessingSpeed();
         if (speed == null && operation.getProcessedRecords() != null &&

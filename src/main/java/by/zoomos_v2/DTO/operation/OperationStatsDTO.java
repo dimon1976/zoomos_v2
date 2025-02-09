@@ -30,18 +30,4 @@ public class OperationStatsDTO {
     private Integer failedRecords;
     private Long processingTimeSeconds;
     private Double successRate;
-
-    public void addError(String error) {
-        if (errors == null) {
-            errors = new ArrayList<>();
-        }
-        errors.add(error);
-    }
-
-    public Double getSuccessRate() {
-        if (totalRecords == null || totalRecords == 0) {
-            return 0.0;
-        }
-        return (double) processedRecords / totalRecords * 100;
-    }
 }

@@ -162,7 +162,7 @@ public class StatisticsProcessor {
     /**
      * Получает пиковое использование памяти
      */
-    private String getPeakMemoryUsage() {
+    public String getPeakMemoryUsage() {
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory();
         long allocatedMemory = runtime.totalMemory();
@@ -171,7 +171,7 @@ public class StatisticsProcessor {
         return formatBytes(usedMemory);
     }
 
-    private String formatBytes(long bytes) {
+    public String formatBytes(long bytes) {
         if (bytes < 1024) return bytes + " B";
         int exp = (int) (Math.log(bytes) / Math.log(1024));
         String pre = "KMGTPE".charAt(exp - 1) + "";

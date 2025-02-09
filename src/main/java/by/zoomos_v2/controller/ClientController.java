@@ -1,20 +1,24 @@
 package by.zoomos_v2.controller;
 
-import by.zoomos_v2.exception.TabDataException;
-import by.zoomos_v2.service.client.ClientService;
-import by.zoomos_v2.model.Client;
 import by.zoomos_v2.aspect.LogExecution;
+import by.zoomos_v2.exception.TabDataException;
+import by.zoomos_v2.model.Client;
+import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.input.service.FileUploadService;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.mapping.ExportConfigService;
 import by.zoomos_v2.service.mapping.MappingConfigService;
+import by.zoomos_v2.service.statistics.dashboard.DashboardOverviewDTO;
+import by.zoomos_v2.service.statistics.dashboard.DashboardStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,6 +38,7 @@ public class ClientController {
     private final MappingConfigService mappingConfigService;
     private final ExportConfigService exportConfigService;
     private final FileMetadataService fileMetadataService;
+    private final DashboardStatisticsService dashboardStatisticsService;
 
     /**
      * Отображает список всех клиентов
@@ -57,14 +62,22 @@ public class ClientController {
     /**
      * Отображает dashboard клиента
      * @param id идентификатор клиента
+     * @param from дата начала периода
+     * @param to дата окончания периода
      * @param model модель для передачи данных в представление
      * @return имя представления dashboard
      */
     @GetMapping("/client/{id}/dashboard")
     @LogExecution("Просмотр панели управления магазина")
-    public String showDashboard(@PathVariable Long id, Model model) {
-        log.debug("Запрошен dashboard магазина с ID: {}", id);
+    public String showDashboard(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            Model model
+    ) {
+        log.debug("Запрошен dashboard магазина с ID: {}, период: {} - {}", id, from, to);
         try {
+            // Получаем основные данные клиента
             Client client = clientService.getClientById(id);
             model.addAttribute("client", client);
 
@@ -75,12 +88,32 @@ public class ClientController {
             // Данные для вкладки экспорта
             model.addAttribute("configs", exportConfigService.getConfigsByClientId(id));
 
+            // Добавляем данные дашборда
+            DashboardOverviewDTO dashboardData = dashboardStatisticsService.getDashboardOverview(id, from, to);
+            model.addAttribute("dashboardData", dashboardData);
+            model.addAttribute("from", from);
+            model.addAttribute("to", to);
+
             return "client/dashboard";
         } catch (Exception e) {
             log.error("Ошибка при загрузке dashboard магазина: {}", e.getMessage(), e);
             model.addAttribute("error", "Не удалось загрузить dashboard магазина");
             return "error";
         }
+    }
+
+    /**
+     * AJAX endpoint для обновления данных дашборда
+     */
+    @GetMapping("/client/{id}/dashboard/data")
+    @ResponseBody
+    public DashboardOverviewDTO getDashboardData(
+            @PathVariable Long id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+    ) {
+        log.debug("AJAX запрос данных дашборда для клиента {}, период: {} - {}", id, from, to);
+        return dashboardStatisticsService.getDashboardOverview(id, from, to);
     }
 
     /**

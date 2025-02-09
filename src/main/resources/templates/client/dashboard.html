@@ -112,19 +112,15 @@
                                     <h6 class="card-subtitle mb-2 text-muted">
                                         <i class="fas fa-file"></i> Файлы
                                     </h6>
-                                    <h3 class="card-title">0</h3>
-                                    <p class="card-text text-muted">Всего загружено</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-4">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h6 class="card-subtitle mb-2 text-muted">
-                                        <i class="fas fa-database"></i> Размер данных
-                                    </h6>
-                                    <h3 class="card-title">0 MB</h3>
-                                    <p class="card-text text-muted">Общий объем</p>
+                                    <h3 class="card-title" th:text="${dashboardData.stats.totalFiles}">0</h3>
+                                    <p class="card-text text-muted">
+                                        <span th:text="${dashboardData.stats.recentFilesCount}">0</span> за последние 2
+                                        недели
+                                    </p>
+                                    <p class="card-text small">
+                                        Общий объем: <span
+                                            th:text="${dashboardData.stats.formattedTotalSize}">0 MB</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -134,8 +130,28 @@
                                     <h6 class="card-subtitle mb-2 text-muted">
                                         <i class="fas fa-tasks"></i> Операции
                                     </h6>
-                                    <h3 class="card-title">0</h3>
+                                    <h3 class="card-title" th:text="${dashboardData.stats.activeOperationsCount}">0</h3>
                                     <p class="card-text text-muted">Активные задачи</p>
+                                    <p class="card-text small">
+                                        Успешность: <span
+                                            th:text="${#numbers.formatDecimal(dashboardData.stats.overallSuccessRate, 1, 1)}">0</span>%
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        <i class="fas fa-microchip"></i> Системные ресурсы
+                                    </h6>
+                                    <h3 class="card-title"
+                                        th:text="${dashboardData.systemResources.currentMemoryUsage}">0 MB</h3>
+                                    <p class="card-text text-muted">Текущее использование памяти</p>
+                                    <p class="card-text small">
+                                        Пиковое: <span
+                                            th:text="${dashboardData.systemResources.peakMemoryUsage}">0 MB</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -143,8 +159,22 @@
                         <!-- Последние операции -->
                         <div class="col-12">
                             <div class="card">
-                                <div class="card-header">
+                                <div class="card-header d-flex justify-content-between align-items-center">
                                     <h5 class="card-title mb-0">Последние операции</h5>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                                data-bs-toggle="dropdown">
+                                            Период
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="updatePeriod(14)">2
+                                                недели</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="updatePeriod(30)">Месяц</a>
+                                            </li>
+                                            <li><a class="dropdown-item" href="#" onclick="updatePeriod(90)">3
+                                                месяца</a></li>
+                                        </ul>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
@@ -154,12 +184,54 @@
                                                 <th>Время</th>
                                                 <th>Тип</th>
                                                 <th>Статус</th>
+                                                <th>Прогресс</th>
                                                 <th>Действия</th>
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            <tr>
-                                                <td colspan="4" class="text-center">Нет операций</td>
+                                            <tr th:each="operation : ${dashboardData.recentOperations}">
+                                                <td>
+                                                    <span th:text="${#temporals.format(operation.startTime, 'dd.MM.yyyy HH:mm')}"></span>
+                                                </td>
+                                                <td>
+                                                    <span th:text="${operation.type.description}"></span>
+                                                </td>
+                                                <td>
+                            <span th:class="${'badge ' +
+                                (operation.status.name() == 'PENDING' ? 'bg-secondary' :
+                                operation.status.name() == 'IN_PROGRESS' ? 'bg-primary' :
+                                operation.status.name() == 'COMPLETED' ? 'bg-success' :
+                                operation.status.name() == 'FAILED' ? 'bg-danger' :
+                                operation.status.name() == 'CANCELLED' ? 'bg-secondary' :
+                                operation.status.name() == 'PARTIAL_SUCCESS' ? 'bg-warning' : 'bg-secondary')}"
+                                  th:text="${operation.status.description}">
+                            </span>
+                                                </td>
+                                                <td>
+                                                    <div class="progress" style="height: 20px;"
+                                                         th:if="${operation.status.name() == 'IN_PROGRESS'}">
+                                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                             th:style="'width: ' + ${operation.metadata['currentProgress'] != null ?
+                                     operation.metadata['currentProgress']['currentProgress'] : 0} + '%'"
+                                                             th:text="${operation.metadata['currentProgress'] != null ?
+                                     operation.metadata['currentProgress']['currentProgress'] + '%' : '0%'}">
+                                                        </div>
+                                                    </div>
+                                                    <span th:if="${operation.status.name() != 'IN_PROGRESS'}"
+                                                          th:text="${operation.successRate != null ? #numbers.formatDecimal(operation.successRate, 1, 1) + '%' : '-'}">
+                            </span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <a th:href="@{/client/{clientId}/operations/{id}(clientId=${operation.clientId},id=${operation.id})}"
+                                                           class="btn btn-sm btn-info" title="Подробности">
+                                                            <i class="fas fa-info-circle"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr th:if="${#lists.isEmpty(dashboardData.recentOperations)}">
+                                                <td colspan="5" class="text-center">Нет операций</td>
                                             </tr>
                                             </tbody>
                                         </table>
@@ -423,6 +495,16 @@
 </div>
 
 <script th:inline="javascript">
+    function updatePeriod(days) {
+        const to = new Date();
+        const from = new Date();
+        from.setDate(from.getDate() - days);
+
+        window.location.href = window.location.pathname +
+            `?from=${from.toISOString()}&to=${to.toISOString()}`;
+    }
+
+
     function showExportOptions(button) {
         const fileId = button.getAttribute('data-file-id');
         const fileName = button.getAttribute('data-file-name');

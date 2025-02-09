@@ -36,12 +36,6 @@ public class OperationStatsService {
     private final ExportOperationRepository exportOperationRepository;
     private final List<BaseOperationRepository<? extends BaseOperation>> repositories;
 
-    @Transactional
-    public void saveOperation(BaseOperation operation) {
-        BaseOperationRepository<BaseOperation> repository = getRepositoryForType((Class<BaseOperation>) operation.getClass());
-        repository.save(operation);
-    }
-
 
     /**
      * Создает новую операцию заданного типа
@@ -184,20 +178,6 @@ public class OperationStatsService {
                 .delimiter(operation.getDelimiter())
                 .errors(operation.getErrors())
                 .build();
-    }
-
-    /**
-     * Обновляет статистику обработки
-     */
-    @Transactional
-    public void updateProcessingStats(Long operationId, Integer totalRecords,
-                                      Integer processedRecords, Integer failedRecords) {
-        Optional<? extends BaseOperation> operationOpt = findOperation(operationId);
-        if (operationOpt.isPresent()) {
-            BaseOperation operation = operationOpt.get();
-            operation.updateProcessingStatistics(totalRecords, processedRecords, failedRecords);
-            getRepositoryForType((Class<BaseOperation>) operation.getClass()).save(operation);
-        }
     }
 
     /**
