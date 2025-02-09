@@ -150,20 +150,48 @@
 <div th:replace="~{fragments/navbar :: footer}"></div>
 
 <script th:inline="javascript">
+    // Получение переменных с сервера
     const fileStatus = /*[[${file.status}]]*/ 'PENDING';
     const fileId = /*[[${file.id}]]*/ '';
     const clientId = /*[[${clientId}]]*/ '';
-    let updateInterval;
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 5;
 
+    // Константы для настройки
+    const CONFIG = {
+        POLLING_INTERVAL: 5000,
+        MAX_RECONNECT_ATTEMPTS: 5,
+        NOTIFICATION_TIMEOUT: 1500
+    };
+
+    // Состояние приложения
+    const state = {
+        isRequestInProgress: false,
+        updateInterval: null,
+        reconnectAttempts: 0,
+        lastStatus: null
+    };
+
+    // Логгер для отладки
+    const Logger = {
+        info: (message, data = {}) => {
+            console.log(`[Status Page][INFO] ${message}`, data);
+        },
+        error: (message, error = null) => {
+            console.error(`[Status Page][ERROR] ${message}`, error);
+        },
+        warn: (message, data = {}) => {
+            console.warn(`[Status Page][WARN] ${message}`, data);
+        }
+    };
+
+    /**
+     * Отмена обработки файла
+     */
     function cancelProcessing() {
         if (confirm('Вы уверены, что хотите отменить обработку файла?')) {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = `/client/${clientId}/files/status/${fileId}/cancel`;
 
-            // Добавляем CSRF токен если он есть
             const csrfElement = document.querySelector('meta[name="_csrf"]');
             if (csrfElement) {
                 const csrfInput = document.createElement('input');
@@ -178,54 +206,66 @@
         }
     }
 
-    // Вспомогательные функции (вынесены на верхний уровень)
-    function updateButtons(status) {
-        const cancelButton = document.querySelector('.cancel-button');
-        const viewResultsButton = document.querySelector('.view-results-button');
+    /**
+     * Обновление статистики обработки
+     * @param {Object} data - Данные о процессе обработки
+     */
+    function updateProcessingStats(data) {
+        Logger.info('Updating processing stats', data);
 
-        if (cancelButton) {
-            console.log('Current status:', status); // Для отладки
-            cancelButton.style.display = status === 'IN_PROGRESS' ? 'inline-block' : 'none';
+        // Обновление количества обработанных записей
+        if (data?.processedRecords != null && data?.totalRecords != null) {
+            const processedEl = document.querySelector('.processed-records');
+            if (processedEl) {
+                processedEl.textContent = `${data.processedRecords} из ${data.totalRecords}`;
+            }
         }
 
-        if (viewResultsButton) {
-            viewResultsButton.style.display = status === 'COMPLETED' ? 'inline-block' : 'none';
+        // Обновление скорости обработки
+        if (data?.processingSpeed != null && !isNaN(data.processingSpeed)) {
+            const speedEl = document.querySelector('.processing-speed');
+            if (speedEl) {
+                const formattedSpeed = Number(data.processingSpeed).toFixed(2);
+                speedEl.textContent = `${formattedSpeed} записей/сек`;
+            }
+        } else {
+            const speedEl = document.querySelector('.processing-speed');
+            if (speedEl) {
+                speedEl.textContent = '0 записей/сек';
+            }
         }
     }
 
-    function initStatusUpdate() {
-        if (updateInterval) {
-            clearInterval(updateInterval);
-        }
-
-        fetchStatus(); // Первичный запрос статуса
-
-        // Устанавливаем интервал только если статус позволяет
-        const status = /*[[${file.status}]]*/ 'PENDING';
-        if (['PENDING', 'IN_PROGRESS'].includes(status)) {
-            updateInterval = setInterval(fetchStatus, 2000);
-        }
-    }
-
+    /**
+     * Обновление UI на основе полученных данных
+     * @param {Object} data - Данные о статусе обработки
+     */
     function updateUI(data) {
+        if (!data) {
+            Logger.error('No data provided for UI update');
+            return;
+        }
+
+        Logger.info('Updating UI', { status: data.status, progress: data.progress });
+
+        // Обновление прогресс-бара
         const progressBar = document.querySelector('.progress-bar');
         const progressSpinner = document.getElementById('progress-spinner');
-        const statusMessage = document.querySelector('.alert.alert-info span');
-        const statusBadge = document.querySelector('.badge');
-        const cancelButton = document.querySelector('.cancel-button');
-        const viewResultsButton = document.querySelector('.view-results-button');
 
-        // Обновляем прогресс-бар
         if (progressBar) {
             const progress = Math.min(data.progress || 0, 100);
             progressBar.style.width = `${progress}%`;
             progressBar.setAttribute('aria-valuenow', progress);
-            progressBar.querySelector('span').textContent = `${progress}%`;
+            const progressSpan = progressBar.querySelector('span');
+            if (progressSpan) {
+                progressSpan.textContent = `${progress}%`;
+            }
 
-            // Обновляем стиль прогресс-бара в зависимости от статуса
             if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(data.status)) {
                 progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
-                progressSpinner.classList.remove('fa-spin');
+                if (progressSpinner) {
+                    progressSpinner.classList.remove('fa-spin');
+                }
 
                 switch (data.status) {
                     case 'COMPLETED':
@@ -240,35 +280,37 @@
                 }
             } else {
                 progressBar.classList.add('progress-bar-animated', 'progress-bar-striped');
-                progressSpinner.classList.add('fa-spin');
+                if (progressSpinner) {
+                    progressSpinner.classList.add('fa-spin');
+                }
             }
         }
 
-        // Обновляем сообщение
+        // Обновление сообщения о статусе
+        const statusMessage = document.querySelector('.alert.alert-info span');
         if (statusMessage && data.message) {
             statusMessage.textContent = data.message;
         }
 
-        // Обновляем бейдж статуса
+        // Обновление бейджа статуса
+        const statusBadge = document.querySelector('.badge');
         if (statusBadge && data.status) {
             statusBadge.textContent = data.status;
-            const statusClass = getStatusClass(data.status);
-            updateStatusClass(statusBadge, statusClass);
+            updateStatusClass(statusBadge, getStatusClass(data.status));
         }
 
-        // Обновляем отображение кнопок
-        if (cancelButton) {
-            cancelButton.style.display = data.status === 'IN_PROGRESS' ? 'inline-block' : 'none';
-        }
+        // Обновление кнопок
+        updateButtons(data.status);
 
-        if (viewResultsButton) {
-            viewResultsButton.style.display = data.status === 'COMPLETED' ? 'inline-block' : 'none';
-        }
-
+        // Обновление статистики обработки
         updateProcessingStats(data);
     }
 
-
+    /**
+     * Получение класса стиля для статуса
+     * @param {string} status - Статус обработки
+     * @returns {string} Класс стиля
+     */
     function getStatusClass(status) {
         const statusClasses = {
             'PENDING': 'bg-secondary',
@@ -281,13 +323,127 @@
         return statusClasses[status] || 'bg-secondary';
     }
 
+    /**
+     * Обновление класса статуса
+     * @param {HTMLElement} element - Элемент для обновления
+     * @param {string} newClass - Новый класс
+     */
     function updateStatusClass(element, newClass) {
         const classes = ['bg-secondary', 'bg-primary', 'bg-success', 'bg-danger', 'bg-warning'];
         classes.forEach(cls => element.classList.remove(cls));
         element.classList.add(newClass);
     }
 
+    /**
+     * Обновление кнопок управления
+     * @param {string} status - Текущий статус обработки
+     */
+    function updateButtons(status) {
+        const cancelButton = document.querySelector('.cancel-button');
+        const viewResultsButton = document.querySelector('.view-results-button');
+
+        if (cancelButton) {
+            cancelButton.style.display = status === 'IN_PROGRESS' ? 'inline-block' : 'none';
+        }
+
+        if (viewResultsButton) {
+            viewResultsButton.style.display = status === 'COMPLETED' ? 'inline-block' : 'none';
+        }
+    }
+
+    /**
+     * Инициализация обновления статуса
+     * @param {string} currentStatus - Текущий статус файла
+     */
+    function initStatusUpdate(currentStatus = fileStatus) {
+        Logger.info('Initializing status update', { currentStatus });
+
+        clearExistingInterval();
+
+        fetchStatus();
+
+        if (['PENDING', 'IN_PROGRESS'].includes(currentStatus)) {
+            state.updateInterval = setInterval(fetchStatus, CONFIG.POLLING_INTERVAL);
+        }
+    }
+
+    /**
+     * Очистка существующего интервала
+     */
+    function clearExistingInterval() {
+        if (state.updateInterval) {
+            clearInterval(state.updateInterval);
+            state.updateInterval = null;
+            Logger.info('Cleared existing interval');
+        }
+    }
+
+    /**
+     * Показ уведомления
+     * @param {string} type - Тип уведомления (success/warning/error)
+     * @param {string} message - Текст уведомления
+     */
+    function showNotification(type, message) {
+        const alertClass = {
+            'success': 'alert-success',
+            'warning': 'alert-warning',
+            'error': 'alert-danger'
+        }[type];
+
+        const iconClass = {
+            'success': 'fas fa-check-circle',
+            'warning': 'fas fa-exclamation-triangle',
+            'error': 'fas fa-exclamation-circle'
+        }[type];
+
+        const notification = document.createElement('div');
+        notification.className = `alert ${alertClass} mt-3`;
+        notification.innerHTML = `<i class="${iconClass} me-2"></i> ${message}`;
+        document.querySelector('.card-body').appendChild(notification);
+    }
+
+    /**
+     * Обработка завершения процесса
+     * @param {Object} data - Данные о статусе
+     */
+    function handleProcessCompletion(data) {
+        clearExistingInterval();
+
+        const notifications = {
+            'COMPLETED': {
+                type: 'success',
+                message: 'Обработка файла успешно завершена',
+                reload: false  // Было true, меняем на false
+            },
+            'CANCELLED': {
+                type: 'warning',
+                message: 'Обработка отменена пользователем',
+                reload: false
+            },
+            'FAILED': {
+                type: 'error',
+                message: data.message || 'Ошибка обработки файла',
+                reload: false
+            }
+        };
+
+        const notification = notifications[data.status];
+        if (notification) {
+            showNotification(notification.type, notification.message);
+        }
+    }
+
+    /**
+     * Получение статуса обработки файла
+     */
     async function fetchStatus() {
+        if (state.isRequestInProgress) {
+            Logger.warn('Request already in progress, skipping');
+            return;
+        }
+
+        state.isRequestInProgress = true;
+
         try {
             const response = await fetch(
                 `/api/client/${clientId}/files/${fileId}/status?t=${Date.now()}`,
@@ -303,116 +459,102 @@
                 throw new Error(`HTTP Error ${response.status}`);
             }
 
-            reconnectAttempts = 0;
             const data = await response.json();
+            Logger.info('Received status update', data);
+
+            if (state.lastStatus !== data.status) {
+                Logger.info('Status changed', {
+                    from: state.lastStatus,
+                    to: data.status
+                });
+                state.lastStatus = data.status;
+            }
+
             updateUI(data);
 
-            // Обновляем интервал в зависимости от статуса
             if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(data.status)) {
-                if (updateInterval) {
-                    clearInterval(updateInterval);
-                    updateInterval = null;
-                }
-
-                switch (data.status) {
-                    case 'CANCELLED':
-                        showWarningNotification("Обработка отменена пользователем");
-                        break;
-                    case 'FAILED':
-                        showErrorNotification(data.message || "Ошибка обработки файла");
-                        break;
-                    case 'COMPLETED':
-                        setTimeout(() => window.location.reload(), 1500);
-                        break;
-                }
+                handleProcessCompletion(data);
+                return;
             }
+
+            if (data.status !== fileStatus) {
+                initStatusUpdate(data.status);
+            }
+
+            state.reconnectAttempts = 0;
+
         } catch (error) {
-            console.error('Ошибка при получении статуса:', error);
             handleFetchError(error);
+        } finally {
+            state.isRequestInProgress = false;
         }
     }
 
-    function updateProcessingStats(data) {
-        if (data.processedRecords !== undefined && data.totalRecords !== undefined) {
-            const processedEl = document.querySelector('.processed-records');
-            if (processedEl) {
-                processedEl.textContent = `${data.processedRecords} из ${data.totalRecords}`;
-            }
-        }
-        if (data.processingSpeed !== undefined) {
-            const speedEl = document.querySelector('.processing-speed');
-            if (speedEl) {
-                speedEl.textContent = `${data.processingSpeed.toFixed(2)} записей/сек`;
-            }
-        }
-    }
-
+    /**
+     * Обработка ошибок запроса
+     * @param {Error} error - Объект ошибки
+     */
     function handleFetchError(error) {
-        const statusMessage = document.querySelector('.text-muted span');
+        Logger.error('Failed to fetch status', error);
+
+        const statusMessage = document.querySelector('.alert.alert-info span');
         if (statusMessage) {
             statusMessage.textContent = `Ошибка соединения: ${error.message}`;
-            statusMessage.style.color = '#dc3545';
         }
 
-        const progressBar = document.querySelector('.progress-bar');
-        if (progressBar) {
-            progressBar.classList.remove('progress-bar-animated');
-            progressBar.classList.add('bg-danger');
+        state.reconnectAttempts++;
+
+        if (state.reconnectAttempts < CONFIG.MAX_RECONNECT_ATTEMPTS) {
+            Logger.info('Scheduling retry', {
+                attempt: state.reconnectAttempts,
+                maxAttempts: CONFIG.MAX_RECONNECT_ATTEMPTS
+            });
+
+            if (!state.updateInterval) {
+                setTimeout(fetchStatus, 5000);
+            }
+        } else {
+            Logger.error('Max reconnection attempts reached');
+            showNotification('error', 'Превышено количество попыток переподключения');
         }
-
-        setTimeout(initStatusUpdate, 5000); // Попытка переподключения через 5 секунд
     }
 
-    function showErrorNotification(message) {
-        const notification = document.createElement('div');
-        notification.className = 'alert alert-danger mt-3';
-        notification.innerHTML = `
-           <i class="fas fa-exclamation-circle me-2"></i>
-           ${message}
-       `;
-        document.querySelector('.card-body').appendChild(notification);
-    }
-
-    function showWarningNotification(message) {
-        const notification = document.createElement('div');
-        notification.className = 'alert alert-warning mt-3';
-        notification.innerHTML = `
-           <i class="fas fa-exclamation-triangle me-2"></i>
-           ${message}
-       `;
-        document.querySelector('.card-body').appendChild(notification);
-    }
-
-    // При загрузке страницы
+    // Инициализация при загрузке страницы
     document.addEventListener('DOMContentLoaded', function() {
         const initialStatus = /*[[${file.status}]]*/ 'PENDING';
         const progressSpinner = document.getElementById('progress-spinner');
 
-        // Применяем начальные стили
+        // Если статус уже COMPLETED, просто обновляем UI без запуска опроса
+        if (initialStatus === 'COMPLETED') {
+            updateUI({
+                status: 'COMPLETED',
+                progress: 100,
+                message: 'Обработка файла успешно завершена'
+            });
+            return;
+        }
+
         if (!['COMPLETED', 'FAILED', 'CANCELLED'].includes(initialStatus)) {
             progressSpinner.classList.add('fa-spin');
         }
 
-        // Всегда делаем начальный запрос
         initStatusUpdate();
     });
 
+    // Обработка видимости страницы
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            console.log('Страница стала видимой, обновляем статус...');
+            Logger.info('Page became visible, resuming updates');
             initStatusUpdate();
-        } else {
-            if (updateInterval) {
-                clearInterval(updateInterval);
-                updateInterval = null;
-            }
+        } else if (state.updateInterval) {
+            Logger.info('Page hidden, pausing updates');
+            clearInterval(state.updateInterval);
         }
     });
 
+    // Очистка при закрытии страницы
     window.addEventListener('beforeunload', () => {
-        if (updateInterval) {
-            clearInterval(updateInterval);
-        }
+        clearExistingInterval();
     });
 </script>
 </body>
