@@ -8,19 +8,9 @@ import by.zoomos_v2.service.file.input.service.StreamingFileProcessor;
 import by.zoomos_v2.util.PathResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.eventusermodel.XSSFReader;
-import org.apache.poi.xssf.eventusermodel.XSSFSheetXMLHandler;
-import org.apache.poi.xssf.model.SharedStrings;
-import org.apache.poi.xssf.model.StylesTable;
-import org.apache.poi.xssf.usermodel.XSSFComment;
 import org.springframework.stereotype.Component;
-import org.xml.sax.InputSource;
-import org.xml.sax.XMLReader;
 
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,9 +29,9 @@ import static by.zoomos_v2.util.HeapSize.getHeapSizeAsString;
 public class ExcelFileProcessor implements FileProcessor, StreamingFileProcessor {
 
     private static final int BATCH_SIZE = 1000;
-    private final ObjectMapper objectMapper;
-    private final PathResolver pathResolver;
 
+    private final PathResolver pathResolver;
+    private final ObjectMapper objectMapper;
 
     public ExcelFileProcessor(PathResolver pathResolver, ObjectMapper objectMapper) {
         this.pathResolver = pathResolver;
@@ -96,43 +86,72 @@ public class ExcelFileProcessor implements FileProcessor, StreamingFileProcessor
                                      List<String> headers) throws IOException {
         log.debug("Начало потоковой обработки Excel файла: {}", metadata.getOriginalFilename());
 
+        List<Map<String, String>> currentBatch = new ArrayList<>(BATCH_SIZE);
+        long processedRows = 0;
+
         try (InputStream is = Files.newInputStream(filePath);
-             BufferedWriter writer = Files.newBufferedWriter(tempOutputPath, StandardCharsets.UTF_8);
-             OPCPackage pkg = OPCPackage.open(is)) {
+             Workbook workbook = WorkbookFactory.create(is);
+             BufferedWriter writer = Files.newBufferedWriter(tempOutputPath, StandardCharsets.UTF_8)) {
 
-            XSSFReader xssfReader = new XSSFReader(pkg);
-            SharedStrings sst = (SharedStrings) xssfReader.getSharedStringsTable();
-            StylesTable styles = xssfReader.getStylesTable();
+            Sheet sheet = workbook.getSheetAt(0);
+            int totalRows = sheet.getLastRowNum();
 
-            ExcelSheetHandler sheetHandler = new ExcelSheetHandler(writer, headers, progressCallback);
-            processSheet(xssfReader, sst, styles, sheetHandler);
+            // Пропускаем заголовки (строка 0) и начинаем с первой строки данных
+            for (int rowNum = 1; rowNum <= totalRows; rowNum++) {
+                Row row = sheet.getRow(rowNum);
+                if (row != null) {
+                    Map<String, String> record = new LinkedHashMap<>();
 
-        } catch (Exception e) {
-            throw new IOException("Ошибка при потоковой обработке Excel файла", e);
-        }
-    }
+                    // Обрабатываем каждую ячейку
+                    for (int colNum = 0; colNum < headers.size(); colNum++) {
+                        Cell cell = row.getCell(colNum);
+                        record.put(headers.get(colNum), getCellValueAsString(cell));
+                    }
 
-    private void processSheet(XSSFReader xssfReader, SharedStrings sst, StylesTable styles,
-                              ExcelSheetHandler sheetHandler) throws Exception {
-        XMLReader parser = createXMLReader();
-        parser.setContentHandler(new XSSFSheetXMLHandler(styles, sst, sheetHandler, false));
+                    currentBatch.add(record);
 
-        XSSFReader.SheetIterator sheets = (XSSFReader.SheetIterator) xssfReader.getSheetsData();
-        if (sheets.hasNext()) {
-            try (InputStream sheetStream = sheets.next()) {
-                InputSource sheetSource = new InputSource(sheetStream);
-                parser.parse(sheetSource);
+                    // Если достигли размера батча, записываем и очищаем
+                    if (currentBatch.size() >= BATCH_SIZE) {
+                        writeBatchToFile(currentBatch, writer);
+                        processedRows += currentBatch.size();
+                        updateProgress(processedRows, totalRows, progressCallback);
+                        currentBatch.clear();
+
+                        // Вызываем GC каждые 10 батчей
+                        if (processedRows % (BATCH_SIZE * 10) == 0) {
+                            System.gc();
+                            log.debug("Выполнен GC. Обработано строк: {}", processedRows);
+                        }
+                    }
+                }
+            }
+
+            // Записываем оставшиеся данные
+            if (!currentBatch.isEmpty()) {
+                writeBatchToFile(currentBatch, writer);
+                processedRows += currentBatch.size();
+                updateProgress(processedRows, totalRows, progressCallback);
             }
         }
     }
 
-    private XMLReader createXMLReader() throws Exception {
-        SAXParserFactory factory = SAXParserFactory.newInstance();
-        factory.setNamespaceAware(true);
-        SAXParser saxParser = factory.newSAXParser();
-        return saxParser.getXMLReader();
+
+    private void writeBatchToFile(List<Map<String, String>> batch, BufferedWriter writer) throws IOException {
+        for (Map<String, String> record : batch) {
+            writer.write(objectMapper.writeValueAsString(record));
+            writer.newLine();
+        }
+        writer.flush();
+        log.debug("Записан батч данных. Размер: {}", batch.size());
     }
 
+    private void updateProgress(long processed, long total, ProcessingProgressCallback progressCallback) {
+        int progress = (int) (processed * 100.0 / total);
+        progressCallback.updateProgress(progress,
+                String.format("Обработано строк: %d из %d", processed, total));
+    }
+
+    @Override
     public long countLines(Path filePath, FileMetadata metadata) throws IOException {
         try (InputStream is = Files.newInputStream(filePath);
              Workbook workbook = WorkbookFactory.create(is)) {
@@ -202,81 +221,11 @@ public class ExcelFileProcessor implements FileProcessor, StreamingFileProcessor
         }
     }
 
-    private static class ExcelSheetHandler implements XSSFSheetXMLHandler.SheetContentsHandler {
-        private final BufferedWriter writer;
-        private final List<String> headers;
-        private final ProcessingProgressCallback progressCallback;
-        private List<String> currentRow;
-        private int rowCount = 0;
-        private final ObjectMapper objectMapper = new ObjectMapper();
-
-        public ExcelSheetHandler(BufferedWriter writer, List<String> headers,
-                                 ProcessingProgressCallback progressCallback) {
-            this.writer = writer;
-            this.headers = headers;
-            this.progressCallback = progressCallback;
-        }
-
-        @Override
-        public void startRow(int rowNum) {
-            if (rowNum > 0) { // Пропускаем заголовки
-                currentRow = new ArrayList<>();
-            }
-        }
-
-        @Override
-        public void endRow(int rowNum) {
-            if (rowNum > 0) { // Пропускаем заголовки
-                try {
-                    Map<String, String> record = new LinkedHashMap<>();
-
-                    // Дополняем строку пустыми значениями если необходимо
-                    while (currentRow.size() < headers.size()) {
-                        currentRow.add("");
-                    }
-
-                    // Создаем запись с данными
-                    for (int i = 0; i < headers.size(); i++) {
-                        record.put(headers.get(i), currentRow.get(i));
-                    }
-
-                    // Записываем строку в файл
-                    writer.write(objectMapper.writeValueAsString(record));
-                    writer.newLine();
-                    rowCount++;
-
-                    // Обновляем прогресс каждые 1000 записей
-                    if (rowCount % 1000 == 0) {
-                        writer.flush();
-                        progressCallback.updateProgress(rowCount,
-                                String.format("Обработано строк: %d", rowCount));
-                    }
-
-                } catch (IOException e) {
-                    throw new RuntimeException("Ошибка при записи строки", e);
-                }
-            }
-        }
-
-        @Override
-        public void cell(String cellReference, String formattedValue, XSSFComment comment) {
-            if (currentRow != null) { // Пропускаем обработку заголовков
-                currentRow.add(formattedValue != null ? formattedValue : "");
-            }
-        }
-
-        @Override
-        public void headerFooter(String text, boolean isHeader, String tagName) {
-            // Не используется
-        }
-    }
-
     @Override
     public boolean supports(FileMetadata fileMetadata) {
         return FileType.EXCEL.equals(fileMetadata.getFileType()) ||
                 FileType.XLS.equals(fileMetadata.getFileType());
     }
-
 
 //    @Override
 //    public boolean supports(FileMetadata fileMetadata) {
