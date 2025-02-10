@@ -3,6 +3,7 @@ package by.zoomos_v2.service.file.input.service;
 import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.FileMetadata;
+import by.zoomos_v2.model.FileType;
 import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.model.enums.OperationType;
 import by.zoomos_v2.model.operation.ImportOperation;
@@ -329,9 +330,12 @@ public class FileProcessingService {
      * Настраивает процессор файлов с оптимальными параметрами
      */
     private FileProcessor setupFileProcessor(FileMetadata metadata) {
-        FileProcessor processor = processorFactory.getProcessor(metadata);
-        processor.configure(createProcessorConfig(metadata));
-        return processor;
+        if (metadata.getFileType()== FileType.CSV){
+            FileProcessor processor = processorFactory.getProcessor(metadata);
+            processor.configure(createProcessorConfig(metadata));
+            return processor;
+        }
+        return processorFactory.getProcessor(metadata);
     }
 
     /**
