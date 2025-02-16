@@ -15,12 +15,30 @@ public class ReferenceData {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long clientId;
-    private String taskNumber;
-    private LocalDateTime uploadedAt;
-    private boolean isActive;
+    @Column(name = "retail_code")
+    private String retailCode;
 
-    // Поля справочных данных
-    @Column(columnDefinition = "jsonb")
-    private String referenceDataJson;
+    @Column(name = "retail_name")
+    private String retailName;
+
+    @Column(name = "physical_address")
+    private String physicalAddress;
+
+    @Column(name = "region_code")
+    private String regionCode;
+
+    @Column(name = "region_name")
+    private String regionName;
+
+    @Column(name = "task_number")
+    private String taskNumber;
+
+    @Column(name = "client_id")
+    private Long clientId;
+
+    @Column(name = "uploaded_at")
+    private LocalDateTime uploadedAt;
+
+    @Column(name = "is_active")
+    private boolean isActive;
 }

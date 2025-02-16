@@ -1,6 +1,7 @@
 package by.zoomos_v2.model.entity;
 
 import by.zoomos_v2.annotations.FieldDescription;
+import by.zoomos_v2.model.enums.DataSourceType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,6 +18,10 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "data_source")
+    private DataSourceType dataSource;
 
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long fileId;

@@ -34,13 +34,13 @@ public class ReferenceDataService {
         newReferenceData.setUploadedAt(LocalDateTime.now());
         newReferenceData.setActive(true);
 
-        try {
-            newReferenceData.setReferenceDataJson(objectMapper.writeValueAsString(referenceData));
-            referenceDataRepository.save(newReferenceData);
-            log.info("Справочные данные успешно загружены");
-        } catch (JsonProcessingException e) {
-            log.error("Ошибка сериализации справочных данных: {}", e.getMessage());
-            throw new IllegalStateException("Ошибка сохранения справочных данных", e);
-        }
+//        try {
+//            newReferenceData.setReferenceDataJson(objectMapper.writeValueAsString(referenceData));
+//            referenceDataRepository.save(newReferenceData);
+//            log.info("Справочные данные успешно загружены");
+//        } catch (JsonProcessingException e) {
+//            log.error("Ошибка сериализации справочных данных: {}", e.getMessage());
+//            throw new IllegalStateException("Ошибка сохранения справочных данных", e);
+//        }
     }
 }

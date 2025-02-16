@@ -49,7 +49,6 @@ public class CleanUrlsProcessingStrategy implements DataProcessingStrategy {
                     Object webCacheUrl = record.get("competitordata.competitorWebCacheUrl");
                     if (webCacheUrl != null && !webCacheUrl.toString().isEmpty()) {
                         record.put("competitordata.competitorWebCacheUrl", "");
-//                        batchProcessingData.incrementSuccessCount();
                         log.debug("Очищен URL для конкурента: {}", name);
                     }
                 }
@@ -68,7 +67,7 @@ public class CleanUrlsProcessingStrategy implements DataProcessingStrategy {
                         try {
                             Map<String, Object> parameters = objectMapper.readValue(
                                     strategy.getParameters(),
-                                    new TypeReference<Map<String, Object>>() {
+                                    new TypeReference<>() {
                                     });
                             return (List<String>) parameters.getOrDefault("competitors", DEFAULT_COMPETITORS);
                         } catch (Exception e) {

@@ -40,6 +40,16 @@ public class BatchProcessingData {
     private ExecutorService executorService = Executors.newFixedThreadPool(4);
     private List<Future<?>> futures = new ArrayList<>();
 
+    private long successCount;
+
+    public void incrementSuccessCount() {
+        this.successCount++;
+    }
+
+    public long getSuccessCount() {
+        return this.successCount;
+    }
+
     // Добавление задачи в пул
     public void submitTask(Runnable task) {
         futures.add(executorService.submit(task));

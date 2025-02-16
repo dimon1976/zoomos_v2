@@ -13,6 +13,7 @@ public interface ReferenceDataRepository extends JpaRepository<ReferenceData, Lo
 
     Optional<ReferenceData> findByClientIdAndTaskNumberAndIsActiveTrue(Long clientId, String taskNumber);
 
+
     @Query("UPDATE ReferenceData r SET r.isActive = false WHERE r.clientId = :clientId AND r.taskNumber = :taskNumber")
     void deactivateExisting(@Param("clientId") Long clientId, @Param("taskNumber") String taskNumber);
 }

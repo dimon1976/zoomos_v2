@@ -1,6 +1,7 @@
 package by.zoomos_v2.repository;
 
 import by.zoomos_v2.model.entity.Product;
+import by.zoomos_v2.model.enums.DataSourceType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,4 +30,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT DISTINCT p.productId FROM Product p WHERE p.productAdditional1 = :taskNumber")
     List<String> findProductIdsByTaskNumber(@Param("taskNumber") String taskNumber);
+
+    // Поиск продуктов по номеру задания
+    List<Product> findByProductAdditional1AndFileId(String taskNumber, Long fileId);
+
+    // Поиск продуктов для отчета
+    @Query("SELECT p FROM Product p WHERE p.fileId = :fileId")
+    List<Product> findReportProducts(@Param("fileId") Long fileId);
+
+    List<Product> findByProductAdditional1AndDataSource(String taskNumber, DataSourceType dataSource);
 }
