@@ -18,14 +18,14 @@
         <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
           <i class="fas fa-store"></i>
         </a>
-        <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
+        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
            class="btn btn-sm btn-outline-secondary me-2" title="К панели управления">
           <i class="fas fa-arrow-left"></i>
         </a>
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
           <li class="breadcrumb-item">
-            <a th:href="@{/client/{id}/dashboard(id=${clientId})}">Панель управления</a>
+            <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}">Панель управления</a>
           </li>
           <li class="breadcrumb-item active">Статистика обработки файла</li>
         </ol>

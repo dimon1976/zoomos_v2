@@ -16,15 +16,15 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/client/{clientId}/files")
+@RequestMapping("/api/client/{clientName}/files")
 @RequiredArgsConstructor
 @Slf4j
 public class FileStatusController {
     private final OperationStatsService operationStatsService;
 
     @GetMapping("/{fileId}/status")
-    public ProcessingStatsDTO getFileStatus(@PathVariable Long clientId, @PathVariable Long fileId) {
-        log.debug("Запрос статуса файла. Client ID: {}, File ID: {}", clientId, fileId);
+    public ProcessingStatsDTO getFileStatus(@PathVariable String clientName, @PathVariable Long fileId) {
+        log.debug("Запрос статуса файла. Client clientName: {}, File ID: {}", clientName, fileId);
 
         Optional<? extends BaseOperation> optionalOperation = operationStatsService.findOperationByFileId(fileId);
 

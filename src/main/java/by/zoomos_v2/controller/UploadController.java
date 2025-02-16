@@ -3,6 +3,7 @@ package by.zoomos_v2.controller;
 import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.operation.ImportOperation;
+import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.input.service.FileProcessingService;
 import by.zoomos_v2.service.file.input.service.FileUploadService;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
@@ -24,12 +25,13 @@ import java.util.Map;
  */
 @Slf4j
 @Controller
-@RequestMapping("/client/{clientId}/files")
+@RequestMapping("/client/{clientName}/files")
 @RequiredArgsConstructor
 public class UploadController {
     private final FileUploadService fileUploadService;
     private final FileProcessingService fileProcessingService;
     private final OperationStatsService operationStatsService;
+    private final ClientService clientService;
     private final FileMetadataService fileMetadataService;
 
 
@@ -38,29 +40,29 @@ public class UploadController {
      */
     @PostMapping("/upload")
     @LogExecution("Загрузка файла")
-    public String uploadFile(@PathVariable Long clientId,
+    public String uploadFile(@PathVariable String clientName,
                              @RequestParam("file") MultipartFile file,
                              @RequestParam(required = false) Long mappingId,
                              RedirectAttributes redirectAttributes) {
-        log.debug("Загрузка файла {} для магазина {}", file.getOriginalFilename(), clientId);
+        log.debug("Загрузка файла {} для магазина {}", file.getOriginalFilename(), clientName);
 
         if (file.isEmpty()) {
             redirectAttributes.addFlashAttribute("error", "Выберите файл для загрузки");
-            return "redirect:/client/" + clientId + "/dashboard";
+            return "redirect:/client/" + clientName + "/dashboard";
         }
 
         try {
-            FileMetadata metadata = fileUploadService.uploadFile(file, clientId, mappingId);
+            FileMetadata metadata = fileUploadService.uploadFile(file, clientService.getClientByName(clientName).getId(), mappingId);
             fileProcessingService.processFileAsync(metadata.getId());
 
             redirectAttributes.addFlashAttribute("success",
                     "Файл успешно загружен и поставлен в очередь на обработку");
-            return "redirect:/client/" + clientId + "/files/status/" + metadata.getId();
+            return "redirect:/client/" + clientName + "/files/status/" + metadata.getId();
         } catch (Exception e) {
             log.error("Ошибка при загрузке файла: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при загрузке файла: " + e.getMessage());
-            return "redirect:/client/" + clientId + "/dashboard";
+            return "redirect:/client/" + clientName + "/dashboard";
         }
     }
 
@@ -68,23 +70,24 @@ public class UploadController {
      * Страница статуса обработки файла
      */
     @GetMapping("/status/{fileId}")
-    public String showFileStatus(@PathVariable Long clientId,
+    public String showFileStatus(@PathVariable String clientName,
                                  @PathVariable Long fileId,
                                  Model model) {
-        log.debug("Просмотр статуса файла {} для магазина {}", fileId, clientId);
+        log.debug("Просмотр статуса файла {} для магазина {}", fileId, clientName);
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            validateFileOwnership(metadata, clientId);
+            validateFileOwnership(metadata, clientService.getClientByName(clientName).getId());
 
             operationStatsService.findOperationByFileId(fileId).ifPresent(operation -> {
                 Map<String, Object> currentProgress =
                         (Map<String, Object>) operation.getMetadata().getOrDefault("currentProgress", new HashMap<>());
 
-                model.addAttribute("file", fileMetadataService.createFileInfo(metadata, clientId));
+                model.addAttribute("file", fileMetadataService.createFileInfo(metadata, clientService.getClientByName(clientName).getId()));
                 model.addAttribute("operation", operation);
                 model.addAttribute("currentProgress", currentProgress);
-                model.addAttribute("clientId", clientId);
+                model.addAttribute("clientId", clientService.getClientByName(clientName).getId());
+                model.addAttribute("client", clientService.getClientByName(clientName));
             });
 
             return "files/status";
@@ -99,19 +102,19 @@ public class UploadController {
      * Страница статистики обработки файла
      */
     @GetMapping("/{fileId}/statistics")
-    public String showFileStatistics(@PathVariable Long clientId,
+    public String showFileStatistics(@PathVariable String clientName,
                                      @PathVariable Long fileId,
                                      Model model) {
-        log.debug("Запрошена статистика обработки файла {} для клиента {}", fileId, clientId);
+        log.debug("Запрошена статистика обработки файла {} для клиента {}", fileId, clientName);
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            validateFileOwnership(metadata, clientId);
+            validateFileOwnership(metadata, clientService.getClientByName(clientName).getId());
 
             // Получаем операцию импорта для данного файла
             ImportOperation operation = operationStatsService.findLastOperationBySourceAndClient(
                     metadata.getOriginalFilename(),
-                    clientId
+                    clientService.getClientByName(clientName).getId()
             );
 
             if (operation != null) {
@@ -162,7 +165,7 @@ public class UploadController {
             }
 
             model.addAttribute("file", metadata);
-            model.addAttribute("clientId", clientId);
+            model.addAttribute("clientId", clientService.getClientByName(clientName).getId());
 
             return "files/statistics";
         } catch (Exception e) {
@@ -177,14 +180,14 @@ public class UploadController {
      */
     @PostMapping("/status/{fileId}/cancel")
     @LogExecution("Отмена обработки файла")
-    public String cancelProcessing(@PathVariable Long clientId,
+    public String cancelProcessing(@PathVariable String clientName,
                                    @PathVariable Long fileId,
                                    RedirectAttributes redirectAttributes) {
-        log.debug("Отмена обработки файла {} для магазина {}", fileId, clientId);
+        log.debug("Отмена обработки файла {} для магазина {}", fileId, clientName);
 
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            validateFileOwnership(metadata, clientId);
+            validateFileOwnership(metadata, clientService.getClientByName(clientName).getId());
 
             fileProcessingService.cancelProcessing(fileId);
             redirectAttributes.addFlashAttribute("success", "Обработка файла отменена");
@@ -194,7 +197,7 @@ public class UploadController {
                     "Ошибка при отмене обработки файла: " + e.getMessage());
         }
 
-        return "redirect:/client/" + clientId + "/files/status/" + fileId;
+        return "redirect:/client/" + clientName + "/files/status/" + fileId;
     }
 
     /**
@@ -202,13 +205,13 @@ public class UploadController {
      */
     @PostMapping("/{fileId}/delete")
     @LogExecution("Удаление файла")
-    public String deleteFile(@PathVariable Long clientId,
+    public String deleteFile(@PathVariable String clientName,
                              @PathVariable Long fileId,
                              RedirectAttributes redirectAttributes) {
-        log.debug("Удаление файла {} для магазина {}", fileId, clientId);
+        log.debug("Удаление файла {} для магазина {}", fileId, clientName);
 
         try {
-            fileUploadService.deleteFile(fileId, clientId);
+            fileUploadService.deleteFile(fileId, clientService.getClientByName(clientName).getId());
             redirectAttributes.addFlashAttribute("success", "Файл успешно удален");
         } catch (Exception e) {
             log.error("Ошибка при удалении файла: {}", e.getMessage(), e);
@@ -216,7 +219,7 @@ public class UploadController {
                     "Ошибка при удалении файла: " + e.getMessage());
         }
 
-        return "redirect:/client/" + clientId + "/dashboard";
+        return "redirect:/client/" + clientName + "/dashboard";
     }
 
     /**

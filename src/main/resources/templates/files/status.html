@@ -20,14 +20,14 @@
                 <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
                     <i class="fas fa-store"></i>
                 </a>
-                <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
+                <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
                    class="btn btn-sm btn-outline-secondary me-2" title="К панели управления">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
                     <li class="breadcrumb-item">
-                        <a th:href="@{/client/{id}/dashboard(id=${clientId})}">Панель управления</a>
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}">Панель управления</a>
                     </li>
                     <li class="breadcrumb-item active">Статус обработки файла</li>
                 </ol>
@@ -125,7 +125,7 @@
 
                     <!-- Кнопки действий -->
                     <div class="d-flex gap-2 justify-content-end">
-                        <a th:href="@{/client/{id}/dashboard(id=${clientId})}"
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
                            class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-2"></i>К панели управления
                         </a>
@@ -136,7 +136,7 @@
                             <i class="fas fa-stop-circle me-2"></i>Отменить обработку
                         </button>
 
-                        <a th:href="@{/client/{id}/files/{fileId}/statistics(id=${clientId},fileId=${file.id})}"
+                        <a th:href="@{/client/{clientName}/files/{fileId}/statistics(clientName=${client.name},fileId=${file.id})}"
                            class="btn btn-primary view-results-button"
                            style="display: none;">
                             <i class="fas fa-chart-bar me-2"></i>Просмотр результатов
@@ -153,7 +153,7 @@
     // Получение переменных с сервера
     const fileStatus = /*[[${file.status}]]*/ 'PENDING';
     const fileId = /*[[${file.id}]]*/ '';
-    const clientId = /*[[${clientId}]]*/ '';
+    const clientName = /*[[${client.name}]]*/ '';
 
     // Константы для настройки
     const CONFIG = {
@@ -190,7 +190,7 @@
         if (confirm('Вы уверены, что хотите отменить обработку файла?')) {
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = `/client/${clientId}/files/status/${fileId}/cancel`;
+            form.action = `/client/${clientName}/files/status/${fileId}/cancel`;
 
             const csrfElement = document.querySelector('meta[name="_csrf"]');
             if (csrfElement) {
@@ -446,7 +446,7 @@
 
         try {
             const response = await fetch(
-                `/api/client/${clientId}/files/${fileId}/status?t=${Date.now()}`,
+                `/api/client/${clientName}/files/${fileId}/status?t=${Date.now()}`,
                 {
                     headers: {
                         'Cache-Control': 'no-cache',

@@ -56,7 +56,7 @@
     <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form th:action="${mappingId != null ? '/client/' + clientId + '/exportmapping/' + mappingId + '/update' : '/client/' + clientId + '/exportmapping/create'}"
+    <form th:action="${mappingId != null ? '/client/' + client.name + '/exportmapping/' + mappingId + '/update' : '/client/' + client.name + '/exportmapping/create'}"
           method="post" id="exportForm">
 
         <div class="mb-3">
@@ -131,7 +131,7 @@
             <th:block th:if="${mappingId != null}">
                 <button type="button" class="btn btn-warning ms-2"
                         onclick="if(confirm('Сбросить настройки к значениям по умолчанию?')) { window.location.href=this.getAttribute('data-reset-url'); }"
-                        th:data-reset-url="@{/client/{clientId}/exportmapping/{mappingId}/reset(clientId=${clientId},mappingId=${mappingId})}">
+                        th:data-reset-url="@{/client/{clientName}/exportmapping/{mappingId}/reset(clientName=${client.name},mappingId=${mappingId})}">
                     Сбросить к настройкам по умолчанию
                 </button>
             </th:block>
@@ -305,7 +305,7 @@
                 });
 
                 // Отправляем параметры стратегии
-                fetch(`/client/${clientId}/exportmapping/strategy-params/${selectedStrategy}`, {
+                fetch(`/client/${clientName}/exportmapping/strategy-params/${selectedStrategy}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

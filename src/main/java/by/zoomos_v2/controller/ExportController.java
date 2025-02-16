@@ -52,14 +52,14 @@ public class ExportController {
     /**
      * Отображает страницу экспорта данных
      */
-    @GetMapping("/client/{id}/export")
+    @GetMapping("/client/{clientName}/export")
     @LogExecution("Просмотр страницы экспорта")
-    public String showExportPage(@PathVariable Long id, Model model) {
-        log.debug("Отображение страницы экспорта для клиента {}", id);
+    public String showExportPage(@PathVariable String clientName, Model model) {
+        log.debug("Отображение страницы экспорта для клиента {}", clientName);
         try {
-            model.addAttribute("client", clientService.getClientById(id));
-            model.addAttribute("files", fileMetadataService.getFilesByClientId(id));
-            model.addAttribute("configs", exportFieldConfigService.getMappingsForClient(id)
+            model.addAttribute("client", clientService.getClientByName(clientName));
+            model.addAttribute("files", fileMetadataService.getFilesByClientId(clientService.getClientByName(clientName).getId()));
+            model.addAttribute("configs", exportFieldConfigService.getMappingsForClient(clientService.getClientByName(clientName).getId())
                     .orElse(Collections.emptyList()));
             return "client/export/index";
         } catch (Exception e) {
@@ -72,13 +72,13 @@ public class ExportController {
     /**
      * Отображает список настроек маппинга для экспорта
      */
-    @GetMapping("/client/{id}/export-mappings")
+    @GetMapping("/client/{clientName}/export-mappings")
     @LogExecution("Просмотр списка маппингов экспорта")
-    public String showMappings(@PathVariable Long id, Model model) {
-        log.debug("Запрошен список маппингов экспорта для магазина с ID: {}", id);
+    public String showMappings(@PathVariable String clientName, Model model) {
+        log.debug("Запрошен список маппингов экспорта для магазина с Name: {}", clientName);
         try {
-            Client client = clientService.getClientById(id);
-            List<ExportConfig> mappings = exportFieldConfigService.getMappingsForClient(id)
+            Client client = clientService.getClientByName(clientName);
+            List<ExportConfig> mappings = exportFieldConfigService.getMappingsForClient(clientService.getClientByName(clientName).getId())
                     .orElse(Collections.emptyList());
 
             model.addAttribute("client", client);
@@ -94,12 +94,12 @@ public class ExportController {
     /**
      * Отображает форму создания нового маппинга
      */
-    @GetMapping("/client/{id}/export-mappings/new")
+    @GetMapping("/client/{clientName}/export-mappings/new")
     @LogExecution("Создание нового маппинга экспорта")
-    public String showNewMappingForm(@PathVariable Long id, Model model) {
-        log.debug("Создание нового маппинга экспорта для клиента: {}", id);
+    public String showNewMappingForm(@PathVariable String clientName, Model model) {
+        log.debug("Создание нового маппинга экспорта для клиента: {}", clientName);
         try {
-            prepareEditForm(id, null, model);
+            prepareEditForm(clientService.getClientByName(clientName).getId(), null, model);
             return "client/export-mappings/edit";
         } catch (Exception e) {
             log.error("Ошибка при создании маппинга: {}", e.getMessage(), e);
@@ -111,14 +111,14 @@ public class ExportController {
     /**
      * Отображает форму редактирования маппинга
      */
-    @GetMapping("/client/{id}/export-mappings/{mappingId}/edit")
+    @GetMapping("/client/{clientName}/export-mappings/{mappingId}/edit")
     @LogExecution("Редактирование маппинга экспорта")
-    public String editMapping(@PathVariable Long id,
+    public String editMapping(@PathVariable String clientName,
                               @PathVariable Long mappingId,
                               Model model) {
-        log.debug("Редактирование маппинга {} для клиента {}", mappingId, id);
+        log.debug("Редактирование маппинга {} для клиента {}", mappingId, clientName);
         try {
-            prepareEditForm(id, mappingId, model);
+            prepareEditForm(clientService.getClientByName(clientName).getId(), mappingId, model);
             return "client/export-mappings/edit";
         } catch (Exception e) {
             log.error("Ошибка при загрузке маппинга: {}", e.getMessage(), e);
@@ -130,15 +130,15 @@ public class ExportController {
     /**
      * Создает новый маппинг
      */
-    @PostMapping("/client/{id}/export-mappings/create")
+    @PostMapping("/client/{clientName}/export-mappings/create")
     @LogExecution("Сохранение нового маппинга экспорта")
-    public String createMapping(@PathVariable Long id,
+    public String createMapping(@PathVariable String clientName,
                                 @RequestParam String positionsJson,
                                 @RequestParam String configName,
                                 @RequestParam String configDescription,
                                 @RequestParam ProcessingStrategyType strategyType,
                                 RedirectAttributes redirectAttributes) {
-        log.debug("Создание нового маппинга экспорта для клиента {}", id);
+        log.debug("Создание нового маппинга экспорта для клиента {}", clientName);
         try {
             log.debug("Параметры: positionsJson={}, configName={}, description={}, strategyType={}",
                     positionsJson, configName, configDescription, strategyType);
@@ -151,36 +151,36 @@ public class ExportController {
                     new TypeReference<>() {
                     });
 
-            exportFieldConfigService.createConfig(id, configName, fields, configDescription, strategyType);
+            exportFieldConfigService.createConfig(clientService.getClientByName(clientName).getId(), configName, fields, configDescription, strategyType);
             redirectAttributes.addFlashAttribute("success", "Маппинг успешно создан");
         } catch (Exception e) {
             log.error("Ошибка при создании маппинга: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при создании маппинга: " + e.getMessage());
         }
-        return "redirect:/client/{id}/export-mappings";
+        return "redirect:/client/{name}/export-mappings";
     }
 
     /**
      * Обновляет существующий маппинг
      */
-    @PostMapping("/client/{id}/export-mappings/{mappingId}/update")
+    @PostMapping("/client/{clientName}/export-mappings/{mappingId}/update")
     @LogExecution("Обновление маппинга экспорта")
-    public String updateMapping(@PathVariable Long id,
+    public String updateMapping(@PathVariable String clientName,
                                 @PathVariable Long mappingId,
                                 @RequestParam String positionsJson,
                                 @RequestParam String configName,
                                 @RequestParam String configDescription,
                                 @RequestParam ProcessingStrategyType strategyType,
                                 RedirectAttributes redirectAttributes) {
-        log.debug("Обновление маппинга {} для клиента {}", mappingId, id);
+        log.debug("Обновление маппинга {} для клиента {}", mappingId, clientName);
         try {
             List<EntityField> fields = objectMapper.readValue(positionsJson,
-                    new TypeReference<List<EntityField>>() {
+                    new TypeReference<>() {
                     });
 
             exportFieldConfigService.updateFieldsConfig(
-                    id,
+                    clientService.getClientByName(clientName).getId(),
                     fields,
                     configName,
                     mappingId,
@@ -193,21 +193,21 @@ public class ExportController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при обновлении маппинга: " + e.getMessage());
         }
-        return "redirect:/client/{id}/export-mappings";
+        return "redirect:/client/{clientName}/export-mappings";
     }
 
     /**
      * Удаляет маппинг
      */
-    @PostMapping("/client/{id}/export-mappings/{mappingId}/delete")
+    @PostMapping("/client/{clientName}/export-mappings/{mappingId}/delete")
     @LogExecution("Удаление маппинга экспорта")
-    public String deleteMapping(@PathVariable Long id,
+    public String deleteMapping(@PathVariable String clientName,
                                 @PathVariable Long mappingId,
                                 RedirectAttributes redirectAttributes) {
-        log.debug("Удаление маппинга {} для клиента {}", mappingId, id);
+        log.debug("Удаление маппинга {} для клиента {}", mappingId, clientName);
         try {
             ExportConfig config = exportFieldConfigService.getConfigById(mappingId);
-            validateMappingOwnership(config, id);
+            validateMappingOwnership(config, clientService.getClientByName(clientName).getId());
 
             exportFieldConfigService.deleteMapping(mappingId);
             redirectAttributes.addFlashAttribute("success", "Маппинг успешно удален");
@@ -216,16 +216,16 @@ public class ExportController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при удалении маппинга: " + e.getMessage());
         }
-        return "redirect:/client/{id}/export-mappings";
+        return "redirect:/client/{clientName}/export-mappings";
     }
 
     /**
      * Скачивание экспортированного файла
      */
-    @GetMapping("/client/{id}/export/download/{fileId}")
+    @GetMapping("/client/{clientName}/export/download/{fileId}")
     @LogExecution("Скачивание экспортированного файла")
     public ResponseEntity<Resource> downloadExportedFile(
-            @PathVariable Long id,
+            @PathVariable String clientName,
             @PathVariable Long fileId,
             @RequestParam Long configId,
             @RequestParam String fileType) {
@@ -271,28 +271,28 @@ public class ExportController {
     /**
      * API для получения параметров стратегии обработки
      */
-    @GetMapping("/client/{id}/export-mappings/strategy-params/{strategyType}")
+    @GetMapping("/client/{clientName}/export-mappings/strategy-params/{strategyType}")
     @ResponseBody
-    public Map<String, Object> getStrategyParams(@PathVariable Long id,
+    public Map<String, Object> getStrategyParams(@PathVariable String clientName,
                                                  @PathVariable ProcessingStrategyType strategyType) {
-        return processingStrategyService.getStrategyParameters(id, strategyType);
+        return processingStrategyService.getStrategyParameters(clientService.getClientByName(clientName).getId(), strategyType);
     }
 
     /**
      * API для обновления параметров стратегии
      */
-    @PostMapping("/client/{id}/export-mappings/strategy-params/{strategyType}")
+    @PostMapping("/client/{clientName}/export-mappings/strategy-params/{strategyType}")
     @ResponseBody
-    public void updateStrategyParams(@PathVariable Long id,
+    public void updateStrategyParams(@PathVariable String clientName,
                                      @PathVariable ProcessingStrategyType strategyType,
                                      @RequestBody Map<String, Object> parameters) {
-        processingStrategyService.addStrategyToClient(id, strategyType, parameters);
+        processingStrategyService.addStrategyToClient(clientService.getClientByName(clientName).getId(), strategyType, parameters);
     }
 
     /**
      * Получение списка поддерживаемых форматов
      */
-    @GetMapping("/client/{id}/export/formats")
+    @GetMapping("/client/{clientName}/export/formats")
     @ResponseBody
     public List<String> getSupportedFormats() {
         return List.of("CSV", "XLSX");

@@ -21,7 +21,7 @@
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
                     <li class="breadcrumb-item">
-                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}" th:text="${client.name}">Магазин</a>
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}" th:text="${client.name}">Магазин</a>
                     </li>
                     <li class="breadcrumb-item active">Настройки экспорта</li>
                 </ol>
@@ -32,7 +32,7 @@
                     <h2 class="card-title h5 mb-0">
                         <i class="fas fa-download me-2"></i>Настройки экспорта
                     </h2>
-                    <a th:href="@{/client/{id}/export-mappings/new(id=${client.id})}" class="btn btn-primary btn-sm">
+                    <a th:href="@{/client/{clientName}/export-mappings/new(clientName=${client.name})}" class="btn btn-primary btn-sm">
                         <i class="fas fa-plus"></i> Добавить настройку
                     </a>
                 </div>
@@ -73,11 +73,11 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a th:href="@{/client/{id}/export-mappings/{mappingId}/edit(id=${client.id},mappingId=${mapping.id})}"
+                                        <a th:href="@{/client/{clientName}/export-mappings/{mappingId}/edit(clientName=${client.name},mappingId=${mapping.id})}"
                                            class="btn btn-sm btn-primary" title="Редактировать">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form th:action="@{/client/{id}/export-mappings/{mappingId}/delete(id=${client.id},mappingId=${mapping.id})}"
+                                        <form th:action="@{/client/{clientName}/export-mappings/{mappingId}/delete(clientName=${client.name},mappingId=${mapping.id})}"
                                               method="post" class="d-inline"
                                               onsubmit="return confirm('Вы уверены, что хотите удалить эту настройку?');">
                                             <button type="submit" class="btn btn-sm btn-danger" title="Удалить">

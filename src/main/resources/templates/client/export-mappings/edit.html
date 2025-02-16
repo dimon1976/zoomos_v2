@@ -66,10 +66,10 @@
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
                     <li class="breadcrumb-item">
-                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}" th:text="${client.name}">Магазин</a>
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}" th:text="${client.name}">Магазин</a>
                     </li>
                     <li class="breadcrumb-item">
-                        <a th:href="@{/client/{id}/export-mappings(id=${client.id})}">Настройки экспорта</a>
+                        <a th:href="@{/client/{clientName}/export-mappings(clientName=${client.name})}">Настройки экспорта</a>
                     </li>
                     <li class="breadcrumb-item active"
                         th:text="${mapping.id == null ? 'Новая настройка' : 'Редактирование настройки'}">
@@ -102,8 +102,8 @@
 
             <!-- Форма настройки -->
             <form th:action="${mapping.id == null ?
-                            '/client/' + client.id + '/export-mappings/create' :
-                            '/client/' + client.id + '/export-mappings/' + mapping.id + '/update'}"
+                            '/client/' + client.name + '/export-mappings/create' :
+                            '/client/' + client.name + '/export-mappings/' + mapping.id + '/update'}"
                   method="post" id="exportForm">
 
                 <!-- Основные настройки -->
@@ -237,7 +237,7 @@
                 <!-- Кнопки действий -->
                 <div class="d-flex gap-2 justify-content-between mt-4">
                     <div>
-                        <a th:href="@{/client/{id}/export-mappings(id=${client.id})}"
+                        <a th:href="@{/client/{clientName}/export-mappings(clientName=${client.name})}"
                            class="btn btn-outline-secondary">
                             <i class="fas fa-times me-2"></i>Отмена
                         </a>
@@ -251,7 +251,7 @@
                                     onclick="if(confirm('Сбросить настройки к значениям по умолчанию?')) {
                                         window.location.href=this.getAttribute('data-reset-url');
                                     }"
-                                    th:data-reset-url="@{/client/{id}/export-mappings/{mappingId}/reset(id=${client.id},mappingId=${mapping.id})}">
+                                    th:data-reset-url="@{/client/{clientName}/export-mappings/{mappingId}/reset(clientName=${client.name},mappingId=${mapping.id})}">
                                 <i class="fas fa-undo me-2"></i>Сбросить
                             </button>
                         </th:block>
@@ -400,7 +400,7 @@
                 });
 
                 // Отправляем параметры стратегии
-                fetch(`/client/${client.id}/export-mappings/strategy-params/${selectedStrategy}`, {
+                fetch(`/client/${client.name}/export-mappings/strategy-params/${selectedStrategy}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

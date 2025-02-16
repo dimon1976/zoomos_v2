@@ -45,7 +45,7 @@ public class FileValidationService {
         }
 
         // Проверка размера файла
-        if (file.getSize() > 600 * 1024 * 1024) { // 10 MB
+        if (file.getSize() > 600 * 1024 * 1024) { // 600 MB
             throw new FileProcessingException("Размер файла превышает 600 MB");
         }
 

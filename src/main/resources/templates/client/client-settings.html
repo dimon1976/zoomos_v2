@@ -32,7 +32,7 @@
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
                     <li class="breadcrumb-item" th:if="${client.id != null}">
-                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}" th:text="${client.name}">Название магазина</a>
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}" th:text="${client.name}">Название магазина</a>
                     </li>
                     <li class="breadcrumb-item active" th:text="${client.id == null ? 'Новый магазин' : 'Настройки'}">Настройки</li>
                 </ol>
@@ -65,7 +65,7 @@
                     </div>
 
                     <!-- Форма -->
-                    <form th:action="${client.id == null ? '/client/new' : '/client/' + client.id + '/settings/save'}"
+                    <form th:action="${client.id == null ? '/client/new' : '/client/' + client.name + '/settings/save'}"
                           method="post" class="needs-validation" novalidate>
 
                         <input type="hidden" th:if="${client.id != null}" name="id" th:value="${client.id}"/>
@@ -121,7 +121,7 @@
 
                         <div class="d-flex gap-2 justify-content-end">
                             <a th:if="${client.id != null}"
-                               th:href="@{/client/{id}/dashboard(id=${client.id})}"
+                               th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
                                class="btn btn-outline-secondary">
                                 <i class="fas fa-times me-2"></i>Отмена
                             </a>

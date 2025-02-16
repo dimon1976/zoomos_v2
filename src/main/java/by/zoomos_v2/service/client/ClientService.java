@@ -51,6 +51,22 @@ public class ClientService {
     }
 
     /**
+     * Получает клиента по идентификатору
+     * @param name имя клиента
+     * @return объект клиента
+     * @throws EntityNotFoundException если клиент не найден
+     */
+    @Transactional(readOnly = true)
+    public Client getClientByName(String name) {
+        log.debug("Получение клиента по name: {}", name);
+        return clientRepository.findByName(name)
+                .orElseThrow(() -> {
+                    log.error("Клиент с name {} не найден", name);
+                    return new EntityNotFoundException("Клиент не найден");
+                });
+    }
+
+    /**
      * Обновляет данные клиента
      * @param client объект клиента с обновленными данными
      * @return обновленный объект клиента

@@ -19,14 +19,14 @@
         <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
           <i class="fas fa-store"></i>
         </a>
-        <a th:href="@{/client/{id}/dashboard(id=${client.id})}"
+        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
            class="btn btn-sm btn-outline-secondary me-2" title="К панели управления">
           <i class="fas fa-arrow-left"></i>
         </a>
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
           <li class="breadcrumb-item">
-            <a th:href="@{/client/{id}/dashboard(id=${client.id})}" th:text="${client.name}">Магазин</a>
+            <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}" th:text="${client.name}">Магазин</a>
           </li>
           <li class="breadcrumb-item active">Настройки маппинга</li>
         </ol>
@@ -39,7 +39,7 @@
       <h2 class="card-title h5 mb-0">
         <i class="fas fa-exchange-alt me-2"></i>Настройки маппинга
       </h2>
-      <a th:href="@{/client/{id}/mappings/new(id=${client.id})}" class="btn btn-primary btn-sm">
+      <a th:href="@{/client/{clientName}/mappings/new(clientName=${client.name})}" class="btn btn-primary btn-sm">
         <i class="fas fa-plus me-2"></i>Добавить маппинг
       </a>
     </div>
@@ -82,7 +82,7 @@
             </td>
             <td>
               <div class="btn-group">
-                <a th:href="@{/client/{clientId}/mappings/{mappingId}/edit(clientId=${client.id},mappingId=${mapping.id})}"
+                <a th:href="@{/client/{clientName}/mappings/{mappingId}/edit(clientName=${client.name},mappingId=${mapping.id})}"
                    class="btn btn-sm btn-outline-primary" title="Редактировать">
                   <i class="fas fa-edit"></i>
                 </a>

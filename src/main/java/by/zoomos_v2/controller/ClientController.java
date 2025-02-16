@@ -1,5 +1,6 @@
 package by.zoomos_v2.controller;
 
+import by.zoomos_v2.DTO.dashboard.DashboardOverviewDTO;
 import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.exception.TabDataException;
 import by.zoomos_v2.model.Client;
@@ -8,7 +9,6 @@ import by.zoomos_v2.service.file.input.service.FileUploadService;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.mapping.ExportConfigService;
 import by.zoomos_v2.service.mapping.MappingConfigService;
-import by.zoomos_v2.service.statistics.dashboard.DashboardOverviewDTO;
 import by.zoomos_v2.service.statistics.dashboard.DashboardStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,35 +61,35 @@ public class ClientController {
 
     /**
      * Отображает dashboard клиента
-     * @param id идентификатор клиента
+     * @param clientName имя клиента
      * @param from дата начала периода
      * @param to дата окончания периода
      * @param model модель для передачи данных в представление
      * @return имя представления dashboard
      */
-    @GetMapping("/client/{id}/dashboard")
+    @GetMapping("/client/{clientName}/dashboard")
     @LogExecution("Просмотр панели управления магазина")
     public String showDashboard(
-            @PathVariable Long id,
+            @PathVariable String clientName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             Model model
     ) {
-        log.debug("Запрошен dashboard магазина с ID: {}, период: {} - {}", id, from, to);
+        log.debug("Запрошен dashboard магазина с clientName: {}, период: {} - {}", clientName, from, to);
         try {
             // Получаем основные данные клиента
-            Client client = clientService.getClientById(id);
+            Client client = clientService.getClientByName(clientName);
             model.addAttribute("client", client);
 
             // Данные для вкладки загрузки
-            model.addAttribute("files", fileMetadataService.getFilesInfoByClientId(id));
-            model.addAttribute("mappings", mappingConfigService.getMappingsForClient(id));
+            model.addAttribute("files", fileMetadataService.getFilesInfoByClientId(clientService.getClientByName(clientName).getId()));
+            model.addAttribute("mappings", mappingConfigService.getMappingsForClient(clientService.getClientByName(clientName).getId()));
 
             // Данные для вкладки экспорта
-            model.addAttribute("configs", exportConfigService.getConfigsByClientId(id));
+            model.addAttribute("configs", exportConfigService.getConfigsByClientId(clientService.getClientByName(clientName).getId()));
 
             // Добавляем данные дашборда
-            DashboardOverviewDTO dashboardData = dashboardStatisticsService.getDashboardOverview(id, from, to);
+            DashboardOverviewDTO dashboardData = dashboardStatisticsService.getDashboardOverview(clientService.getClientByName(clientName).getId(), from, to);
             model.addAttribute("dashboardData", dashboardData);
             model.addAttribute("from", from);
             model.addAttribute("to", to);
@@ -105,29 +105,29 @@ public class ClientController {
     /**
      * AJAX endpoint для обновления данных дашборда
      */
-    @GetMapping("/client/{id}/dashboard/data")
+    @GetMapping("/client/{clientName}/dashboard/data")
     @ResponseBody
     public DashboardOverviewDTO getDashboardData(
-            @PathVariable Long id,
+            @PathVariable String clientName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
     ) {
-        log.debug("AJAX запрос данных дашборда для клиента {}, период: {} - {}", id, from, to);
-        return dashboardStatisticsService.getDashboardOverview(id, from, to);
+        log.debug("AJAX запрос данных дашборда для клиента {}, период: {} - {}", clientName, from, to);
+        return dashboardStatisticsService.getDashboardOverview(clientService.getClientByName(clientName).getId(), from, to);
     }
 
     /**
      * Отображает форму настроек клиента
-     * @param id идентификатор клиента
+     * @param clientName имя клиента
      * @param model модель для передачи данных в представление
      * @return имя представления
      */
-    @GetMapping("/client/{id}/settings")
+    @GetMapping("/client/{clientName}/settings")
     @LogExecution("Просмотр настроек магазина")
-    public String showClientSettings(@PathVariable Long id, Model model) {
-        log.debug("Запрошены настройки магазина с ID: {}", id);
+    public String showClientSettings(@PathVariable String clientName, Model model) {
+        log.debug("Запрошены настройки магазина с clientName: {}", clientName);
         try {
-            Client client = clientService.getClientById(id);
+            Client client = clientService.getClientByName(clientName);
             model.addAttribute("client", client);
             return "client/client-settings";
         } catch (Exception e) {
@@ -144,31 +144,31 @@ public class ClientController {
      * @param redirectAttributes атрибуты для передачи сообщений
      * @return редирект на соответствующую страницу
      */
-    @PostMapping("/client/{id}/settings/save")
+    @PostMapping("/client/{clientName}/settings/save")
     @LogExecution("Сохранение настроек магазина")
-    public String saveClientSettings(@PathVariable Long id,
+    public String saveClientSettings(@PathVariable String clientName,
                                      @ModelAttribute("client") Client client,
                                      @RequestParam(value = "active", defaultValue = "false") boolean active,
                                      RedirectAttributes redirectAttributes) {
-        log.debug("Сохранение настроек магазина с ID {}: {}", id, client);
+        log.debug("Сохранение настроек магазина с clientName {}: {}", clientName, client);
         try {
-            client.setId(id); // Убеждаемся, что ID соответствует URL
+            client.setId(clientService.getClientByName(clientName).getId()); // Убеждаемся, что ID соответствует URL
             client.setActive(active);
 
-            if (id == null) {
+            if (client.getId() == null) {
                 clientService.createClient(client);
                 redirectAttributes.addFlashAttribute("success", "Магазин успешно создан");
                 return "redirect:/clients";
             } else {
                 clientService.updateClient(client);
                 redirectAttributes.addFlashAttribute("success", "Настройки магазина обновлены");
-                return "redirect:/client/" + id + "/dashboard";
+                return "redirect:/client/" + clientName + "/dashboard";
             }
         } catch (Exception e) {
             log.error("Ошибка при сохранении магазина: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при сохранении магазина: " + e.getMessage());
-            return "redirect:/client/" + id + "/settings";
+            return "redirect:/client/" + clientName + "/settings";
         }
     }
 
@@ -213,17 +213,17 @@ public class ClientController {
 
     /**
      * Обрабатывает удаление клиента
-     * @param id идентификатор клиента
+     * @param clientName имя клиента
      * @param redirectAttributes атрибуты для передачи сообщений
      * @return редирект на список клиентов
      */
-    @PostMapping("/client/{id}/delete")
+    @PostMapping("/client/{clientName}/delete")
     @LogExecution("Удаление магазина")
-    public String deleteClient(@PathVariable Long id,
+    public String deleteClient(@PathVariable String clientName,
                                RedirectAttributes redirectAttributes) {
-        log.debug("Запрос на удаление магазина с ID: {}", id);
+        log.debug("Запрос на удаление магазина с clientName: {}", clientName);
         try {
-            clientService.deleteClient(id);
+            clientService.deleteClient(clientService.getClientByName(clientName).getId());
             redirectAttributes.addFlashAttribute("success", "Магазин успешно удален");
         } catch (Exception e) {
             //TODO Починить удаление магазина (рекурсивно)
@@ -237,14 +237,14 @@ public class ClientController {
     /**
      * Загрузка данных для вкладки загрузки файлов
      */
-    @GetMapping("/client/{id}/upload-data")
+    @GetMapping("/client/{clientName}/upload-data")
     @ResponseBody
-    public Map<String, Object> getUploadTabData(@PathVariable Long id) {
-        log.debug("Загрузка данных для вкладки загрузки файлов клиента {}", id);
+    public Map<String, Object> getUploadTabData(@PathVariable String clientName) {
+        log.debug("Загрузка данных для вкладки загрузки файлов клиента {}", clientName);
         try {
             Map<String, Object> data = new HashMap<>();
-            data.put("files", fileUploadService.getRecentFiles(id));
-            data.put("mappings", mappingConfigService.getMappingsForClient(id));
+            data.put("files", fileUploadService.getRecentFiles(clientService.getClientByName(clientName).getId()));
+            data.put("mappings", mappingConfigService.getMappingsForClient(clientService.getClientByName(clientName).getId()));
             return data;
         } catch (Exception e) {
             log.error("Ошибка при загрузке данных для вкладки загрузки: {}", e.getMessage(), e);

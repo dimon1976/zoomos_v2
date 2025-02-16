@@ -1,5 +1,8 @@
 package by.zoomos_v2.service.statistics.dashboard;
 
+import by.zoomos_v2.DTO.dashboard.ClientDashboardStatsDTO;
+import by.zoomos_v2.DTO.dashboard.DashboardOverviewDTO;
+import by.zoomos_v2.DTO.dashboard.SystemResourcesDTO;
 import by.zoomos_v2.DTO.operation.OperationStatsDTO;
 import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.model.enums.OperationType;

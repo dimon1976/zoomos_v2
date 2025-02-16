@@ -19,17 +19,17 @@
         <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
           <i class="fas fa-store"></i>
         </a>
-        <a th:href="@{/client/{id}/mappings(id=${client.id})}"
+        <a th:href="@{/client/{clientName}/mappings(clientName=${client.name})}"
            class="btn btn-sm btn-outline-secondary me-2" title="К списку маппингов">
           <i class="fas fa-arrow-left"></i>
         </a>
         <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
           <li class="breadcrumb-item">
-            <a th:href="@{/client/{id}/dashboard(id=${client.id})}" th:text="${client.name}">Магазин</a>
+            <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}" th:text="${client.name}">Магазин</a>
           </li>
           <li class="breadcrumb-item">
-            <a th:href="@{/client/{id}/mappings(id=${client.id})}">Настройки маппинга</a>
+            <a th:href="@{/client/{clientName}/mappings(clientName=${client.name})}">Настройки маппинга</a>
           </li>
           <li class="breadcrumb-item active"
               th:text="${mapping.id == null ? 'Новый маппинг' : 'Редактирование маппинга'}">
@@ -61,8 +61,8 @@
 
       <!-- Форма маппинга -->
       <form th:action="${mapping.id == null ?
-                           '/client/' + client.id + '/mappings/create' :
-                           '/client/' + client.id + '/mappings/' + mapping.id + '/update'}"
+                           '/client/' + client.name + '/mappings/create' :
+                           '/client/' + client.name + '/mappings/' + mapping.id + '/update'}"
             method="post"
             class="needs-validation"
             novalidate>
@@ -177,7 +177,7 @@
 
         <!-- Кнопки действий -->
         <div class="d-flex justify-content-end gap-2">
-          <a th:href="@{/client/{id}/mappings(id=${client.id})}"
+          <a th:href="@{/client/{clientName}/mappings(clientName=${client.name})}"
              class="btn btn-outline-secondary">
             <i class="fas fa-times me-2"></i>Отмена
           </a>

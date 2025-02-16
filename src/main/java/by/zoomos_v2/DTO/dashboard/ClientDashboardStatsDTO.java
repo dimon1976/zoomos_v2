@@ -5,6 +5,7 @@ import by.zoomos_v2.model.enums.OperationType;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Data
@@ -21,4 +22,5 @@ public class ClientDashboardStatsDTO {
     private Map<OperationStatus, Long> operationsByStatus;
     private Map<OperationType, Long> operationsByType;
     private double overallSuccessRate;
+    private LocalDateTime lastOperationDate;
 }

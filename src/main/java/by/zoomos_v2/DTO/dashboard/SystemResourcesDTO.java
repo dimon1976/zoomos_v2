@@ -1,4 +1,4 @@
-package by.zoomos_v2.service.statistics.dashboard;
+package by.zoomos_v2.DTO.dashboard;
 
 import lombok.Builder;
 import lombok.Data;

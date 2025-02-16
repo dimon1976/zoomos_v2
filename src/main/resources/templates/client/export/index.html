@@ -18,14 +18,14 @@
                 <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
                     <i class="fas fa-store"></i>
                 </a>
-                <a th:href="@{/client/{id}/dashboard(id=${client.id})}"
+                <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
                    class="btn btn-sm btn-outline-secondary me-2" title="К панели управления">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
                     <li class="breadcrumb-item">
-                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}" th:text="${client.name}">Магазин</a>
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}" th:text="${client.name}">Магазин</a>
                     </li>
                     <li class="breadcrumb-item active">Экспорт данных</li>
                 </ol>
@@ -39,7 +39,7 @@
             <h2 class="card-title h5 mb-0">
                 <i class="fas fa-download me-2"></i>Экспорт данных
             </h2>
-            <a th:href="@{/client/{id}/export-mappings(id=${client.id})}"
+            <a th:href="@{/client/{clientName}/export-mappings(clientName=${client.name})}"
                class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-cog"></i> Настройки маппинга
             </a>
@@ -187,14 +187,14 @@
         const fileId = document.getElementById('selectedFileId').value;
         const configId = document.getElementById('configId').value;
         const fileType = document.getElementById('fileType').value;
-        const clientId = [[${client.id}]];
+        const clientName = [[${client.name}]];
 
         const exportButton = document.getElementById('exportButton');
         exportButton.disabled = true;
         exportButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Экспорт...';
 
         // Создаем URL для скачивания
-        const url = `/client/${clientId}/export/download/${fileId}?configId=${configId}&fileType=${fileType}`;
+        const url = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}`;
 
         // Создаем временную ссылку для скачивания
         const link = document.createElement('a');

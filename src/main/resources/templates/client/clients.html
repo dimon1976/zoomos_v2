@@ -99,10 +99,10 @@
                 <div class="card-body">
                     <!-- Статус -->
                     <div class="d-flex justify-content-between align-items-start mb-3">
-                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}"
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
                            class="h5 mb-0 client-title">
                             <span th:text="${client.name}"></span>
-                            <small class="text-muted" th:text="'#' + ${client.id}"></small>
+                            <small class="text-muted" th:text="'#' + ${client.name}"></small>
                         </a>
                         <span th:class="${'badge ' + (client.active ? 'bg-success' : 'bg-danger')}"
                               th:text="${client.active ? 'Активен' : 'Неактивен'}">
@@ -140,11 +140,11 @@
 
                     <!-- Действия -->
                     <div class="d-flex gap-2">
-                        <a th:href="@{/client/{id}/dashboard(id=${client.id})}"
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
                            class="btn btn-sm btn-primary flex-grow-1">
                             <i class="fas fa-columns"></i> Панель управления
                         </a>
-                        <a th:href="@{/client/{id}/settings(id=${client.id})}"
+                        <a th:href="@{/client/{clientName}/settings(clientName=${client.name})}"
                            class="btn btn-sm btn-outline-secondary"
                            title="Настройки">
                             <i class="fas fa-cog"></i>

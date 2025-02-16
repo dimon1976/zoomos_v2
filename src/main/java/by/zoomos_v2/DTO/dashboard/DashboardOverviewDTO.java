@@ -12,4 +12,5 @@ public class DashboardOverviewDTO {
     private ClientDashboardStatsDTO stats;
     // Последние операции
     private List<OperationStatsDTO> recentOperations;
+    private SystemResourcesDTO systemResources;
 }

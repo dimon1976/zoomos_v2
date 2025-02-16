@@ -223,7 +223,7 @@
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        <a th:href="@{/client/{clientId}/operations/{id}(clientId=${operation.clientId},id=${operation.id})}"
+                                                        <a th:href="@{/client/{clientName}/operations/{id}(clientName=${operation.clientId},id=${operation.id})}"
                                                            class="btn btn-sm btn-info" title="Подробности">
                                                             <i class="fas fa-info-circle"></i>
                                                         </a>
@@ -258,13 +258,13 @@
                     <div class="card mb-4">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="card-title mb-0">Загрузка нового файла</h5>
-                            <a th:href="@{/client/{id}/mappings(id=${client.id})}"
+                            <a th:href="@{/client/{clientName}/mappings(clientName=${client.name})}"
                                class="btn btn-outline-secondary btn-sm">
                                 <i class="fas fa-cog"></i> Настройки маппинга
                             </a>
                         </div>
                         <div class="card-body">
-                            <form th:action="@{/client/{id}/files/upload(id=${client.id})}"
+                            <form th:action="@{/client/{clientName}/files/upload(clientName=${client.name})}"
                                   method="post"
                                   enctype="multipart/form-data">
 
@@ -333,16 +333,16 @@
                                         <td th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <a th:href="@{/client/{id}/files/status/{fileId}(id=${client.id},fileId=${file.id})}"
+                                                <a th:href="@{/client/{clientName}/files/status/{fileId}(clientName=${client.name},fileId=${file.id})}"
                                                    class="btn btn-sm btn-info" title="Статус">
                                                     <i class="fas fa-info-circle"></i>
                                                 </a>
-                                                <a th:if="${file.status == 'COMPLETED' or file.status == 'PARTIAL_SUCCESS'}"
-                                                   th:href="@{/client/{id}/files/{fileId}/statistics(id=${client.id},fileId=${file.id})}"
+                                                <a th:if="${file.status.name == 'COMPLETED' or file.status == 'PARTIAL_SUCCESS'}"
+                                                   th:href="@{/client/{clientName}/files/{fileId}/statistics(clientName=${client.name},fileId=${file.id})}"
                                                    class="btn btn-sm btn-success" title="Результаты">
                                                     <i class="fas fa-chart-bar"></i>
                                                 </a>
-                                                <form th:action="@{/client/{id}/files/{fileId}/delete(id=${client.id},fileId=${file.id})}"
+                                                <form th:action="@{/client/{clientName}/files/{fileId}/delete(clientName=${client.name},fileId=${file.id})}"
                                                       method="post" class="d-inline"
                                                       onsubmit="return confirm('Вы уверены, что хотите удалить этот файл?');">
                                                     <button type="submit" class="btn btn-sm btn-danger" title="Удалить">
@@ -367,7 +367,7 @@
                     <div class="card mb-4">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="card-title mb-0">Выгрузка данных</h5>
-                            <a th:href="@{/client/{id}/export-mappings(id=${client.id})}"
+                            <a th:href="@{/client/{clientName}/export-mappings(clientName=${client.name})}"
                                class="btn btn-outline-secondary btn-sm">
                                 <i class="fas fa-cog"></i> Настройки маппинга
                             </a>
@@ -532,13 +532,13 @@
         const fileId = document.getElementById('selectedFileId').value;
         const configId = document.getElementById('configId').value;
         const fileType = document.getElementById('fileType').value;
-        const clientId = [[${client.id}]];
+        const clientName = [[${client.name}]];
 
         const exportButton = document.getElementById('exportButton');
         exportButton.disabled = true;
         exportButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Экспорт...';
 
-        const url = `/client/${clientId}/export/download/${fileId}?configId=${configId}&fileType=${fileType}`;
+        const url = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}`;
 
         const link = document.createElement('a');
         link.href = url;

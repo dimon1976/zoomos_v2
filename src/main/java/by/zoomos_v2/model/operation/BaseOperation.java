@@ -127,15 +127,6 @@ public abstract class BaseOperation {
         }
     }
 
-    public void updateProcessingStatistics(Integer totalRecords, Integer processedRecords, Integer failedRecords) {
-        this.totalRecords = totalRecords;
-        this.processedRecords = processedRecords;
-        this.failedRecords = failedRecords;
-
-        if (processedRecords > 0 && processingTimeSeconds > 0) {
-            this.processingSpeed = processedRecords.doubleValue() / processingTimeSeconds;
-        }
-    }
 
     /**
      * Увеличивает счетчик обработанных записей

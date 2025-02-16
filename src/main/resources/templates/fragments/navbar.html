@@ -88,10 +88,10 @@
                             <i class="fas fa-cog"></i> Управление
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" th:href="@{/client/{id}/settings(id=${client.id})}">
+                            <li><a class="dropdown-item" th:href="@{/client/{clientName}/settings(clientName=${client.name})}">
                                 <i class="fas fa-sliders-h"></i> Настройки
                             </a></li>
-                            <li><a class="dropdown-item" th:href="@{/client/{id}/files(id=${client.id})}">
+                            <li><a class="dropdown-item" th:href="@{/client/{clientName}/files(id=${client.name})}">
                                 <i class="fas fa-file"></i> Файлы
                             </a></li>
                         </ul>
@@ -102,10 +102,10 @@
                             <i class="fas fa-exchange-alt"></i> Маппинг
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" th:href="@{/client/{id}/uploadmapping(id=${client.id})}">
+                            <li><a class="dropdown-item" th:href="@{/client/{clientName}/uploadmapping(clientName=${client.name})}">
                                 <i class="fas fa-upload"></i> Загрузка
                             </a></li>
-                            <li><a class="dropdown-item" th:href="@{/client/{id}/exportmapping(id=${client.id})}">
+                            <li><a class="dropdown-item" th:href="@{/client/{clientName}/exportmapping(id=${client.name)}">
                                 <i class="fas fa-download"></i> Выгрузка
                             </a></li>
                         </ul>

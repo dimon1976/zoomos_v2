@@ -2,8 +2,6 @@ package by.zoomos_v2.service.statistics;
 
 import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.model.operation.BaseOperation;
-import by.zoomos_v2.model.operation.ImportOperation;
-import by.zoomos_v2.service.file.BatchProcessingData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,7 +10,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Сервис для обработки и агрегации статистики
