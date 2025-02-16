@@ -374,7 +374,7 @@
         /**
          * Обработчик добавления поля
          */
-        $(document).on('click', '.add-field', function() {
+        $(document).on('click', '.btn-add-field', function() {
             const sourceField = $(this).data('source-field');
             const displayName = $(this).data('display-name');
             addField(sourceField, displayName);
@@ -385,9 +385,9 @@
         /**
          * Обработчик удаления поля
          */
-        $(document).on('click', '.remove-field', function() {
+        $(document).on('click', '.btn-remove-field', function() {
             const row = $(this).closest('tr');
-            const sourceField = row.find('td:nth-child(3)').text();
+            const sourceField = row.find('td:eq(2)').text().trim();
             const displayName = row.find('.field-display-name').val();
             removeField(row, sourceField, displayName);
             updatePositions();
@@ -445,14 +445,14 @@
                 <i class="fas fa-grip-vertical"></i>
             </td>
             <td>
-                <input type="text" class="form-control field-display-name"
-                       value="${displayName}"
+                <input type="text" class="field-display-name"
+                       value="${displayName || ''}"
                        name="fields[${sourceField}].displayName">
             </td>
             <td>${sourceField}</td>
-            <td class="position-display">0</td>
+            <td><span class="position-display">0</span></td>
             <td>
-                <button type="button" class="btn btn-outline-danger btn-sm remove-field">
+                <button type="button" class="btn btn-field-action btn-remove-field">
                     <i class="fas fa-times"></i>
                 </button>
             </td>
@@ -470,12 +470,12 @@
     function removeField(row, sourceField, displayName) {
         const newRow = `
         <tr>
-            <td>${displayName}</td>
+            <td>${displayName || ''}</td>
             <td>${sourceField}</td>
             <td>
-                <button type="button" class="btn btn-sm btn-success add-field"
+                <button type="button" class="btn btn-field-action btn-add-field"
                         data-source-field="${sourceField}"
-                        data-display-name="${displayName}">
+                        data-display-name="${displayName || ''}">
                     <i class="fas fa-plus"></i>
                 </button>
             </td>

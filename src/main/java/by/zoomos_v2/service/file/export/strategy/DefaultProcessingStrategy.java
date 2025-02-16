@@ -10,17 +10,12 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class DefaultProcessingStrategy implements DataProcessingStrategy{
+public class DefaultProcessingStrategy implements DataProcessingStrategy {
     @Override
     public List<Map<String, Object>> processData(List<Map<String, Object>> data,
                                                  ExportConfig exportConfig,
                                                  BatchProcessingData batchProcessingData) {
         log.debug("Применяется стандартная стратегия обработки данных");
-
-        // Увеличиваем счетчик для каждой записи
-//        data.forEach(record -> batchProcessingData.incrementSuccessCount());
-//
-//        log.info("Обработка данных завершена. Обработано записей: {}", batchProcessingData.getSuccessCount());
         return data;
     }
 

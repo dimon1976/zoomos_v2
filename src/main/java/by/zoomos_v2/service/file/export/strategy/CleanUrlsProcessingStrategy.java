@@ -55,8 +55,6 @@ public class CleanUrlsProcessingStrategy implements DataProcessingStrategy {
                 }
             }
         }
-
-//        log.info("Обработка данных завершена. Очищено URL: {}", batchProcessingData.getSuccessCount());
         return data;
     }
 

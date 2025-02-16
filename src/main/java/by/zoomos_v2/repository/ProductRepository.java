@@ -18,11 +18,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * @param fileId идентификатор файла
      * @return список продуктов со всеми связанными данными
      */
-//    @Query("SELECT DISTINCT p FROM Product p " +
-//            "LEFT JOIN FETCH p.regionDataList r " +
-//            "LEFT JOIN FETCH p.competitorDataList c " +
-//            "WHERE p.fileId = :fileId")
-//    List<Product> findByFileId(@Param("fileId") Long fileId);
     @Query("SELECT DISTINCT p FROM Product p WHERE p.fileId = :fileId")
     List<Product> findByFileId(@Param("fileId") Long fileId);
 
@@ -31,4 +26,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.competitorDataList WHERE p.id IN :productIds")
     List<Product> findByIdInWithCompetitorData(@Param("productIds") Collection<Long> productIds);
+
+    @Query("SELECT DISTINCT p.productId FROM Product p WHERE p.productAdditional1 = :taskNumber")
+    List<String> findProductIdsByTaskNumber(@Param("taskNumber") String taskNumber);
 }
