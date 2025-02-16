@@ -13,7 +13,6 @@ public interface ImportOperationRepository extends BaseOperationRepository<Impor
 
     List<ImportOperation> findByClientIdOrderByStartTimeDesc(Long clientId);
     List<ImportOperation> findByClientId(Long clientId);
-
     /**
      * Находит последнюю операцию импорта по идентификатору источника
      * @param sourceIdentifier идентификатор источника (имя файла)

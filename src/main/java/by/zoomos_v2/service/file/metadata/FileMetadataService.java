@@ -3,6 +3,7 @@ package by.zoomos_v2.service.file.metadata;
 import by.zoomos_v2.DTO.FileInfoDTO;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.enums.OperationStatus;
+import by.zoomos_v2.model.operation.BaseOperation;
 import by.zoomos_v2.model.operation.ImportOperation;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.repository.ImportOperationRepository;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -57,19 +59,21 @@ public class FileMetadataService {
         List<FileMetadata> files = fileMetadataRepository.findByClientIdOrderByUploadedAtDesc(clientId);
         return files.stream()
                 .map(file -> {
-                    ImportOperation operation = importOperationRepository
-                            .findLastOperationBySourceAndClient(file.getOriginalFilename(), clientId);
+                    Optional<ImportOperation> operation = importOperationRepository
+                            .findByFileId(file.getId());
 
                     return FileInfoDTO.builder()
                             .id(file.getId())
                             .originalFilename(file.getOriginalFilename())
                             .fileType(file.getFileType())
                             .uploadedAt(file.getUploadedAt())
-                            .status(operation != null ? operation.getStatus() : OperationStatus.PENDING)
-                            .errorMessage(operation != null && !operation.getErrors().isEmpty() ?
-                                    operation.getErrors().get(0) : null)
-                            .totalRecords(operation != null && operation.getTotalRecords() != null ?
-                                    operation.getTotalRecords() : 0)
+                            .status(operation.map(BaseOperation::getStatus)
+                                    .orElse(OperationStatus.PENDING))
+                            .errorMessage(operation.map(op -> !op.getErrors().isEmpty() ?
+                                            op.getErrors().get(0) : null)
+                                    .orElse(null))
+                            .totalRecords(operation.map(BaseOperation::getTotalRecords)
+                                    .orElse(0))
                             .build();
                 })
                 .collect(Collectors.toList());

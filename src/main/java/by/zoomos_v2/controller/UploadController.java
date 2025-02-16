@@ -8,6 +8,7 @@ import by.zoomos_v2.service.file.input.service.FileProcessingService;
 import by.zoomos_v2.service.file.input.service.FileUploadService;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.statistics.OperationStatsService;
+import by.zoomos_v2.util.TimeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -19,6 +20,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+
+import static by.zoomos_v2.util.TimeUtils.formatDuration;
 
 /**
  * Контроллер для управления операциями с файлами
@@ -105,59 +109,57 @@ public class UploadController {
     public String showFileStatistics(@PathVariable String clientName,
                                      @PathVariable Long fileId,
                                      Model model) {
-        log.debug("Запрошена статистика обработки файла {} для клиента {}", fileId, clientName);
-
         try {
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
             validateFileOwnership(metadata, clientService.getClientByName(clientName).getId());
 
-            // Получаем операцию импорта для данного файла
-            ImportOperation operation = operationStatsService.findLastOperationBySourceAndClient(
-                    metadata.getOriginalFilename(),
-                    clientService.getClientByName(clientName).getId()
-            );
+            Optional<ImportOperation> operationOpt = operationStatsService.findOperationByFileId(fileId);
 
-            if (operation != null) {
-                // Базовая статистика
+            if (operationOpt.isPresent()) {
+                ImportOperation operation = operationOpt.get();
                 Map<String, Object> statistics = new HashMap<>();
-                statistics.put("totalRecords", operation.getTotalRecords());
-                statistics.put("processedRecords", operation.getProcessedRecords());
-                statistics.put("failedRecords", operation.getFailedRecords());
-                statistics.put("processingTimeSeconds", operation.getProcessingTimeSeconds());
-                statistics.put("processingSpeed", operation.getProcessingSpeed());
 
-                // Статистика ошибок
-                if (!operation.getErrorTypes().isEmpty()) {
+                // Основные показатели
+                statistics.put("totalCount", operation.getTotalRecords());
+                statistics.put("successCount", operation.getProcessedRecords());
+                statistics.put("errorCount", operation.getFailedRecords());
+
+                // Форматируем время обработки
+                String processingTime = operation.getProcessingTimeSeconds() != null ?
+                        formatDuration(operation.getProcessingTimeSeconds()) :
+                        "Нет данных";
+                statistics.put("processingTime", processingTime);
+
+                // Получаем метрики производительности и скорость обработки
+                String speedFormatted = "Нет данных";
+                if (operation.getMetadata().containsKey("performanceMetrics")) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> performanceMetrics =
+                            (Map<String, Object>) operation.getMetadata().get("performanceMetrics");
+
+                    Object speedObj = performanceMetrics.get("recordsPerSecond");
+                    if (speedObj != null) {
+                        double speed = speedObj instanceof Integer ?
+                                ((Integer) speedObj).doubleValue() :
+                                (Double) speedObj;
+                        speedFormatted = String.format("%.2f записей/сек", speed);
+                    }
+
+                    Map<String, String> additionalStats = new HashMap<>();
+                    additionalStats.put("Пиковое использование памяти",
+                            String.valueOf(performanceMetrics.get("peakMemoryUsage")));
+                    additionalStats.put("Формат файла", operation.getFileFormat());
+                    additionalStats.put("Кодировка", operation.getEncoding());
+                    if (operation.getDelimiter() != null) {
+                        additionalStats.put("Разделитель", operation.getDelimiter());
+                    }
+                    statistics.put("additionalStats", additionalStats);
+                }
+                statistics.put("averageSpeed", speedFormatted);
+
+                if (!operation.getErrors().isEmpty()) {
+                    statistics.put("errors", operation.getErrors());
                     statistics.put("errorTypes", operation.getErrorTypes());
-                }
-
-                // Расчет времени обработки
-                if (operation.getStartTime() != null && operation.getEndTime() != null) {
-                    Duration duration = Duration.between(operation.getStartTime(), operation.getEndTime());
-                    statistics.put("processingDuration", duration.getSeconds());
-                }
-
-                // Добавляем метаданные операции
-                if (operation.getMetadata() != null && !operation.getMetadata().isEmpty()) {
-                    // Фильтруем и преобразуем метаданные для отображения
-                    Map<String, Object> displayMetadata = new HashMap<>();
-
-                    // Добавляем метрики производительности
-                    if (operation.getMetadata().containsKey("performanceMetrics")) {
-                        displayMetadata.put("performance", operation.getMetadata().get("performanceMetrics"));
-                    }
-
-                    // Добавляем прогресс обработки
-                    if (operation.getMetadata().containsKey("progressMetrics")) {
-                        displayMetadata.put("progress", operation.getMetadata().get("progressMetrics"));
-                    }
-
-                    // Добавляем конфигурацию обработки
-                    if (operation.getMetadata().containsKey("processorConfig")) {
-                        displayMetadata.put("configuration", operation.getMetadata().get("processorConfig"));
-                    }
-
-                    statistics.put("metadata", displayMetadata);
                 }
 
                 model.addAttribute("statistics", statistics);
@@ -165,7 +167,7 @@ public class UploadController {
             }
 
             model.addAttribute("file", metadata);
-            model.addAttribute("clientId", clientService.getClientByName(clientName).getId());
+            model.addAttribute("client", clientService.getClientByName(clientName));
 
             return "files/statistics";
         } catch (Exception e) {

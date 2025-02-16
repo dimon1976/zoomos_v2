@@ -1,157 +1,166 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <title>Статистика обработки файла</title>
-  <div th:replace="~{fragments/navbar :: header-css}"></div>
+    <title>Статистика обработки файла</title>
+    <div th:replace="~{fragments/navbar :: header-css}"></div>
 </head>
 <body>
 <div th:replace="~{fragments/navbar :: header}"></div>
 
 <div class="container mt-4">
-  <!-- Навигация -->
-  <div class="row mb-4">
-    <div class="col">
-      <nav aria-label="breadcrumb" class="d-flex align-items-center">
-        <a th:href="@{/}" class="btn btn-sm btn-outline-secondary me-2" title="На главную">
-          <i class="fas fa-home"></i>
-        </a>
-        <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
-          <i class="fas fa-store"></i>
-        </a>
-        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
-           class="btn btn-sm btn-outline-secondary me-2" title="К панели управления">
-          <i class="fas fa-arrow-left"></i>
-        </a>
-        <ol class="breadcrumb mb-0">
-          <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
-          <li class="breadcrumb-item">
-            <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}">Панель управления</a>
-          </li>
-          <li class="breadcrumb-item active">Статистика обработки файла</li>
-        </ol>
-      </nav>
+    <!-- Навигация -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb" class="d-flex align-items-center">
+                <a th:href="@{/}" class="btn btn-sm btn-outline-secondary me-2" title="На главную">
+                    <i class="fas fa-home"></i>
+                </a>
+                <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
+                    <i class="fas fa-store"></i>
+                </a>
+                <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
+                   class="btn btn-sm btn-outline-secondary me-2" title="К панели управления">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
+                    <li class="breadcrumb-item">
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
+                           th:text="${client.name}">Магазин</a>
+                    </li>
+                    <li class="breadcrumb-item active">Статистика обработки файла</li>
+                </ol>
+            </nav>
+        </div>
     </div>
-  </div>
 
-  <div class="row">
-    <div class="col">
-      <!-- Основная статистика -->
-      <div class="card mb-4">
+    <!-- Основная статистика -->
+    <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="card-title h5 mb-0">
-            <i class="fas fa-chart-bar me-2"></i>Статистика обработки
-          </h2>
-          <span th:class="${'badge ' +
-                          (file.status == 'COMPLETED' ? 'bg-success' :
-                           file.status == 'COMPLETED_WITH_ERRORS' ? 'bg-warning' : 'bg-secondary')}"
-                th:text="${file.status}">
-                    </span>
+            <h5 class="mb-0">
+                <i class="fas fa-file me-2"></i>
+                <span th:text="${file.originalFilename}"></span>
+            </h5>
+            <span th:class="${'badge ' + (operation.status == 'COMPLETED' ? 'bg-success' : 'bg-warning')}"
+                  th:text="${operation.status.getDescription()}">
+            </span>
         </div>
         <div class="card-body">
-          <div class="row g-4">
-            <!-- Основные показатели -->
-            <div class="col-md-4">
-              <div class="border rounded p-3 text-center">
-                <h6 class="text-muted mb-2">Всего записей</h6>
-                <h3 class="mb-0" th:text="${statistics['totalCount']}">0</h3>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="border rounded p-3 text-center">
-                <h6 class="text-muted mb-2">Успешно обработано</h6>
-                <h3 class="mb-0">
-                  <span th:text="${statistics['successCount']}">0</span>
-                  <small class="text-muted" th:if="${statistics['totalCount'] > 0}"
-                         th:text="'(' + ${#numbers.formatDecimal(statistics['successCount'] * 100.0 / statistics['totalCount'], 1, 1)} + '%)'">
-                  </small>
-                </h3>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="border rounded p-3 text-center">
-                <h6 class="text-muted mb-2">Ошибок</h6>
-                <h3 class="mb-0">
-                  <span th:text="${statistics['errorCount']}">0</span>
-                  <small class="text-danger" th:if="${statistics['errorCount'] > 0}"
-                         th:text="'(' + ${#numbers.formatDecimal(statistics['errorCount'] * 100.0 / statistics['totalCount'], 1, 1)} + '%)'">
-                  </small>
-                </h3>
-              </div>
+            <!-- Ключевые метрики -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="border rounded p-3 text-center bg-light">
+                        <h6 class="text-muted mb-2">Всего записей</h6>
+                        <h3 class="mb-0" th:text="${statistics.get('totalCount')}">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-3 text-center bg-light">
+                        <h6 class="text-muted mb-2">Успешно обработано</h6>
+                        <h3 class="mb-0 text-success">
+                            <span th:text="${statistics.get('successCount')}">0</span>
+                            <small th:if="${statistics.get('totalCount') > 0}"
+                                   th:text="'(' + ${#numbers.formatDecimal(statistics.get('successCount') * 100.0 / statistics.get('totalCount'), 1, 1)} + '%)'">
+                            </small>
+                        </h3>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-3 text-center bg-light h-100"
+                         th:classappend="${statistics.get('errorCount') > 0 ? 'border-danger' : ''}">
+                        <h6 class="text-muted mb-2">Ошибки</h6>
+                        <h3 class="mb-0" th:class="${statistics.get('errorCount') > 0 ? 'text-danger' : ''}">
+                            <span th:text="${statistics.get('errorCount')}">0</span>
+                            <small th:if="${statistics.get('errorCount') > 0}"
+                                   th:text="'(' + ${#numbers.formatDecimal(statistics.get('errorCount') * 100.0 / statistics.get('totalCount'), 1, 1)} + '%)'">
+                            </small>
+                        </h3>
+                        <div class="mt-2" th:if="${statistics.get('errorCount') > 0}">
+                            <a href="#errorDetails" class="text-danger text-decoration-none small">
+                                <i class="fas fa-exclamation-circle me-1"></i>Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Детальная информация -->
-            <div class="col-12">
-              <div class="table-responsive">
+            <!-- Информация о файле и обработке -->
+            <div class="table-responsive mt-4">
                 <table class="table table-bordered">
-                  <tbody>
-                  <tr>
-                    <th style="width: 30%">Размер файла</th>
-                    <td>
-                      <span th:text="${file.size} + ' байт'"></span>
-                      <span class="text-muted"
-                            th:text="'(' + ${#numbers.formatDecimal(file.size / 1048576.0, 1, 2)} + ' МБ)'">
-                                                </span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>Время обработки</th>
-                    <td th:text="${processingDuration + ' сек.'}"></td>
-                  </tr>
-                  <tr>
-                    <th>Начало обработки</th>
-                    <td th:text="${#temporals.format(file.processingStartedAt, 'dd.MM.yyyy HH:mm:ss')}"></td>
-                  </tr>
-                  <tr>
-                    <th>Окончание обработки</th>
-                    <td th:text="${#temporals.format(file.processingCompletedAt, 'dd.MM.yyyy HH:mm:ss')}"></td>
-                  </tr>
-                  </tbody>
+                    <tbody>
+                    <tr>
+                        <th class="bg-light" style="width: 30%">Размер файла</th>
+                        <td>
+                            <span th:text="${file.size} + ' байт'"></span>
+                            <span class="text-muted"
+                                  th:text="'(' + ${#numbers.formatDecimal(file.size / 1048576.0, 1, 2)} + ' МБ)'">
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Начало обработки</th>
+                        <td th:text="${#temporals.format(operation.startTime, 'dd.MM.yyyy HH:mm:ss')}"></td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Окончание обработки</th>
+                        <td th:text="${#temporals.format(operation.endTime, 'dd.MM.yyyy HH:mm:ss')}"></td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Время обработки</th>
+                        <td th:text="${statistics.get('processingTime')}"></td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">Скорость обработки</th>
+                        <td th:text="${statistics.get('averageSpeed')}"></td>
+                    </tr>
+                    </tbody>
                 </table>
-              </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Дополнительная информация -->
-      <div class="card mb-4" th:if="${statistics['additionalStats'] != null}">
-        <div class="card-header">
-          <h2 class="card-title h5 mb-0">
-            <i class="fas fa-info-circle me-2"></i>Дополнительная информация
-          </h2>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-bordered">
-              <tbody>
-              <tr th:each="stat : ${statistics['additionalStats']}">
-                <th style="width: 30%" th:text="${stat.key}"></th>
-                <td th:text="${stat.value}"></td>
-              </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Ошибки обработки -->
-      <div class="card mb-4" th:if="${statistics['errors'] != null and statistics['errorCount'] > 0}">
-        <div class="card-header bg-danger text-white">
-          <h2 class="card-title h5 mb-0">
-            <i class="fas fa-exclamation-triangle me-2"></i>Ошибки обработки
-          </h2>
-        </div>
-        <div class="card-body">
-          <div class="list-group">
-            <div class="list-group-item" th:each="error : ${statistics['errors']}">
-              <i class="fas fa-times-circle text-danger me-2"></i>
-              <span th:text="${error}"></span>
+            <!-- Дополнительная информация -->
+            <div class="table-responsive mt-4" th:if="${statistics.get('additionalStats') != null}">
+                <h6 class="border-bottom pb-2">Дополнительная информация:</h6>
+                <table class="table table-bordered">
+                    <tbody>
+                    <tr th:each="stat : ${statistics.get('additionalStats')}">
+                        <th class="bg-light" style="width: 30%" th:text="${stat.key}"></th>
+                        <td th:text="${stat.value}"></td>
+                    </tr>
+                    </tbody>
+                </table>
             </div>
-          </div>
+
+            <!-- Детальная информация об ошибках -->
+            <div id="errorDetails" class="mt-4" th:if="${statistics.get('errors') != null and not #lists.isEmpty(statistics.get('errors'))}">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <h5 class="mb-0">Детальная информация об ошибках</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item list-group-item-danger d-flex align-items-start"
+                                 th:each="error : ${statistics.get('errors')}">
+                                <i class="fas fa-times-circle text-danger me-3 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <span th:text="${error}"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light" th:if="${statistics.get('errorTypes') != null}">
+                        <small class="text-muted">
+                            <strong>Типы ошибок:</strong>
+                            <span th:each="errorType, iterStat : ${statistics.get('errorTypes')}">
+                    <span th:text="${errorType.key + ': ' + errorType.value}"></span>
+                    <span th:if="${!iterStat.last}">, </span>
+                </span>
+                        </small>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </div>
 
 <div th:replace="~{fragments/navbar :: footer}"></div>

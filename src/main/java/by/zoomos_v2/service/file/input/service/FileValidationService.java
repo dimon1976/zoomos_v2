@@ -80,6 +80,7 @@ public class FileValidationService {
     /**
      * Проверяет заголовки CSV файла
      */
+    // TODO добавить верификацию заголовка
     public void validateCsvHeaders(Set<String> actualHeaders, Set<String> requiredHeaders) {
         if (!actualHeaders.containsAll(requiredHeaders)) {
             Set<String> missingHeaders = new HashSet<>(requiredHeaders);
