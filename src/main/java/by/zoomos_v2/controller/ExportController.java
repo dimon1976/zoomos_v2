@@ -27,10 +27,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -158,7 +155,7 @@ public class ExportController {
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при создании маппинга: " + e.getMessage());
         }
-        return "redirect:/client/{name}/export-mappings";
+        return "redirect:/client/{clientName}/export-mappings";
     }
 
     /**
@@ -311,21 +308,27 @@ public class ExportController {
             config = exportFieldConfigService.createTemporaryConfig(clientId);
         }
 
-        Map<String, List<ExportField>> groupedEnabledFields = config.getFields().stream()
+        // Сортируем все поля по позиции
+        List<ExportField> enabledFields = config.getFields().stream()
                 .filter(ExportField::isEnabled)
-                .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
+                .sorted(Comparator.comparingInt(ExportField::getPosition))
+                .collect(Collectors.toList());
 
-        Map<String, List<ExportField>> groupedDisabledFields = config.getFields().stream()
+        List<ExportField> disabledFields = config.getFields().stream()
                 .filter(field -> !field.isEnabled())
-                .collect(Collectors.groupingBy(field -> field.getSourceField().split("\\.")[0]));
+                .sorted(Comparator.comparing(ExportField::getSourceField))
+                .collect(Collectors.toList());
 
         List<ProcessingStrategyType> availableStrategies =
                 processingStrategyService.getAvailableStrategies(clientId);
 
-        model.addAttribute("mapping", config);  // Изменили с config на mapping
+        model.addAttribute("mapping", config);
         model.addAttribute("strategies", availableStrategies);
-        model.addAttribute("groupedEnabledFields", groupedEnabledFields);
-        model.addAttribute("groupedDisabledFields", groupedDisabledFields);
+        model.addAttribute("enabledFields", enabledFields);
+        model.addAttribute("disabledFields", disabledFields);
+
+        log.debug("Подготовлены поля для формы: {} активных, {} неактивных",
+                enabledFields.size(), disabledFields.size());
     }
 
     private void validateMappingOwnership(ExportConfig mapping, Long clientId) {

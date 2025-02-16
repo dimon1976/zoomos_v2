@@ -1,6 +1,6 @@
 package by.zoomos_v2.repository;
 
-import by.zoomos_v2.model.RegionData;
+import by.zoomos_v2.model.entity.RegionData;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

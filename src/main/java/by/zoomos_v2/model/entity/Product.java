@@ -1,4 +1,4 @@
-package by.zoomos_v2.model;
+package by.zoomos_v2.model.entity;
 
 import by.zoomos_v2.annotations.FieldDescription;
 import jakarta.persistence.*;
@@ -80,26 +80,5 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @FieldDescription(value = "Данные с сайтов", skipMapping = true)
     private List<CompetitorData> competitorDataList = new ArrayList<>();
-
-    // Методы для управления связями
-    public void addRegionData(RegionData regionData) {
-        regionDataList.add(regionData);
-        regionData.setProduct(this);
-    }
-
-    public void removeRegionData(RegionData regionData) {
-        regionDataList.remove(regionData);
-        regionData.setProduct(null);
-    }
-
-    public void addSiteData(CompetitorData competitorData) {
-        competitorDataList.add(competitorData);
-        competitorData.setProduct(this);
-    }
-
-    public void removeSiteData(CompetitorData competitorData) {
-        competitorDataList.remove(competitorData);
-        competitorData.setProduct(null);
-    }
 }
 

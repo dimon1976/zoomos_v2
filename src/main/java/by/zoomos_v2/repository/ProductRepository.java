@@ -1,6 +1,6 @@
 package by.zoomos_v2.repository;
 
-import by.zoomos_v2.model.Product;
+import by.zoomos_v2.model.entity.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

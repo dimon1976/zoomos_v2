@@ -1,9 +1,9 @@
 package by.zoomos_v2.service.file.input.service;
 
 import by.zoomos_v2.annotations.FieldDescription;
-import by.zoomos_v2.model.CompetitorData;
-import by.zoomos_v2.model.Product;
-import by.zoomos_v2.model.RegionData;
+import by.zoomos_v2.model.entity.CompetitorData;
+import by.zoomos_v2.model.entity.Product;
+import by.zoomos_v2.model.entity.RegionData;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;

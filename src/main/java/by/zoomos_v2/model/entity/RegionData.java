@@ -1,4 +1,4 @@
-package by.zoomos_v2.model;
+package by.zoomos_v2.model.entity;
 
 import by.zoomos_v2.annotations.FieldDescription;
 import jakarta.persistence.*;

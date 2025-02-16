@@ -8,7 +8,8 @@
     <style>
         .drag-handle {
             cursor: move;
-            padding: 5px;
+            width: 40px;
+            text-align: center;
             color: #666;
         }
 
@@ -16,6 +17,7 @@
             display: table;
             background: white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 100%;
         }
 
         .ui-sortable-placeholder {
@@ -24,26 +26,30 @@
             height: 50px;
         }
 
-        .table-secondary {
-            cursor: default;
-        }
-
-        #enabledFieldsTable tbody tr:not(.table-secondary):hover {
+        #enabledFieldsTable tbody tr:hover {
             background-color: #f5f5f5;
         }
-        #strategyParameters {
-            border: 1px solid #dee2e6;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 15px;
+
+        .field-row td {
+            vertical-align: middle;
         }
 
-        .strategy-parameter {
-            margin-bottom: 10px;
+        .field-entity-type {
+            color: #666;
+            font-size: 0.85em;
+            margin-left: 8px;
         }
 
-        .strategy-parameter label {
-            font-weight: 500;
+        #enabledFieldsTable td, #disabledFieldsTable td {
+            vertical-align: middle;
+        }
+
+        .field-display-name {
+            width: 100%;
+        }
+
+        .table td {
+            padding: 0.75rem;
         }
     </style>
 </head>
@@ -56,7 +62,7 @@
     <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form th:action="${mappingId != null ? '/client/' + client.name + '/exportmapping/' + mappingId + '/update' : '/client/' + client.name + '/exportmapping/create'}"
+    <form th:action="@{/client/{clientName}/exportmapping/{mappingId}/update(clientName=${client.name},mappingId=${mappingId})}"
           method="post" id="exportForm">
 
         <div class="mb-3">
@@ -69,7 +75,6 @@
             <input type="text" class="form-control" id="configDescription" name="configDescription" th:value="${config.description}">
         </div>
 
-        <!-- Обновленный блок выбора стратегии -->
         <div class="mb-3">
             <label for="strategyType" class="form-label">Стратегия обработки данных</label>
             <select class="form-control" id="strategyType" name="strategyType" required>
@@ -77,55 +82,49 @@
                 <option th:each="strategy : ${strategies}"
                         th:value="${strategy}"
                         th:text="${strategy.displayName}"
-                        th:title="${strategy.description}"
                         th:selected="${config.strategyType == strategy}">
                 </option>
             </select>
             <small class="form-text text-muted">Выберите стратегию обработки данных перед экспортом</small>
 
-            <!-- Добавляем секцию для параметров стратегии -->
             <div id="strategyParameters" class="mt-3" style="display: none;">
                 <h4>Параметры стратегии</h4>
-                <div id="parameterFields">
-                    <!-- Поля параметров будут добавлены динамически -->
-                </div>
+                <div id="parameterFields"></div>
             </div>
         </div>
 
         <h3>Активные поля</h3>
-        <table class="table table-striped" id="enabledFieldsTable">
+        <table class="table" id="enabledFieldsTable">
             <thead>
             <tr>
-                <th></th><!-- Колонка для хендлера -->
+                <th width="40px"></th>
                 <th>Название поля</th>
                 <th>Ключ поля</th>
-                <th>Позиция</th>
-                <th>Действия</th>
+                <th width="100px">Позиция</th>
+                <th width="100px">Действия</th>
             </tr>
             </thead>
             <tbody>
-            <th:block th:each="group : ${groupedEnabledFields}">
-                <tr class="table-secondary">
-                    <td colspan="5" th:text="${group.key}"></td>
-                </tr>
-                <th:block th:each="field : ${group.value}">
-                    <tr>
-                        <td></td><!-- Сюда будет добавлена иконка -->
-                        <td>
-                            <input type="text" class="form-control field-display-name" th:value="${field.displayName}" th:attr="name='fields[' + ${field.sourceField} + '].displayName'">
-                        </td>
-                        <td th:text="${field.sourceField}"></td>
-                        <td th:text="${field.position}" class="position-display"></td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-danger remove-field">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                </th:block>
-            </th:block>
+            <tr th:each="field : ${enabledFields}" class="field-row">
+                <td class="drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                </td>
+                <td>
+                    <input type="text" class="form-control field-display-name"
+                           th:value="${field.displayName}"
+                           th:name="|fields[${field.sourceField}].displayName|">
+                </td>
+                <td th:text="${field.sourceField}"></td>
+                <td class="position-display text-center" th:text="${field.position}"></td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger remove-field">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </td>
+            </tr>q
             </tbody>
         </table>
+
         <div class="mt-3 mb-3">
             <button type="submit" class="btn btn-primary">Сохранить</button>
             <th:block th:if="${mappingId != null}">
@@ -136,113 +135,218 @@
                 </button>
             </th:block>
         </div>
-        <h3>Неактивные поля</h3>
-        <table class="table table-striped" id="disabledFieldsTable">
+
+        <h3>Доступные поля</h3>
+        <table class="table" id="disabledFieldsTable">
             <thead>
             <tr>
                 <th>Название поля</th>
                 <th>Ключ поля</th>
-                <th>Действия</th>
+                <th width="100px">Действия</th>
             </tr>
             </thead>
             <tbody>
-            <th:block th:each="group : ${groupedDisabledFields}">
-                <tr class="table-secondary">
-                    <td colspan="3" th:text="${group.key}"></td>
-                </tr>
-                <th:block th:each="field : ${group.value}">
-                    <tr>
-                        <td th:text="${field.displayName}"></td>
-                        <td th:text="${field.sourceField}"></td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-success add-field" th:attr="data-source-field=${field.sourceField},data-display-name=${field.displayName}">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                        </td>
-                    </tr>
-                </th:block>
-            </th:block>
+            <tr th:each="field : ${disabledFields}" class="field-row">
+                <td th:text="${field.displayName}"></td>
+                <td th:text="${field.sourceField}"></td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-success add-field"
+                            th:data-source-field="${field.sourceField}"
+                            th:data-display-name="${field.displayName}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </td>
+            </tr>
             </tbody>
         </table>
 
         <input type="hidden" name="positionsJson" id="positionsJson">
     </form>
-
-
 </div>
 
 <div th:replace="~{fragments/navbar :: footer}"></div>
 
 <script th:inline="javascript">
+    /**
+     * Скрипт обработки формы маппинга полей
+     */
     $(document).ready(function() {
-        // Инициализация сортировки
-        $('#enabledFieldsTable tbody').sortable({
-            items: 'tr:not(.table-secondary)',
-            handle: 'td:first-child',
-            axis: 'y',
-            helper: function(e, tr) {
-                var $originals = tr.children();
-                var $helper = tr.clone();
-                $helper.children().each(function(index) {
-                    $(this).width($originals.eq(index).width());
+        // Кэширование селекторов
+        const $enabledTable = $('#enabledFieldsTable');
+        const $enabledTableBody = $enabledTable.find('tbody');
+        const $disabledTable = $('#disabledFieldsTable');
+        const $form = $('#exportForm');
+        const $strategySelect = $('#strategyType');
+        const $parametersDiv = $('#strategyParameters');
+        const $parameterFields = $('#parameterFields');
+
+        /**
+         * Инициализация всех компонентов
+         */
+        function initializeForm() {
+            initSortable();
+            initStrategyHandler();
+            initButtonHandlers();
+            initFormSubmission();
+
+            console.log('Форма инициализирована');
+        }
+
+        /**
+         * Инициализация сортировки
+         */
+        function initSortable() {
+            try {
+                $enabledTableBody.sortable({
+                    items: 'tr',
+                    handle: '.drag-handle',
+                    axis: 'y',
+                    helper: createSortableHelper,
+                    start: function(e, ui) {
+                        // Фиксируем ширину ячеек при начале перетаскивания
+                        ui.helper.find('td').each(function(index) {
+                            $(this).width(ui.item.find('td').eq(index).width());
+                        });
+                    },
+                    update: updatePositions,
+                    placeholder: 'ui-sortable-placeholder'
+                }).disableSelection();
+
+                console.log('Сортировка инициализирована');
+            } catch (error) {
+                console.error('Ошибка инициализации сортировки:', error);
+            }
+        }
+
+        /**
+         * Создает вспомогательный элемент для сортировки
+         */
+        function createSortableHelper(e, tr) {
+            const $originals = tr.children();
+            const $helper = tr.clone();
+            $helper.addClass('ui-sortable-helper');
+
+            $helper.children().each(function(index) {
+                $(this).width($originals.eq(index).width());
+            });
+
+            return $helper;
+        }
+
+        /**
+         * Обновляет позиции полей
+         */
+        function updatePositions() {
+            try {
+                $enabledTableBody.find('tr').each(function(index) {
+                    $(this).find('.position-display').text(index);
                 });
-                return $helper;
-            },
-            update: function(event, ui) {
-                updatePositions();
+                console.log('Позиции обновлены');
+            } catch (error) {
+                console.error('Ошибка обновления позиций:', error);
             }
-        });
-        const strategyParameters = /*[[${strategyParameters}]]*/ {};
+        }
 
-        // Обработчик изменения типа стратегии
-        document.getElementById('strategyType').addEventListener('change', function() {
-            const selectedStrategy = this.value;
-            const parametersDiv = document.getElementById('strategyParameters');
-            const parameterFields = document.getElementById('parameterFields');
+        /**
+         * Инициализация обработчика стратегии
+         */
+        function initStrategyHandler() {
+            $strategySelect.on('change', function() {
+                const selectedStrategy = $(this).val();
 
-            if (selectedStrategy && strategyParameters[selectedStrategy]) {
-                parametersDiv.style.display = 'block';
-                parameterFields.innerHTML = '';
-
-                const parameters = strategyParameters[selectedStrategy];
-                for (const [key, value] of Object.entries(parameters)) {
-                    const fieldDiv = document.createElement('div');
-                    fieldDiv.className = 'mb-3';
-
-                    const label = document.createElement('label');
-                    label.className = 'form-label';
-                    label.textContent = key.charAt(0).toUpperCase() + key.slice(1);
-
-                    const input = document.createElement('input');
-                    input.className = 'form-control strategy-parameter';
-                    input.name = `strategyParams[${key}]`;
-                    input.value = value;
-                    input.dataset.paramName = key;
-
-                    fieldDiv.appendChild(label);
-                    fieldDiv.appendChild(input);
-                    parameterFields.appendChild(fieldDiv);
+                try {
+                    if (selectedStrategy && strategyParameters[selectedStrategy]) {
+                        updateStrategyParameters(selectedStrategy);
+                    } else {
+                        $parametersDiv.hide();
+                        $parameterFields.empty();
+                    }
+                } catch (error) {
+                    console.error('Ошибка при обновлении параметров стратегии:', error);
                 }
-            } else {
-                parametersDiv.style.display = 'none';
-            }
-        });
+            });
 
-        // Инициализация drag-and-drop иконок
-        $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
-            $(this).find('td:first-child').addClass('drag-handle').prepend(
-                '<i class="fas fa-grip-vertical"></i>'
-            );
-        });
+            // Инициализация начальных параметров
+            $strategySelect.trigger('change');
+        }
 
-        // Обработчик добавления поля
-        $(document).on('click', '.add-field', function() {
-            let sourceField = $(this).data('source-field');
-            let displayName = $(this).data('display-name');
+        /**
+         * Обновляет параметры выбранной стратегии
+         */
+        function updateStrategyParameters(strategyType) {
+            $parametersDiv.show();
+            $parameterFields.empty();
 
-            let row = `
-            <tr>
-                <td class="drag-handle">
+            Object.entries(strategyParameters[strategyType]).forEach(([key, value]) => {
+                const fieldHtml = createStrategyParameterField(key, value);
+                $parameterFields.append(fieldHtml);
+            });
+        }
+
+        /**
+         * Создает HTML-разметку для поля параметра стратегии
+         */
+        function createStrategyParameterField(key, value) {
+            return `
+            <div class="mb-3">
+                <label class="form-label">${key.charAt(0).toUpperCase() + key.slice(1)}</label>
+                <input class="form-control strategy-parameter"
+                       name="strategyParams[${key}]"
+                       value="${value}"
+                       data-param-name="${key}">
+            </div>
+        `;
+        }
+
+        /**
+         * Инициализация обработчиков кнопок
+         */
+        function initButtonHandlers() {
+            // Добавление поля
+            $disabledTable.on('click', '.add-field', function() {
+                try {
+                    const $button = $(this);
+                    const $row = $button.closest('tr');
+                    const sourceField = $button.data('source-field');
+                    const displayName = $button.data('display-name');
+
+                    const $newRow = createEnabledFieldRow(sourceField, displayName);
+                    $enabledTableBody.append($newRow);
+                    $row.remove();
+                    updatePositions();
+
+                    console.log(`Поле ${sourceField} активировано`);
+                } catch (error) {
+                    console.error('Ошибка при добавлении поля:', error);
+                }
+            });
+
+            // Удаление поля
+            $enabledTable.on('click', '.remove-field', function() {
+                try {
+                    const $row = $(this).closest('tr');
+                    const sourceField = $row.find('td:nth-child(3)').text();
+                    const displayName = $row.find('.field-display-name').val();
+
+                    const $newRow = createDisabledFieldRow(sourceField, displayName);
+                    $disabledTable.find('tbody').append($newRow);
+                    $row.remove();
+                    updatePositions();
+
+                    console.log(`Поле ${sourceField} деактивировано`);
+                } catch (error) {
+                    console.error('Ошибка при удалении поля:', error);
+                }
+            });
+        }
+
+        /**
+         * Создает строку для активной таблицы
+         */
+        function createEnabledFieldRow(sourceField, displayName) {
+            return $(`
+            <tr class="field-row">
+                <td class="drag-handle text-center">
                     <i class="fas fa-grip-vertical"></i>
                 </td>
                 <td>
@@ -250,31 +354,26 @@
                            value="${displayName}"
                            name="fields[${sourceField}].displayName">
                 </td>
-                <td>${sourceField}</td>
-                <td class="position-display">0</td>
-                <td>
+                <td class="text-center">${sourceField}</td>
+                <td class="position-display text-center">0</td>
+                <td class="text-center">
                     <button type="button" class="btn btn-sm btn-danger remove-field">
-                        <i class="fas fa-trash"></i>
+                        <i class="fas fa-times"></i>
                     </button>
                 </td>
             </tr>
-        `;
+        `);
+        }
 
-            $('#enabledFieldsTable tbody').append(row);
-            $(this).closest('tr').remove();
-            updatePositions();
-        });
-
-        // Обработчик удаления поля
-        $(document).on('click', '.remove-field', function() {
-            let sourceField = $(this).closest('tr').find('td:nth-child(3)').text();
-            let displayName = $(this).closest('tr').find('.field-display-name').val();
-
-            let row = `
-            <tr>
-                <td>${displayName}</td>
-                <td>${sourceField}</td>
-                <td>
+        /**
+         * Создает строку для неактивной таблицы
+         */
+        function createDisabledFieldRow(sourceField, displayName) {
+            return $(`
+            <tr class="field-row">
+                <td class="text-center">${displayName}</td>
+                <td class="text-center">${sourceField}</td>
+                <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success add-field"
                             data-source-field="${sourceField}"
                             data-display-name="${displayName}">
@@ -282,77 +381,87 @@
                     </button>
                 </td>
             </tr>
-        `;
+        `);
+        }
 
-            $('#disabledFieldsTable tbody').append(row);
-            $(this).closest('tr').remove();
-            updatePositions();
-        });
+        /**
+         * Инициализация отправки формы
+         */
+        function initFormSubmission() {
+            $form.on('submit', function(e) {
+                try {
+                    const allFields = getAllFields();
+                    $('#positionsJson').val(JSON.stringify(allFields));
 
-        // Единый обработчик отправки формы
-        $('#exportForm').on('submit', function(e) {
-            // Собираем поля маппинга
-            let allFields = getAllFields();
-            $('#positionsJson').val(JSON.stringify(allFields));
-            console.log('JSON для отправки:', $('#positionsJson').val());
+                    const selectedStrategy = $strategySelect.val();
+                    if (selectedStrategy) {
+                        const parameters = {};
+                        $('.strategy-parameter').each(function() {
+                            parameters[$(this).data('param-name')] = $(this).val();
+                        });
 
-            // Собираем параметры стратегии
-            const selectedStrategy = document.getElementById('strategyType').value;
-            if (selectedStrategy) {
-                const parameters = {};
-                document.querySelectorAll('.strategy-parameter').forEach(input => {
-                    parameters[input.dataset.paramName] = input.value;
-                });
+                        if (window.clientName) {
+                            $.ajax({
+                                url: `/client/${window.clientName}/exportmapping/strategy-params/${selectedStrategy}`,
+                                method: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify(parameters),
+                                error: function(xhr, status, error) {
+                                    console.error('Ошибка при сохранении параметров стратегии:', error);
+                                }
+                            });
+                        }
+                    }
 
-                // Отправляем параметры стратегии
-                fetch(`/client/${clientName}/exportmapping/strategy-params/${selectedStrategy}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(parameters)
-                });
-            }
-        });
+                    console.log('Данные формы подготовлены:', allFields);
+                } catch (error) {
+                    console.error('Ошибка при подготовке данных формы:', error);
+                    e.preventDefault();
+                }
+            });
+        }
 
+        /**
+         * Собирает все поля формы
+         */
         function getAllFields() {
-            let allFields = [];
-            console.log('Начинаем сбор полей');
+            const allFields = [];
 
-            $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function(index) {
-                let sourceField = $(this).find('td:nth-child(3)').text().trim();
+            // Активные поля
+            $enabledTableBody.find('tr').each(function(index) {
+                const $row = $(this);
+                const sourceField = $row.find('td:nth-child(3)').text().trim();
+
                 if (sourceField) {
                     allFields.push({
                         mappingKey: sourceField,
-                        description: $(this).find('.field-display-name').val(),
-                        position: parseInt($(this).find('.position-display').text()),
+                        description: $row.find('.field-display-name').val(),
+                        position: parseInt($row.find('.position-display').text()),
                         enabled: true
                     });
                 }
             });
 
-            $('#disabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
-                let sourceField = $(this).find('td:nth-child(2)').text().trim();
+            // Неактивные поля
+            $disabledTable.find('tbody tr').each(function() {
+                const $row = $(this);
+                const sourceField = $row.find('td:nth-child(2)').text().trim();
+
                 if (sourceField) {
                     allFields.push({
                         mappingKey: sourceField,
-                        description: $(this).find('td:first-child').text(),
+                        description: $row.find('td:first-child').text().trim(),
                         position: -1,
                         enabled: false
                     });
                 }
             });
 
-            console.log('Собранные поля:', allFields);
             return allFields;
         }
 
-        function updatePositions() {
-            var position = 0;
-            $('#enabledFieldsTable tbody tr:not(.table-secondary)').each(function() {
-                $(this).find('.position-display').text(position++);
-            });
-        }
+        // Запускаем инициализацию
+        initializeForm();
     });
 </script>
 </body>
