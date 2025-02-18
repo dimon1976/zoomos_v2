@@ -17,4 +17,6 @@ public interface ExportConfigRepository extends JpaRepository<ExportConfig, Long
 
     Optional<ExportConfig> findById(Long configId);
 
+    Optional<ExportConfig> findByClientIdAndName(Long clientId, String name);
+
 }

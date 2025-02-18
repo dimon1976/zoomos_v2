@@ -5,6 +5,7 @@ import by.zoomos_v2.service.file.BatchProcessingData;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Интерфейс стратегии обработки данных перед экспортом.
@@ -15,8 +16,8 @@ public interface DataProcessingStrategy {
     /**
      * Обрабатывает данные в соответствии со стратегией
      *
-     * @param data исходные данные для обработки
-     * @param exportConfig конфигурация экспорта
+     * @param data                исходные данные для обработки
+     * @param exportConfig        конфигурация экспорта
      * @param batchProcessingData статистика обработки
      * @return обработанные данные
      */
@@ -32,10 +33,31 @@ public interface DataProcessingStrategy {
      */
     boolean supports(ExportConfig exportConfig);
 
+    /**
+     * Возвращает тип стратегии
+     */
     ProcessingStrategyType getStrategyType();
 
-    // Добавим метод для валидации параметров
-    default void validateParameters(Map<String, Object> parameters) {
-        // По умолчанию пустая реализация
+    /**
+     * Возвращает список требуемых параметров
+     */
+    default Set<String> getRequiredParameters() {
+        return Set.of();
+    }
+
+    /**
+     * Валидирует параметры стратегии
+     *
+     * @throws IllegalArgumentException если параметры невалидны
+     */
+    default void validateParameters(ExportConfig exportConfig) {
+        Set<String> required = getRequiredParameters();
+        for (String param : required) {
+            if (exportConfig.getParam(param) == null) {
+                throw new IllegalArgumentException(
+                        String.format("Отсутствует обязательный параметр: %s", param)
+                );
+            }
+        }
     }
 }

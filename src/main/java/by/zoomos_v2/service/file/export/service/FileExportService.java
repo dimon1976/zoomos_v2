@@ -15,6 +15,8 @@ import by.zoomos_v2.service.file.export.exporter.DataExporter;
 import by.zoomos_v2.service.file.export.exporter.DataExporterFactory;
 import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
+import by.zoomos_v2.service.file.export.strategy.StrategyManager;
+import by.zoomos_v2.service.mapping.ExportConfigService;
 import by.zoomos_v2.service.statistics.OperationStatsService;
 import by.zoomos_v2.service.statistics.StatisticsProcessor;
 import lombok.RequiredArgsConstructor;
@@ -47,37 +49,42 @@ public class FileExportService {
     private final List<DataProcessingStrategy> processingStrategies;
     private final OperationStatsService operationStatsService;
     private final StatisticsProcessor statisticsProcessor;
+    private final StrategyManager strategyManager;
+    private final ExportConfigService exportConfigService;
 
     /**
      * Экспортирует данные из файла с оптимизированной обработкой
      *
-     * @param fileId ID файла
+     * @param fileId       ID файла
      * @param exportConfig конфигурация экспорта
-     * @param fileType тип экспорта (CSV, XLSX)
+     * @param fileType     тип экспорта (CSV, XLSX)
      * @return результат экспорта
      */
     @Transactional()
     public ExportResult exportFileData(Long fileId, ExportConfig exportConfig, String fileType) {
-        log.info("Начало экспорта. FileId: {}, Type: {}", fileId, fileType);
+        log.info("Начало экспорта. FileId: {}, стратегия: {}", fileId, exportConfig.getStrategyType());
         ExportOperation operation = null;
 
         try {
             FileMetadata metadata = getFileMetadata(fileId);
-
-            // Создаем операцию экспорта
             operation = initializeExportOperation(metadata, fileType, exportConfig);
 
-            // Выполняем экспорт в режиме readonly
-            ExportResult result = processExportData(metadata, exportConfig, fileType, operation);
+            // Получаем стратегию и проверяем параметры
+            DataProcessingStrategy strategy = strategyManager.getStrategy(exportConfig.getStrategyType());
+            strategyManager.validateStrategyParameters(exportConfig.getStrategyType(), exportConfig.getParams());
 
-            // Обновляем статистику операции
-            if (result.getBatchProcessingData() != null) {
+            // Обрабатываем данные
+            List<Map<String, Object>> processedData = processDataWithStrategy(metadata, strategy, exportConfig, operation);
+
+            // Экспортируем обработанные данные
+            ExportResult result = createExportResult(processedData, metadata, getExporter(fileType),
+                    exportConfig, fileType);
+
+            // Обновляем статистику
+            if (operation != null) {
+                operation.setFilesGenerated(1);
+                operation.setTargetPath(result.getFileName());
                 statisticsProcessor.updateOperationStats(operation);
-
-                if (result.isSuccess()) {
-                    operation.setFilesGenerated(1);
-                    operation.setTargetPath(result.getFileName());
-                }
             }
 
             return result;
@@ -86,18 +93,6 @@ public class FileExportService {
             handleExportError(operation, e);
             return ExportResult.error(e.getMessage());
         }
-    }
-
-    @Transactional(readOnly = true)
-    public ExportResult processExportData(FileMetadata metadata,
-                                             ExportConfig exportConfig,
-                                             String fileType,
-                                             ExportOperation operation) throws ExportException {
-        // Переносим сюда логику обработки данных в режиме readonly
-        DataExporter exporter = getExporter(fileType);
-        DataProcessingStrategy strategy = selectStrategy(exportConfig);
-        List<Map<String, Object>> data = processDataWithStrategy(metadata, strategy, exportConfig);
-        return createExportResult(data, metadata, exporter, exportConfig, fileType);
     }
 
     private ExportOperation initializeExportOperation(FileMetadata metadata,
@@ -165,12 +160,43 @@ public class FileExportService {
                 .orElseThrow(() -> new IllegalStateException("Default strategy not found"));
     }
 
+    /**
+     * Обрабатывает данные с использованием выбранной стратегии
+     */
     private List<Map<String, Object>> processDataWithStrategy(FileMetadata metadata,
                                                               DataProcessingStrategy strategy,
-                                                              ExportConfig exportConfig) throws ExportException {
-        BatchProcessingData stats = BatchProcessingData.createNew();
-        List<Map<String, Object>> data = getDataFromFile(metadata);
-        return strategy.processData(data, exportConfig, stats);
+                                                              ExportConfig exportConfig,
+                                                              ExportOperation operation) throws ExportException {
+        try {
+            // Валидируем параметры стратегии перед обработкой
+            strategyManager.validateStrategyParameters(exportConfig.getStrategyType(), exportConfig.getParams());
+
+            BatchProcessingData stats = BatchProcessingData.createNew();
+            List<Map<String, Object>> data = getDataFromFile(metadata);
+
+            // Добавляем метаданные в статистику
+            Map<String, Object> strategyMetadata = new HashMap<>();
+            strategyMetadata.put("strategyType", strategy.getStrategyType());
+            strategyMetadata.put("parameters", exportConfig.getParams());
+            operation.getMetadata().put("strategy", strategyMetadata);
+
+            // Обрабатываем данные
+            List<Map<String, Object>> processedData = strategy.processData(data, exportConfig, stats);
+
+            // Обновляем статистику операции
+            operation.setProcessedRecords(processedData.size());
+            statisticsProcessor.updateOperationStats(operation);
+
+            return processedData;
+
+        } catch (IllegalArgumentException e) {
+            // Ошибки валидации параметров
+            log.error("Ошибка валидации параметров стратегии: {}", e.getMessage());
+            throw new ExportException("Некорректные параметры стратегии: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Ошибка при обработке данных стратегией: {}", e.getMessage(), e);
+            throw new ExportException("Ошибка обработки данных: " + e.getMessage());
+        }
     }
 
     private ExportResult createExportResult(List<Map<String, Object>> data,

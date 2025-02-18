@@ -5,6 +5,9 @@ import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportField;
 import by.zoomos_v2.repository.ClientRepository;
 import by.zoomos_v2.repository.ExportConfigRepository;
+import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
+import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
+import by.zoomos_v2.service.file.export.strategy.StrategyManager;
 import by.zoomos_v2.util.EntityField;
 import by.zoomos_v2.util.EntityFieldGroup;
 import by.zoomos_v2.util.EntityRegistryService;
@@ -27,6 +30,102 @@ public class ExportConfigService {
     private final ExportConfigRepository exportConfigRepository;
     private final ClientRepository clientRepository;
     private final EntityRegistryService entityRegistryService;
+    private final StrategyManager strategyManager;
+
+    /**
+     * Обновляет параметры стратегии в конфигурации
+     *
+     * @param configId   ID конфигурации
+     * @param parameters параметры стратегии
+     * @return обновленная конфигурация
+     */
+    @Transactional
+    public ExportConfig updateStrategyParameters(Long configId, Map<String, String> parameters) {
+        ExportConfig config = getConfigById(configId);
+
+        // Валидируем параметры
+        strategyManager.validateStrategyParameters(config.getStrategyType(), parameters);
+
+        // Обновляем параметры
+        config.setParams(parameters);
+
+        log.debug("Обновлены параметры стратегии для конфигурации {}: {}", configId, parameters);
+        return exportConfigRepository.save(config);
+    }
+
+    /**
+     * Проверяет валидность параметров стратегии
+     *
+     * @param configId ID конфигурации
+     * @throws IllegalArgumentException если параметры невалидны
+     */
+    @Transactional(readOnly = true)
+    public void validateExportConfig(Long configId) {
+        ExportConfig config = getConfigById(configId);
+        DataProcessingStrategy strategy = strategyManager.getStrategy(config.getStrategyType());
+        strategy.validateParameters(config);
+    }
+
+    /**
+     * Создает или обновляет конфигурацию экспорта со стратегией
+     *
+     * @param clientId ID клиента
+     * @param name название конфигурации
+     * @param strategyType тип стратегии
+     * @param parameters параметры стратегии
+     * @return созданная или обновленная конфигурация
+     */
+    @Transactional
+    public ExportConfig createOrUpdateConfig(Long clientId,
+                                             String name,
+                                             ProcessingStrategyType strategyType,
+                                             Map<String, String> parameters) {
+        // Валидируем параметры стратегии
+        strategyManager.validateStrategyParameters(strategyType, parameters);
+
+        // Проверяем существующие конфигурации клиента
+        List<ExportConfig> existingConfigs = exportConfigRepository
+                .findByClientId(clientId)
+                .orElse(List.of());
+
+        ExportConfig config;
+        if (existingConfigs.isEmpty()) {
+            // Если это первая конфигурация, создаем её как default
+            config = new ExportConfig();
+            config.setClient(clientRepository.getReferenceById(clientId));
+            config.setDefault(true);
+        } else {
+            // Ищем конфигурацию с таким именем или создаем новую
+            config = exportConfigRepository
+                    .findByClientIdAndName(clientId, name)
+                    .orElseGet(() -> {
+                        ExportConfig newConfig = new ExportConfig();
+                        newConfig.setClient(clientRepository.getReferenceById(clientId));
+                        newConfig.setDefault(false);
+                        return newConfig;
+                    });
+        }
+
+        // Обновляем данные
+        config.setName(name);
+        config.setStrategyType(strategyType);
+        config.setParams(parameters);
+
+        log.debug("Создана/обновлена конфигурация экспорта: {}, стратегия: {}", name, strategyType);
+        return exportConfigRepository.save(config);
+    }
+
+    /**
+     * Получает требуемые параметры для стратегии конфигурации
+     *
+     * @param configId ID конфигурации
+     * @return список требуемых параметров
+     */
+    @Transactional(readOnly = true)
+    public Set<String> getRequiredParameters(Long configId) {
+        ExportConfig config = getConfigById(configId);
+        return strategyManager.getRequiredParameters(config.getStrategyType());
+    }
 
     /**
      * Получает конфигурацию для клиента
@@ -100,7 +199,7 @@ public class ExportConfigService {
      * Обновляет конфигурацию полей
      *
      * @param clientId идентификатор клиента
-     * @param fields список полей для обновления
+     * @param fields   список полей для обновления
      * @return обновленная конфигурация
      */
     @Transactional

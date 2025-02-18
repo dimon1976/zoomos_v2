@@ -1,16 +1,20 @@
 package by.zoomos_v2.controller;
 
+import by.zoomos_v2.DTO.StartExportRequest;
 import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.model.Client;
 import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.model.ExportField;
 import by.zoomos_v2.model.ExportResult;
+import by.zoomos_v2.model.operation.ExportOperation;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.export.service.FileExportService;
 import by.zoomos_v2.service.file.export.service.ProcessingStrategyService;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
+import by.zoomos_v2.service.file.export.strategy.StrategyManager;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.mapping.ExportFieldConfigService;
+import by.zoomos_v2.service.statistics.OperationStatsService;
 import by.zoomos_v2.util.EntityField;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +46,8 @@ public class ExportController {
     private final FileExportService fileExportService;
     private final ExportFieldConfigService exportFieldConfigService;
     private final ProcessingStrategyService processingStrategyService;
+    private final OperationStatsService operationStatsService;
+    private final StrategyManager strategyManager;
     private final FileMetadataService fileMetadataService;
     private final ClientService clientService;
     private final ObjectMapper objectMapper;
@@ -217,6 +223,76 @@ public class ExportController {
     }
 
     /**
+     * Начало асинхронного экспорта
+     */
+    @PostMapping("/client/{clientName}/export/start")
+    @ResponseBody
+    public Map<String, Object> startExport(@PathVariable String clientName,
+                                           @RequestBody StartExportRequest request) {
+        log.debug("Запуск экспорта. FileId: {}, ConfigId: {}, FileType: {}",
+                request.getFileId(), request.getConfigId(), request.getFileType());
+
+        try {
+            // Получаем конфигурацию
+            ExportConfig config = exportFieldConfigService.getConfigById(request.getConfigId());
+
+            // Устанавливаем параметры стратегии
+            if (request.getStrategyParams() != null) {
+                config.setParams(request.getStrategyParams());
+            }
+
+            // Запускаем экспорт
+//            ExportOperation operation = fileExportService.startExport(
+//                    request.getFileId(),
+//                    config,
+//                    request.getFileType()
+//            );
+
+            return Map.of(
+//                    "operationId", operation.getId(),
+                    "status", "started"
+            );
+
+        } catch (Exception e) {
+            log.error("Ошибка при запуске экспорта: {}", e.getMessage(), e);
+            return Map.of(
+                    "error", e.getMessage(),
+                    "status", "error"
+            );
+        }
+    }
+
+    /**
+     * Получение статуса операции экспорта
+     */
+    @GetMapping("/api/operations/{operationId}/status")
+    @ResponseBody
+    public Map<String, Object> getOperationStatus(@PathVariable Long operationId) {
+        try {
+            ExportOperation operation = operationStatsService.findOperation(operationId)
+                    .filter(op -> op instanceof ExportOperation)
+                    .map(op -> (ExportOperation) op)
+                    .orElseThrow(() -> new IllegalArgumentException("Операция не найдена или имеет неверный тип"));
+
+
+            return Map.of(
+                    "status", operation.getStatus().name(),
+                    "progress", operation.getCurrentProgress(),
+                    "message", operation.getMetadata().getOrDefault("statusMessage", ""),
+                    "processed", operation.getProcessedRecords(),
+                    "total", operation.getTotalRecords()
+            );
+
+        } catch (Exception e) {
+            log.error("Ошибка при получении статуса операции: {}", e.getMessage(), e);
+            return Map.of(
+                    "status", "ERROR",
+                    "message", "Ошибка: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
      * Скачивание экспортированного файла
      */
     @GetMapping("/client/{clientName}/export/download/{fileId}")
@@ -274,6 +350,30 @@ public class ExportController {
                                                  @PathVariable ProcessingStrategyType strategyType) {
         return processingStrategyService.getStrategyParameters(clientService.getClientByName(clientName).getId(), strategyType);
     }
+
+    /**
+     * Получение параметров стратегии для конфигурации
+     */
+    @GetMapping("/client/{clientName}/export-strategy-params/{configId}")
+    @ResponseBody
+    public Map<String, Object> getStrategyParameters(@PathVariable String clientName,
+                                                     @PathVariable Long configId) {
+        log.debug("Запрос параметров стратегии для конфигурации {}", configId);
+
+        try {
+            ExportConfig config = exportFieldConfigService.getConfigById(configId);
+            Set<String> requiredParams = strategyManager.getRequiredParameters(config.getStrategyType());
+
+            return Map.of(
+                    "requiredParameters", requiredParams,
+                    "currentValues", config.getParams()
+            );
+        } catch (Exception e) {
+            log.error("Ошибка при получении параметров стратегии: {}", e.getMessage(), e);
+            return Map.of("error", e.getMessage());
+        }
+    }
+
 
     /**
      * API для обновления параметров стратегии

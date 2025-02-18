@@ -110,15 +110,17 @@ public class TaskBasedProcessingStrategy implements DataProcessingStrategy {
         return row;
     }
 
+    @Override
+    public Set<String> getRequiredParameters() {
+        return Set.of("taskNumber");
+    }
+
     /**
      * Получает номер задания из конфигурации
      */
     private String getTaskNumber(ExportConfig exportConfig) {
-        String taskNumber = exportConfig.getParam("taskNumber");
-        if (taskNumber == null || taskNumber.isEmpty()) {
-            throw new IllegalArgumentException("Не указан номер задания в конфигурации экспорта");
-        }
-        return taskNumber;
+        validateParameters(exportConfig);
+        return exportConfig.getParam("taskNumber");
     }
 
     @Override

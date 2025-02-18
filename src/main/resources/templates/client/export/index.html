@@ -141,6 +141,19 @@
                                 </div>
                             </div>
 
+                            <div id="strategyParams" class="mb-3" style="display: none;">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-cog me-2"></i>Параметры стратегии
+                                        </h5>
+                                    </div>
+                                    <div class="card-body" id="strategyParamsContent">
+                                        <!-- Параметры будут добавлены динамически -->
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-secondary" onclick="hideExportOptions()">
                                     <i class="fas fa-times me-2"></i>Отмена
@@ -160,24 +173,51 @@
 <div th:replace="~{fragments/navbar :: footer}"></div>
 
 <script th:inline="javascript">
-    function showExportOptions(button) {
-        const fileId = button.getAttribute('data-file-id');
-        const fileName = button.getAttribute('data-file-name');
-        document.getElementById('selectedFileId').value = fileId;
-        document.getElementById('selectedFileName').textContent = ' - ' + fileName;
-        document.getElementById('exportOptions').style.display = 'block';
+    document.getElementById('configId').addEventListener('change', function() {
+        const configId = this.value;
+        const strategyParams = document.getElementById('strategyParams');
+        const strategyParamsContent = document.getElementById('strategyParamsContent');
 
-        // Прокручиваем к форме
-        document.getElementById('exportOptions').scrollIntoView({ behavior: 'smooth' });
-    }
+        if (!configId) {
+            strategyParams.style.display = 'none';
+            return;
+        }
 
-    function hideExportOptions() {
-        document.getElementById('exportOptions').style.display = 'none';
-    }
+        // Получаем информацию о параметрах стратегии
+        fetch(`/client/${clientName}/export-strategy-params/${configId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.requiredParameters && data.requiredParameters.length > 0) {
+                    // Формируем HTML для параметров
+                    const paramsHtml = data.requiredParameters.map(param => `
+                    <div class="mb-3">
+                        <label class="form-label">${param}</label>
+                        <input type="text"
+                               class="form-control strategy-param"
+                               name="strategyParams[${param}]"
+                               data-param="${param}"
+                               required>
+                        <div class="invalid-feedback">
+                            Это поле обязательно для заполнения
+                        </div>
+                    </div>
+                `).join('');
 
+                    strategyParamsContent.innerHTML = paramsHtml;
+                    strategyParams.style.display = 'block';
+                } else {
+                    strategyParams.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка получения параметров стратегии:', error);
+                strategyParams.style.display = 'none';
+            });
+    });
+
+    // Обновляем обработчик отправки формы
     document.getElementById('exportForm').addEventListener('submit', function(e) {
         e.preventDefault();
-
         if (!this.checkValidity()) {
             e.stopPropagation();
             this.classList.add('was-validated');
@@ -187,30 +227,120 @@
         const fileId = document.getElementById('selectedFileId').value;
         const configId = document.getElementById('configId').value;
         const fileType = document.getElementById('fileType').value;
-        const clientName = [[${client.name}]];
+        const strategyParams = {};
+
+        // Собираем параметры стратегии
+        document.querySelectorAll('.strategy-param').forEach(input => {
+            strategyParams[input.dataset.param] = input.value;
+        });
+
+        // Показываем прогресс
+        showExportProgress();
+
+        // Начинаем экспорт
+        startExport(fileId, configId, fileType, strategyParams);
+    });
+
+    function showExportProgress() {
+        const progressDiv = document.getElementById('exportProgress');
+        const progressBar = document.getElementById('exportProgressBar');
+        const statusText = document.getElementById('exportStatus');
+
+        progressDiv.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        statusText.textContent = 'Подготовка к экспорту...';
 
         const exportButton = document.getElementById('exportButton');
         exportButton.disabled = true;
         exportButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Экспорт...';
+    }
 
-        // Создаем URL для скачивания
-        const url = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}`;
+    function startExport(fileId, configId, fileType, strategyParams) {
+        const requestData = {
+            fileId: fileId,
+            configId: configId,
+            fileType: fileType,
+            strategyParams: strategyParams
+        };
 
-        // Создаем временную ссылку для скачивания
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        fetch(`/client/${clientName}/export/start`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.operationId) {
+                    pollExportStatus(data.operationId);
+                } else {
+                    handleExportError('Не удалось начать экспорт');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при запуске экспорта:', error);
+                handleExportError('Ошибка при запуске экспорта');
+            });
+    }
 
-        // Возвращаем кнопку в исходное состояние через 2 секунды
+    function pollExportStatus(operationId) {
+        const progressBar = document.getElementById('exportProgressBar');
+        const statusText = document.getElementById('exportStatus');
+
+        fetch(`/api/operations/${operationId}/status`)
+            .then(response => response.json())
+            .then(data => {
+                progressBar.style.width = `${data.progress}%`;
+                progressBar.textContent = `${data.progress}%`;
+                statusText.textContent = data.message;
+
+                if (data.status === 'COMPLETED') {
+                    handleExportSuccess(operationId);
+                } else if (data.status === 'FAILED') {
+                    handleExportError(data.message);
+                } else {
+                    // Продолжаем опрос каждую секунду
+                    setTimeout(() => pollExportStatus(operationId), 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при проверке статуса:', error);
+                handleExportError('Ошибка при проверке статуса экспорта');
+            });
+    }
+
+    function handleExportSuccess(operationId) {
+        const statusText = document.getElementById('exportStatus');
+        statusText.textContent = 'Экспорт успешно завершен';
+
+        // Используем существующий эндпоинт для скачивания
+        const fileId = document.getElementById('selectedFileId').value;
+        const configId = document.getElementById('configId').value;
+        const fileType = document.getElementById('fileType').value;
+
+        window.location.href = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}`;
+
+        // Возвращаем форму в исходное состояние
+        resetExportForm();
+    }
+
+    function handleExportError(message) {
+        const statusText = document.getElementById('exportStatus');
+        statusText.textContent = `Ошибка: ${message}`;
+        resetExportForm();
+    }
+
+    function resetExportForm() {
+        const exportButton = document.getElementById('exportButton');
+        exportButton.disabled = false;
+        exportButton.innerHTML = '<i class="fas fa-download me-2"></i>Скачать файл';
+
         setTimeout(() => {
-            exportButton.disabled = false;
-            exportButton.innerHTML = '<i class="fas fa-download me-2"></i>Скачать файл';
-            hideExportOptions();
-        }, 2000);
-    });
+            document.getElementById('exportProgress').style.display = 'none';
+        }, 3000);
+    }
 </script>
 
 </body>
