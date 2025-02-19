@@ -89,6 +89,14 @@ public class TaskBasedProcessingStrategy implements DataProcessingStrategy {
         );
     }
 
+    @Override
+    public Set<String> getRequiredParameters() {
+        return getParameterDescriptors().stream()
+                .filter(StrategyParameterDescriptor::isRequired)
+                .map(StrategyParameterDescriptor::getKey)
+                .collect(Collectors.toSet());
+    }
+
     /**
      * Получает номер задания из конфигурации
      */

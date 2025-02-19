@@ -362,11 +362,20 @@ public class ExportController {
 
         try {
             ExportConfig config = exportFieldConfigService.getConfigById(configId);
-            Set<String> requiredParams = strategyManager.getRequiredParameters(config.getStrategyType());
+                        
+            // Добавляем проверку
+            ProcessingStrategyType strategyType = config.getStrategyType();
+            if (strategyType == null) {
+                log.warn("Тип стратегии не задан для конфигурации {}", configId);
+                return Map.of("error", "Тип стратегии не задан");
+            }
+
+            Set<String> requiredParams = strategyManager.getRequiredParameters(strategyType);
+            log.debug("Получены параметры стратегии: {}", required Params);
 
             return Map.of(
                     "requiredParameters", requiredParams,
-                    "currentValues", config.getParams()
+                    "currentValues", config.getParams() != null ? config.getParams() : Collections.emptyMap()
             );
         } catch (Exception e) {
             log.error("Ошибка при получении параметров стратегии: {}", e.getMessage(), e);

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Сервис для управления стратегиями обработки данных.
@@ -23,8 +24,15 @@ public class StrategyManager {
      * Получает стратегию по типу
      */
     public DataProcessingStrategy getStrategy(ProcessingStrategyType type) {
+        if (type == null) {
+            throw new IllegalArgumentException("Тип стратегии не может быть null");
+        }
+        
+        log.debug("Поиск стратегии для типа: {}. Доступные стратегии: {}", type, 
+            strategies.stream().map(DataProcessingStrategy::getStrategyType).collect(Collectors.toList()));
+        
         return strategies.stream()
-                .filter(strategy -> strategy.getStrategyType() == type)
+                .filter(strategy -> type.equals(strategy.getStrategyType()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Стратегия не найдена: " + type));
     }
