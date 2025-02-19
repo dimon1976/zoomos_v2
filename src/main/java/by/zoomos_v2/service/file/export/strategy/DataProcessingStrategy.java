@@ -39,6 +39,13 @@ public interface DataProcessingStrategy {
     ProcessingStrategyType getStrategyType();
 
     /**
+     * Возвращает описание параметров стратегии
+     */
+    default List<StrategyParameterDescriptor> getParameterDescriptors() {
+        return List.of();
+    }
+
+    /**
      * Возвращает список требуемых параметров
      */
     default Set<String> getRequiredParameters() {
@@ -47,17 +54,15 @@ public interface DataProcessingStrategy {
 
     /**
      * Валидирует параметры стратегии
-     *
      * @throws IllegalArgumentException если параметры невалидны
      */
-    default void validateParameters(ExportConfig exportConfig) {
-        Set<String> required = getRequiredParameters();
-        for (String param : required) {
-            if (exportConfig.getParam(param) == null) {
-                throw new IllegalArgumentException(
-                        String.format("Отсутствует обязательный параметр: %s", param)
-                );
-            }
+    default void validateParameters(Map<String, String> parameters) {
+        List<StrategyParameterDescriptor> descriptors = getParameterDescriptors();
+
+        // Проверяем каждый параметр
+        for (StrategyParameterDescriptor descriptor : descriptors) {
+            String value = parameters.get(descriptor.getKey());
+            descriptor.validate(value);
         }
     }
 }

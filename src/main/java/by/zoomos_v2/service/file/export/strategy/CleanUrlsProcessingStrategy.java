@@ -92,15 +92,4 @@ public class CleanUrlsProcessingStrategy implements DataProcessingStrategy {
         return ProcessingStrategyType.CLEAN_URLS;
     }
 
-    /**
-     * Валидация параметров стратегии
-     */
-    public void validateParameters(Map<String, Object> parameters) {
-        if (parameters != null && parameters.containsKey("competitors")) {
-            Object competitors = parameters.get("competitors");
-            if (!(competitors instanceof List)) {
-                throw new IllegalArgumentException("Parameter 'competitors' must be a list");
-            }
-        }
     }
-}

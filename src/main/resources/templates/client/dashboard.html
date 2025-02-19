@@ -456,6 +456,19 @@
                                                     Выберите формат файла
                                                 </div>
                                             </div>
+                                            <!-- Добавить после выбора формата файла в форме exportForm -->
+                                            <div id="strategyParams" class="mb-3" style="display: none;">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h5 class="mb-0">
+                                                            <i class="fas fa-cog me-2"></i>Параметры стратегии
+                                                        </h5>
+                                                    </div>
+                                                    <div class="card-body" id="strategyParamsContent">
+                                                        <!-- Параметры будут добавлены динамически -->
+                                                    </div>
+                                                </div>
+                                            </div>
 
                                             <div class="d-flex gap-2">
                                                 <button type="button" class="btn btn-secondary"
@@ -504,7 +517,6 @@
             `?from=${from.toISOString()}&to=${to.toISOString()}`;
     }
 
-
     function showExportOptions(button) {
         const fileId = button.getAttribute('data-file-id');
         const fileName = button.getAttribute('data-file-name');
@@ -520,7 +532,115 @@
         document.getElementById('exportOptions').style.display = 'none';
     }
 
-    document.getElementById('exportForm')?.addEventListener('submit', function (e) {
+    // Функция генерации HTML для параметра в зависимости от его типа
+    function generateParameterHtml(param) {
+        let inputHtml;
+        switch(param.type) {
+            case 'SELECT':
+                inputHtml = `
+                    <select class="form-select strategy-param"
+                            name="strategyParams[${param.key}]"
+                            data-param="${param.key}"
+                            ${param.required ? 'required' : ''}>
+                        <option value="">Выберите значение</option>
+                        ${param.allowedValues.map(value =>
+                    `<option value="${value}" ${value === param.defaultValue ? 'selected' : ''}>
+                                ${value}
+                            </option>`
+                ).join('')}
+                    </select>`;
+                break;
+            case 'DATE':
+                inputHtml = `
+                    <input type="date"
+                           class="form-control strategy-param"
+                           name="strategyParams[${param.key}]"
+                           data-param="${param.key}"
+                           ${param.required ? 'required' : ''}
+                           value="${param.defaultValue || ''}">`;
+                break;
+            case 'NUMBER':
+                inputHtml = `
+                    <input type="number"
+                           class="form-control strategy-param"
+                           name="strategyParams[${param.key}]"
+                           data-param="${param.key}"
+                           ${param.required ? 'required' : ''}
+                           value="${param.defaultValue || ''}">`;
+                break;
+            default: // STRING
+                inputHtml = `
+                    <input type="text"
+                           class="form-control strategy-param"
+                           name="strategyParams[${param.key}]"
+                           data-param="${param.key}"
+                           ${param.required ? 'required' : ''}
+                           value="${param.defaultValue || ''}">`;
+        }
+
+        return `
+            <div class="mb-3">
+                <label class="form-label">
+                    ${param.displayName}
+                    ${param.required ? '<span class="text-danger">*</span>' : ''}
+                </label>
+                ${inputHtml}
+                ${param.description ? `<div class="form-text">${param.description}</div>` : ''}
+                <div class="invalid-feedback">
+                    Это поле обязательно для заполнения
+                </div>
+            </div>
+        `;
+    }
+
+    // Обработчик изменения конфигурации
+    document.getElementById('configId')?.addEventListener('change', function() {
+        const configId = this.value;
+        const strategyParams = document.getElementById('strategyParams');
+        const strategyParamsContent = document.getElementById('strategyParamsContent');
+
+        if (!configId) {
+            strategyParams.style.display = 'none';
+            return;
+        }
+
+        const clientName = [[${client.name}]];
+
+        fetch(`/client/${clientName}/export-strategy-params/${configId}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Параметры стратегии:', data);
+                // Изменяем проверку на requiredParameters
+                if (data.requiredParameters && data.requiredParameters.length > 0) {
+                    const paramsHtml = data.requiredParameters.map(param => `
+                    <div class="mb-3">
+                        <label class="form-label">${param}</label>
+                        <input type="text"
+                               class="form-control strategy-param"
+                               name="strategyParams[${param}]"
+                               data-param="${param}"
+                               value="${data.currentValues[param] || ''}"
+                               required>
+                        <div class="invalid-feedback">
+                            Это поле обязательно для заполнения
+                        </div>
+                    </div>
+                `).join('');
+
+                    strategyParamsContent.innerHTML = paramsHtml;
+                    strategyParams.style.display = 'block';
+                } else {
+                    strategyParams.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка получения параметров стратегии:', error);
+                strategyParams.style.display = 'none';
+            });
+    });
+
+    // Обработчик отправки формы
+    document.getElementById('exportForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
 
         if (!this.checkValidity()) {
@@ -534,11 +654,25 @@
         const fileType = document.getElementById('fileType').value;
         const clientName = [[${client.name}]];
 
+        // Собираем параметры стратегии
+        const strategyParams = {};
+        document.querySelectorAll('.strategy-param').forEach(input => {
+            if (input.type === 'checkbox') {
+                strategyParams[input.dataset.param] = input.checked;
+            } else {
+                strategyParams[input.dataset.param] = input.value;
+            }
+        });
+
         const exportButton = document.getElementById('exportButton');
         exportButton.disabled = true;
         exportButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Экспорт...';
 
-        const url = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}`;
+        // Добавляем параметры стратегии в URL
+        const url = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}&` +
+            Object.entries(strategyParams)
+                .map(([key, value]) => `strategyParams[${key}]=${encodeURIComponent(value)}`)
+                .join('&');
 
         const link = document.createElement('a');
         link.href = url;

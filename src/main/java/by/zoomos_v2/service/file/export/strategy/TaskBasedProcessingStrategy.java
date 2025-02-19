@@ -1,12 +1,10 @@
 package by.zoomos_v2.service.file.export.strategy;
 
 import by.zoomos_v2.model.ExportConfig;
-import by.zoomos_v2.model.entity.Product;
 import by.zoomos_v2.model.RetailNetworkDirectory;
+import by.zoomos_v2.service.directory.RetailNetworkDirectoryService;
 import by.zoomos_v2.service.file.BatchProcessingData;
 import by.zoomos_v2.service.file.export.service.TaskValidationService;
-import by.zoomos_v2.service.directory.RetailNetworkDirectoryService;
-import by.zoomos_v2.service.statistics.OperationProgressTracker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,7 +14,7 @@ import java.util.stream.Collectors;
 
 /**
  * Стратегия обработки данных на основе задания.
- * Фильтрует данные на основе задания и обогащает справочными данными.
+ * Фильтрует данные по заданию и обогащает их справочной информацией.
  */
 @Slf4j
 @Component
@@ -25,32 +23,41 @@ public class TaskBasedProcessingStrategy implements DataProcessingStrategy {
 
     private final TaskValidationService taskValidationService;
     private final RetailNetworkDirectoryService directoryService;
-    private final OperationProgressTracker progressTracker;
 
     @Override
     public List<Map<String, Object>> processData(List<Map<String, Object>> data,
                                                  ExportConfig exportConfig,
                                                  BatchProcessingData batchProcessingData) {
-        log.info("Начало обработки данных с использованием стратегии на основе задания");
+        String taskNumber = getTaskNumber(exportConfig);
+        log.info("Начало обработки данных по заданию {}. Количество записей: {}",
+                taskNumber, data.size());
 
         try {
-            // Получаем номер задания из конфигурации
-            String taskNumber = getTaskNumber(exportConfig);
-            log.debug("Номер задания для обработки: {}", taskNumber);
-
             // Получаем ключи валидации из задания
             Set<String> validationKeys = taskValidationService.createValidationKeysForTask(taskNumber);
             log.debug("Получено {} ключей валидации из задания", validationKeys.size());
 
-            // Фильтруем и обрабатываем данные
-            List<Map<String, Object>> processedData = filterAndEnrichData(data, validationKeys);
+            // Собираем все коды розничных сетей для оптимизации запросов к справочнику
+            Set<String> retailCodes = data.stream()
+                    .map(row -> (String) row.get("competitordata.competitorAdditional"))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            // Загружаем справочник
+            Map<String, RetailNetworkDirectory> directoryMap = directoryService.getDirectoryMap(
+                    new ArrayList<>(retailCodes)
+            );
+
+            // Фильтруем и обогащаем данные
+            List<Map<String, Object>> processedData = data.stream()
+                    .filter(row -> isValidRow(row, validationKeys))
+                    .map(row -> enrichRowWithDirectory(row, directoryMap))
+                    .collect(Collectors.toList());
 
             // Обновляем статистику
             batchProcessingData.setSuccessCount(processedData.size());
 
-            log.info("Обработка данных завершена. Обработано {} записей из {}",
-                    processedData.size(), data.size());
-
+            log.info("Обработка данных завершена. Отфильтровано записей: {}", processedData.size());
             return processedData;
 
         } catch (Exception e) {
@@ -59,26 +66,35 @@ public class TaskBasedProcessingStrategy implements DataProcessingStrategy {
         }
     }
 
-    /**
-     * Фильтрует и обогащает данные
-     */
-    private List<Map<String, Object>> filterAndEnrichData(List<Map<String, Object>> data,
-                                                          Set<String> validationKeys) {
-        // Собираем все коды розничных сетей для оптимизации запросов к справочнику
-        Set<String> retailCodes = data.stream()
-                .map(row -> (String) row.get("competitordata.competitorAdditional"))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+    @Override
+    public boolean supports(ExportConfig exportConfig) {
+        return ProcessingStrategyType.TASK_BASED_FILTER.equals(exportConfig.getStrategyType());
+    }
 
-        // Загружаем справочник
-        Map<String, RetailNetworkDirectory> directoryMap = directoryService.getDirectoryMap(
-                new ArrayList<>(retailCodes)
+    @Override
+    public ProcessingStrategyType getStrategyType() {
+        return ProcessingStrategyType.TASK_BASED_FILTER;
+    }
+
+    @Override
+    public List<StrategyParameterDescriptor> getParameterDescriptors() {
+        return List.of(
+                StrategyParameterDescriptor.builder()
+                        .key("taskNumber")
+                        .displayName("Номер задания")
+                        .description("Номер задания для фильтрации данных")
+                        .type(ParameterType.STRING)
+                        .required(true)
+                        .build()
         );
+    }
 
-        return data.stream()
-                .filter(row -> isValidRow(row, validationKeys))
-                .map(row -> enrichRowWithDirectory(row, directoryMap))
-                .collect(Collectors.toList());
+    /**
+     * Получает номер задания из конфигурации
+     */
+    private String getTaskNumber(ExportConfig exportConfig) {
+        validateParameters(exportConfig.getParams());
+        return exportConfig.getParam("taskNumber");
     }
 
     /**
@@ -108,28 +124,5 @@ public class TaskBasedProcessingStrategy implements DataProcessingStrategy {
             }
         }
         return row;
-    }
-
-    @Override
-    public Set<String> getRequiredParameters() {
-        return Set.of("taskNumber");
-    }
-
-    /**
-     * Получает номер задания из конфигурации
-     */
-    private String getTaskNumber(ExportConfig exportConfig) {
-        validateParameters(exportConfig);
-        return exportConfig.getParam("taskNumber");
-    }
-
-    @Override
-    public boolean supports(ExportConfig exportConfig) {
-        return ProcessingStrategyType.TASK_BASED_FILTER.equals(exportConfig.getStrategyType());
-    }
-
-    @Override
-    public ProcessingStrategyType getStrategyType() {
-        return ProcessingStrategyType.TASK_BASED_FILTER;
     }
 }

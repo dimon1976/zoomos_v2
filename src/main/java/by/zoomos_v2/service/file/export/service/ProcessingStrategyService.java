@@ -6,6 +6,7 @@ import by.zoomos_v2.model.ExportConfig;
 import by.zoomos_v2.repository.ClientProcessingStrategyRepository;
 import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
+import by.zoomos_v2.service.file.export.strategy.StrategyParameterDescriptor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -36,25 +38,39 @@ public class ProcessingStrategyService {
     public Map<String, Object> getStrategyParameters(Long clientId, ProcessingStrategyType strategyType) {
         log.debug("Получение параметров стратегии {} для клиента {}", strategyType, clientId);
 
-        return clientProcessingStrategyRepository
+        // Находим стратегию по типу
+        DataProcessingStrategy strategy = strategies.stream()
+                .filter(s -> strategyType.equals(s.getStrategyType()))
+                .findFirst()
+                .orElseGet(this::getDefaultStrategy);
+
+        // Получаем описание параметров из стратегии
+        List<StrategyParameterDescriptor> parameters = strategy.getParameterDescriptors();
+
+        // Получаем текущие значения параметров (если есть)
+        Map<String, String> currentValues = clientProcessingStrategyRepository
                 .findByClientIdAndStrategyTypeAndIsActiveTrue(clientId, strategyType)
-                .map(strategy -> {
+                .map(clientStrategy -> {
                     try {
-                        // Проверяем на пустые параметры
-                        String params = strategy.getParameters();
-                        if (params == null || params.isEmpty()) {
-                            return getDefaultParameters(strategyType);
-                        }
                         return objectMapper.readValue(
-                                params,
-                                new TypeReference<Map<String, Object>>() {}
+                                clientStrategy.getParameters(),
+                                new TypeReference<Map<String, String>>() {}
                         );
                     } catch (JsonProcessingException e) {
                         log.error("Ошибка при чтении параметров стратегии: {}", e.getMessage(), e);
-                        return getDefaultParameters(strategyType);
+                        return new HashMap<String, String>();
                     }
                 })
-                .orElseGet(() -> getDefaultParameters(strategyType));
+                .orElseGet(HashMap::new);
+
+        return Map.of(
+                "requiredParameters",
+                parameters.stream()
+                        .map(StrategyParameterDescriptor::getKey)
+                        .collect(Collectors.toList()),
+                "currentValues",
+                currentValues
+        );
     }
 
     // Метод для получения параметров по умолчанию для разных типов стратегий
