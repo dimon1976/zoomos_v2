@@ -306,11 +306,8 @@ public class ExportController {
 
         log.debug("Запрос на экспорт файла. FileId: {}, ConfigId: {}, FileType: {}",
                 fileId, configId, fileType);
-
         try {
             ExportConfig exportConfig = exportFieldConfigService.getConfigById(configId);
-
-            // Устанавливаем параметры стратегии
             exportConfig.setParams(strategyParams);
 
             ExportResult exportResult = fileExportService.exportFileData(fileId, exportConfig, fileType);
@@ -320,26 +317,27 @@ public class ExportController {
                 return ResponseEntity.badRequest().build();
             }
 
-            String contentType = switch (fileType.toLowerCase()) {
-                case "csv" -> "text/csv";
-                case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                default -> "application/octet-stream";
-            };
+            if (!fileType.equalsIgnoreCase("csv")) {
+                return ResponseEntity.badRequest().body(null);
+            }
 
+            // 🔹 Кодируем имя файла для корректного отображения в браузере
             String filename = exportResult.getFileName();
-            String encodedFilename = new String(filename.getBytes(StandardCharsets.UTF_8),
-                    StandardCharsets.ISO_8859_1);
+            String encodedFilename = new String(filename.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
 
+            // 🔹 Устанавливаем HTTP-заголовки
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(contentType));
+            headers.setContentType(MediaType.parseMediaType("text/csv; charset=windows-1251")); // Можно убрать, если не нужно
             headers.setContentDispositionFormData("attachment", encodedFilename);
 
+            // 🔹 Просто передаём файл (он уже закодирован в CP1251)
             ByteArrayResource resource = new ByteArrayResource(exportResult.getFileContent());
 
             return ResponseEntity.ok()
                     .headers(headers)
                     .contentLength(exportResult.getFileContent().length)
                     .body(resource);
+
         } catch (Exception e) {
             log.error("Ошибка при экспорте файла: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
@@ -367,7 +365,7 @@ public class ExportController {
 
         try {
             ExportConfig config = exportFieldConfigService.getConfigById(configId);
-                        
+
             // Добавляем проверку
             ProcessingStrategyType strategyType = config.getStrategyType();
             if (strategyType == null) {

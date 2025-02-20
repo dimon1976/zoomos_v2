@@ -10,8 +10,10 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.nio.charset.Charset;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -49,7 +51,7 @@ public class CSVDataExporter extends AbstractDataExporter {
                 .withDelimiter(delimiter.charAt(0))
                 .withHeader(getHeadersArray(enabledFields));
 
-        try (OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+        try (OutputStreamWriter writer = new OutputStreamWriter(outputStream, Charset.forName("windows-1251"));
              CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat)) {
 
             for (Map<String, Object> record : data) {
