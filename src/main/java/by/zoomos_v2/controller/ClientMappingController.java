@@ -193,6 +193,9 @@ public class ClientMappingController {
         if (mapping.getFileType() == null) {
             throw new IllegalArgumentException("Тип файла обязателен для заполнения");
         }
+        if (mapping.getDataSource() == null) {
+            throw new IllegalArgumentException("Тип источника данных обязателен для заполнения");
+        }
         if (mapping.getColumnsConfig() == null || mapping.getColumnsConfig().trim().isEmpty()) {
             throw new IllegalArgumentException("Необходимо настроить маппинг колонок");
         }

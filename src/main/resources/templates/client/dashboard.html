@@ -669,10 +669,11 @@
         exportButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Экспорт...';
 
         // Добавляем параметры стратегии в URL
-        const url = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}&` +
-            Object.entries(strategyParams)
-                .map(([key, value]) => `strategyParams[${key}]=${encodeURIComponent(value)}`)
-                .join('&');
+        const strategyParamsForUrl = Object.entries(strategyParams)
+            .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+            .join('&');
+
+        const url = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}&${strategyParamsForUrl}`;
 
         const link = document.createElement('a');
         link.href = url;

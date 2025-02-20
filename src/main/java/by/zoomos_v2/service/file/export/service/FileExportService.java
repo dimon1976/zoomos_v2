@@ -169,7 +169,7 @@ public class FileExportService {
                                                               ExportOperation operation) throws ExportException {
         try {
             // Валидируем параметры стратегии перед обработкой
-            strategyManager.validateStrategyParameters(exportConfig.getStrategyType(), exportConfig.getParams());
+//            strategyManager.validateStrategyParameters(exportConfig.getStrategyType(), exportConfig.getParams());
 
             BatchProcessingData stats = BatchProcessingData.createNew();
             List<Map<String, Object>> data = getDataFromFile(metadata);

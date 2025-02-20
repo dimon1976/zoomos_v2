@@ -1,6 +1,7 @@
 package by.zoomos_v2.controller;
 
 import by.zoomos_v2.aspect.LogExecution;
+import by.zoomos_v2.model.Client;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.operation.ImportOperation;
 import by.zoomos_v2.service.client.ClientService;
@@ -80,18 +81,21 @@ public class UploadController {
         log.debug("Просмотр статуса файла {} для магазина {}", fileId, clientName);
 
         try {
+            Client client = clientService.getClientByName(clientName);
+            model.addAttribute("client", client); // Вынесли за пределы ifPresent
+
             FileMetadata metadata = fileUploadService.getFileMetadata(fileId);
-            validateFileOwnership(metadata, clientService.getClientByName(clientName).getId());
+            validateFileOwnership(metadata, client.getId());
 
+            // Добавляем базовую информацию о файле
+            model.addAttribute("file", fileMetadataService.createFileInfo(metadata, client.getId()));
+
+            // Добавляем информацию об операции, если она есть
             operationStatsService.findOperationByFileId(fileId).ifPresent(operation -> {
-                Map<String, Object> currentProgress =
-                        (Map<String, Object>) operation.getMetadata().getOrDefault("currentProgress", new HashMap<>());
-
-                model.addAttribute("file", fileMetadataService.createFileInfo(metadata, clientService.getClientByName(clientName).getId()));
+                Map<String, Object> currentProgress = (Map<String, Object>)
+                        operation.getMetadata().getOrDefault("currentProgress", new HashMap<>());
                 model.addAttribute("operation", operation);
                 model.addAttribute("currentProgress", currentProgress);
-                model.addAttribute("clientId", clientService.getClientByName(clientName).getId());
-                model.addAttribute("client", clientService.getClientByName(clientName));
             });
 
             return "files/status";

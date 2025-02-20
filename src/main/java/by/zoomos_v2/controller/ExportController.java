@@ -301,13 +301,18 @@ public class ExportController {
             @PathVariable String clientName,
             @PathVariable Long fileId,
             @RequestParam Long configId,
-            @RequestParam String fileType) {
+            @RequestParam String fileType,
+            @RequestParam Map<String, String> strategyParams) {
 
         log.debug("Запрос на экспорт файла. FileId: {}, ConfigId: {}, FileType: {}",
                 fileId, configId, fileType);
 
         try {
             ExportConfig exportConfig = exportFieldConfigService.getConfigById(configId);
+
+            // Устанавливаем параметры стратегии
+            exportConfig.setParams(strategyParams);
+
             ExportResult exportResult = fileExportService.exportFileData(fileId, exportConfig, fileType);
 
             if (!exportResult.isSuccess()) {
@@ -371,7 +376,7 @@ public class ExportController {
             }
 
             Set<String> requiredParams = strategyManager.getRequiredParameters(strategyType);
-            log.debug("Получены параметры стратегии: {}", required Params);
+            log.debug("Получены параметры стратегии: {}", requiredParams);
 
             return Map.of(
                     "requiredParameters", requiredParams,

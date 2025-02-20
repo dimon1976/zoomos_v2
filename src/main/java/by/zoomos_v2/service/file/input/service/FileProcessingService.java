@@ -4,6 +4,7 @@ import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.mapping.ClientMappingConfig;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
+import by.zoomos_v2.model.enums.DataSourceType;
 import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.model.enums.OperationType;
 import by.zoomos_v2.model.operation.ImportOperation;
@@ -184,11 +185,15 @@ public class FileProcessingService {
                         if (!operationStateManager.isCancelled(operation.getId())) {
                             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                                 try {
+                                    // Получаем ClientMappingConfig для определения типа данных
+                                    ClientMappingConfig mappingConfig = mappingConfigService.getMappingById(metadata.getMappingConfigId());
+                                    DataSourceType dataSourceType = mappingConfig.getDataSource();
                                     Map<String, Object> results = dataPersistenceService.saveEntities(
                                             batch,
                                             metadata.getClientId(),
                                             columnsMapping,
-                                            metadata.getId()
+                                            metadata.getId(),
+                                            dataSourceType
                                     );
 
                                     synchronized (operation) {

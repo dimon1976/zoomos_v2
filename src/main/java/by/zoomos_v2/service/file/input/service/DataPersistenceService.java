@@ -4,6 +4,7 @@ import by.zoomos_v2.annotations.FieldDescription;
 import by.zoomos_v2.model.entity.CompetitorData;
 import by.zoomos_v2.model.entity.Product;
 import by.zoomos_v2.model.entity.RegionData;
+import by.zoomos_v2.model.enums.DataSourceType;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +45,7 @@ public class DataPersistenceService {
      * @param fileId   идентификатор файла
      * @return Map с результатами обработки, содержащий количество успешных и неуспешных операций
      */
-    public Map<String, Object> saveEntities(List<Map<String, String>> data, Long clientId, Map<String, String> mapping, Long fileId) {
+    public Map<String, Object> saveEntities(List<Map<String, String>> data, Long clientId, Map<String, String> mapping, Long fileId, DataSourceType dataSourceType) {
         int successCount = 0;
         int errorCount = 0;
         List<String> errors = new ArrayList<>();
@@ -55,7 +56,7 @@ public class DataPersistenceService {
 
             for (Map<String, String> row : data) {
                 try {
-                    Product product = createProduct(row, clientId, mapping, fileId);
+                    Product product = createProduct(row, clientId, mapping, fileId, dataSourceType);
                     addRelatedEntities(product, row, clientId, mapping);
                     productBatch.add(product);
 
@@ -163,10 +164,11 @@ public class DataPersistenceService {
         return result;
     }
 
-    private Product createProduct(Map<String, String> data, Long clientId, Map<String, String> mapping, Long fileId) {
+    private Product createProduct(Map<String, String> data, Long clientId, Map<String, String> mapping, Long fileId, DataSourceType dataSourceType) {
         Product product = new Product();
         product.setClientId(clientId);
         product.setFileId(fileId);
+        product.setDataSource(dataSourceType);
         setEntityFields(product, data, mapping, PRODUCT_PREFIX);
         return product;
     }

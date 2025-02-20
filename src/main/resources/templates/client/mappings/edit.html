@@ -108,6 +108,24 @@
             </div>
 
             <div class="mb-3">
+              <label for="dataSource" class="form-label">Тип источника данных</label>
+              <select class="form-select" id="dataSource" name="dataSource" required>
+                <option value="">Выберите тип источника данных</option>
+                <option value="FILE" th:selected="${mapping.dataSource == null || mapping.dataSource == 'FILE'}">Файл</option>
+                <option value="TASK" th:selected="${mapping.dataSource == 'TASK'}">Задание</option>
+                <option value="REPORT" th:selected="${mapping.dataSource == 'REPORT'}">Отчет</option>
+                <option value="SYSTEM" th:selected="${mapping.dataSource == 'SYSTEM'}">Система</option>
+                <option value="API" th:selected="${mapping.dataSource == 'API'}">API</option>
+              </select>
+              <div class="invalid-feedback">
+                Необходимо выбрать тип источника данных
+              </div>
+              <small class="text-muted">
+                Укажите тип данных для правильной обработки файла
+              </small>
+            </div>
+
+            <div class="mb-3">
               <div class="form-check form-switch">
                 <input type="checkbox" class="form-check-input" id="active"
                        name="active" th:checked="${mapping.active}">

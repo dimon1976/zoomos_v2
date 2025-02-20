@@ -145,10 +145,10 @@
     const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
     const mappingId = button.getAttribute('data-id');
     const mappingName = button.getAttribute('data-name');
-    const clientId = [[${client.id}]]; // Получаем clientId через Thymeleaf
+    const clientName = [[${client.name}]]; // Получаем clientId через Thymeleaf
 
     document.getElementById('mappingNameSpan').textContent = mappingName;
-    document.getElementById('deleteForm').action = `/client/${clientId}/mappings/${mappingId}/delete`;
+    document.getElementById('deleteForm').action = `/client/${clientName}/mappings/${mappingId}/delete`;
     modal.show();
   }
 </script>
