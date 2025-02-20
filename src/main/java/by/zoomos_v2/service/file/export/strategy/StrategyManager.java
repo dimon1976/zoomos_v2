@@ -50,15 +50,8 @@ public class StrategyManager {
      * Получает требуемые параметры для стратегии
      */
     public Set<String> getRequiredParameters(ProcessingStrategyType type) {
-//        return getStrategy(type).getRequiredParameters();
-        // 1. Получаем стратегию по переданному типу
-        DataProcessingStrategy strategy = getStrategy(type);
+        return getStrategy(type).getRequiredParameters();
 
-        // 2. Получаем требуемые параметры у стратегии
-        Set<String> requiredParameters = strategy.getRequiredParameters();
-
-        // 3. Возвращаем результат
-        return requiredParameters;
     }
 
     /**
