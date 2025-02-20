@@ -49,7 +49,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
      * @param taskNumber номер задания
      * @return множество ключей валидации
      */
-    @Query("SELECT CONCAT(p.productId, '_', p.productCategory1, '_', cd.competitorAdditional) " +
+    @Query("SELECT UPPER(CONCAT(p.productId, '_', p.productCategory1, '_', cd.competitorAdditional)) " +
             "FROM Product p " +
             "JOIN p.competitorDataList cd " +
             "WHERE p.dataSource = :dataSource " +

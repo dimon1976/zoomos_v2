@@ -76,6 +76,7 @@ public class MappingConfigService {
         newMapping.setDescription(mapping.getDescription());
         newMapping.setColumnsConfig(mapping.getColumnsConfig());
         newMapping.setActive(mapping.isActive());
+        newMapping.setDataSource(mapping.getDataSource());
 
         // Сохраняем маппинг
         ClientMappingConfig savedMapping = mappingRepository.save(newMapping);
@@ -124,6 +125,7 @@ public class MappingConfigService {
         existingMapping.setDescription(mapping.getDescription());
         existingMapping.setColumnsConfig(mapping.getColumnsConfig());
         existingMapping.setActive(mapping.isActive());
+        existingMapping.setDataSource(mapping.getDataSource());
 
         return mappingRepository.save(existingMapping);
     }

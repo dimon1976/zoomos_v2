@@ -35,11 +35,6 @@ public abstract class AbstractDataExporter implements DataExporter{
             // Выполнение экспорта
             doExport(preparedData, outputStream, exportConfig);
 
-            // Обновляем статистику
-//            batchProcessingData.setTotalCount(data.size());
-//            batchProcessingData.setSuccessCount(preparedData.size());
-//            batchProcessingData.setProcessingTimeSeconds((System.currentTimeMillis() - startTime) / 1000);
-
             // Формирование результата
             return ExportResult.success(
                     batchProcessingData,

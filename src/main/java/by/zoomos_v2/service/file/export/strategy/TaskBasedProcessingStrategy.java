@@ -110,11 +110,16 @@ public class TaskBasedProcessingStrategy implements DataProcessingStrategy {
      */
     private boolean isValidRow(Map<String, Object> row, Set<String> validationKeys) {
         String validationKey = String.format("%s_%s_%s",
-                row.get("product.productId"),
-                row.get("product.productCategory1"),
-                row.get("competitordata.competitorAdditional"));
+                toString(row.get("product.productId")).toUpperCase(),
+                toString(row.get("product.productCategory1")).toUpperCase(),
+                toString(row.get("competitordata.competitorAdditional")).toUpperCase());
 
-        return validationKeys.contains(validationKey);
+        return validationKeys.stream()
+                .anyMatch(key -> key.toUpperCase().equals(validationKey));
+    }
+
+    private String toString(Object value) {
+        return value != null ? value.toString().trim() : "";
     }
 
     /**

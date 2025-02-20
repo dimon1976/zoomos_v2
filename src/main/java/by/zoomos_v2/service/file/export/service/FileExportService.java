@@ -1,7 +1,9 @@
 package by.zoomos_v2.service.file.export.service;
 
 import by.zoomos_v2.annotations.FieldDescription;
-import by.zoomos_v2.model.*;
+import by.zoomos_v2.model.ExportConfig;
+import by.zoomos_v2.model.ExportResult;
+import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.entity.CompetitorData;
 import by.zoomos_v2.model.entity.Product;
 import by.zoomos_v2.model.entity.RegionData;
@@ -14,9 +16,7 @@ import by.zoomos_v2.service.file.BatchProcessingData;
 import by.zoomos_v2.service.file.export.exporter.DataExporter;
 import by.zoomos_v2.service.file.export.exporter.DataExporterFactory;
 import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
-import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
 import by.zoomos_v2.service.file.export.strategy.StrategyManager;
-import by.zoomos_v2.service.mapping.ExportConfigService;
 import by.zoomos_v2.service.statistics.OperationStatsService;
 import by.zoomos_v2.service.statistics.StatisticsProcessor;
 import lombok.RequiredArgsConstructor;
@@ -46,11 +46,9 @@ public class FileExportService {
     private final FileMetadataRepository fileMetadataRepository;
     private final ProductRepository productRepository;
     private final DataExporterFactory exporterFactory;
-    private final List<DataProcessingStrategy> processingStrategies;
     private final OperationStatsService operationStatsService;
     private final StatisticsProcessor statisticsProcessor;
     private final StrategyManager strategyManager;
-    private final ExportConfigService exportConfigService;
 
     /**
      * Экспортирует данные из файла с оптимизированной обработкой
@@ -146,20 +144,6 @@ public class FileExportService {
         }
     }
 
-    private DataProcessingStrategy selectStrategy(ExportConfig exportConfig) {
-        return processingStrategies.stream()
-                .filter(s -> s.supports(exportConfig))
-                .findFirst()
-                .orElseGet(() -> getDefaultStrategy());
-    }
-
-    private DataProcessingStrategy getDefaultStrategy() {
-        return processingStrategies.stream()
-                .filter(s -> ProcessingStrategyType.DEFAULT.equals(s.getStrategyType()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Default strategy not found"));
-    }
-
     /**
      * Обрабатывает данные с использованием выбранной стратегии
      */
@@ -169,7 +153,6 @@ public class FileExportService {
                                                               ExportOperation operation) throws ExportException {
         try {
             // Валидируем параметры стратегии перед обработкой
-//            strategyManager.validateStrategyParameters(exportConfig.getStrategyType(), exportConfig.getParams());
 
             BatchProcessingData stats = BatchProcessingData.createNew();
             List<Map<String, Object>> data = getDataFromFile(metadata);
