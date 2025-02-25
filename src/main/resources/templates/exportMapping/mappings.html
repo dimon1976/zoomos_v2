@@ -21,7 +21,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h2 class="card-title mb-0">Настройки export маппинга</h2>
-                    <a th:href="@{/client/{clientId}/exportmapping/new(clientId=${client.id})}" class="btn btn-primary">
+                    <a th:href="@{/client/{clientName}/exportmapping/new(clientName=${client.name})}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Добавить маппинг
                     </a>
                 </div>
@@ -60,11 +60,11 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a th:href="@{/client/{clientId}/exportmapping/{mappingId}(clientId=${client.id},mappingId=${mapping.id})}"
+                                        <a th:href="@{/client/{clientName}/exportmapping/{mappingId}(clientName=${client.name},mappingId=${mapping.id})}"
                                            class="btn btn-sm btn-primary" title="Редактировать">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form th:action="@{/client/{clientId}/exportmapping/{mappingId}/delete(clientId=${client.id},mappingId=${mapping.id})}"
+                                        <form th:action="@{/client/{clientName}/exportmapping/{mappingId}/delete(clientId=${client.name},mappingId=${mapping.id})}"
                                               method="post" class="d-inline"
                                               onsubmit="return confirm('Вы уверены, что хотите удалить этот маппинг?');">
                                             <button type="submit" class="btn btn-sm btn-danger" title="Удалить">

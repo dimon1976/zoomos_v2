@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Экспорт данных</title>
+</head>
+<body>
+<div class="container">
+    <h2>Экспорт данных</h2>
+
+    <form th:action="@{/export/download}" method="post">
+        <div class="form-group">
+            <label for="configId">Конфигурация экспорта:</label>
+            <select id="configId" name="configId" class="form-control" required>
+                <option value="">Выберите конфигурацию</option>
+                <option th:each="config : ${configs}"
+                        th:value="${config.id}"
+                        th:text="${config.name}">Конфигурация</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="fileType">Формат файла:</label>
+            <select id="fileType" name="fileType" class="form-control" required>
+                <option value="">Выберите формат</option>
+                <option th:each="format : ${formats}"
+                        th:value="${format}"
+                        th:text="${format}">CSV</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Экспортировать</button>
+    </form>
+</div>
+</body>
+</html>

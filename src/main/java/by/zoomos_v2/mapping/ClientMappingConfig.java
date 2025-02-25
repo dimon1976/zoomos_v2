@@ -1,5 +1,6 @@
 package by.zoomos_v2.mapping;
 
+import by.zoomos_v2.model.enums.DataSourceType;
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -20,6 +21,10 @@ public class ClientMappingConfig {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "data_source")
+    @Enumerated(EnumType.STRING)
+    private DataSourceType dataSource;
 
     /**
      * Идентификатор магазина (клиента), к которому относится маппинг
@@ -99,29 +104,5 @@ public class ClientMappingConfig {
         this.clientId = clientId;
         this.name = name;
         this.active = true;
-    }
-
-    /**
-     * Проверяет, принадлежит ли конфигурация указанному клиенту
-     *
-     * @param clientId идентификатор клиента для проверки
-     * @return true если конфигурация принадлежит клиенту
-     */
-    public boolean belongsToClient(Long clientId) {
-        return this.clientId != null && this.clientId.equals(clientId);
-    }
-
-    /**
-     * Устанавливает базовые настройки парсера для типа файла
-     *
-     * @param fileType тип файла
-     */
-    public void setDefaultParserConfig(String fileType) {
-        this.fileType = fileType;
-        if ("CSV".equalsIgnoreCase(fileType)) {
-            this.parserConfig = "{\"delimiter\":\",\",\"hasHeader\":true,\"charset\":\"UTF-8\"}";
-        } else if ("EXCEL".equalsIgnoreCase(fileType)) {
-            this.parserConfig = "{\"sheetIndex\":0,\"hasHeader\":true}";
-        }
     }
 }

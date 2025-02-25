@@ -1,59 +1,138 @@
+<!-- src/main/resources/templates/client/client-settings.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title th:text="${client.id == null ? 'Новый магазин' : 'Настройки магазина'}">Настройки магазина</title>
     <div th:replace="~{fragments/navbar :: header-css}"></div>
+    <style>
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+        }
+        .required-field::after {
+            content: "*";
+            color: red;
+            margin-left: 4px;
+        }
+    </style>
 </head>
 <body>
 <div th:replace="~{fragments/navbar :: header}"></div>
 
 <div class="container mt-4">
+    <!-- Хлебные крошки и кнопки навигации -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb" class="d-flex align-items-center">
+                <a th:href="@{/}" class="btn btn-sm btn-outline-secondary me-2" title="На главную">
+                    <i class="fas fa-home"></i>
+                </a>
+                <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
+                    <li class="breadcrumb-item" th:if="${client.id != null}">
+                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}" th:text="${client.name}">Название магазина</a>
+                    </li>
+                    <li class="breadcrumb-item active" th:text="${client.id == null ? 'Новый магазин' : 'Настройки'}">Настройки</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-8 offset-md-2">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title" th:text="${client.id == null ? 'Новый магазин' : 'Настройки магазина'}">
-                        Настройки магазина
+                    <h2 class="card-title h5 mb-0">
+                        <i class="fas fa-cog me-2"></i>
+                        <span th:text="${client.id == null ? 'Новый магазин' : 'Настройки магазина'}">
+                           Настройки магазина
+                       </span>
                     </h2>
                 </div>
                 <div class="card-body">
+                    <!-- Сообщения об успехе/ошибке -->
                     <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                        <i class="fas fa-check-circle me-2"></i>
                         <span th:text="${success}"></span>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                     <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+                        <i class="fas fa-exclamation-circle me-2"></i>
                         <span th:text="${error}"></span>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
 
-                    <form th:action="@{/client/settings/save}" method="post">
-                        <input type="hidden" th:field="${client.id}"/>
+                    <!-- Форма -->
+                    <form th:action="${client.id == null ? '/client/new' : '/client/' + client.name + '/settings/save'}"
+                          method="post" class="needs-validation" novalidate>
 
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Название магазина</label>
-                            <input type="text" class="form-control" id="name" name="name" th:value="${client.name}" required/>
-                        </div>
+                        <input type="hidden" th:if="${client.id != null}" name="id" th:value="${client.id}"/>
 
-                        <div class="mb-3">
-                            <label for="url" class="form-label">URL магазина</label>
-                            <input type="url" class="form-control" id="url" name="url" th:value="${client.url}" required/>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="apiKey" class="form-label">API ключ</label>
-                            <input type="text" class="form-control" id="apiKey" name="apiKey" th:value="${client.apiKey}"/>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="active" name="active" th:checked="${client.active}"/>
-                                <label class="form-check-label" for="active">Активен</label>
+                        <div class="mb-4">
+                            <label for="name" class="form-label required-field">Название магазина</label>
+                            <input type="text" class="form-control" id="name" name="name"
+                                   th:value="${client.name}" required minlength="2"
+                                   placeholder="Введите название магазина"/>
+                            <div class="invalid-feedback">
+                                Пожалуйста, введите название магазина (минимум 2 символа)
                             </div>
                         </div>
 
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a th:href="@{/clients}" class="btn btn-secondary me-md-2">Отмена</a>
-                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        <div class="mb-4">
+                            <label for="url" class="form-label required-field">URL магазина</label>
+                            <input type="url" class="form-control" id="url" name="url"
+                                   th:value="${client.url}" required
+                                   placeholder="https://example.com"
+                                   pattern="https?://.+"/>
+                            <div class="invalid-feedback">
+                                Пожалуйста, введите корректный URL магазина (начинается с http:// или https://)
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="apiKey" class="form-label">API ключ</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="apiKey" name="apiKey"
+                                       th:value="${client.apiKey}"
+                                       placeholder="Введите API ключ"/>
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="generateApiKey()"
+                                        title="Сгенерировать новый ключ">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                Оставьте поле пустым для автоматической генерации
+                            </small>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input" id="active"
+                                       name="active" th:checked="${client.active}"/>
+                                <label class="form-check-label" for="active">Активен</label>
+                            </div>
+                            <small class="text-muted">
+                                Неактивные магазины не будут обрабатывать файлы
+                            </small>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a th:if="${client.id != null}"
+                               th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </a>
+                            <a th:if="${client.id == null}"
+                               th:href="@{/clients}"
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Сохранить
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -61,6 +140,34 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Валидация формы на стороне клиента
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+
+    // Функция генерации API ключа
+    function generateApiKey() {
+        const length = 32;
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        document.getElementById('apiKey').value = result;
+    }
+</script>
 
 <div th:replace="~{fragments/navbar :: footer}"></div>
 </body>

@@ -39,21 +39,29 @@
         </rollingPolicy>
     </appender>
 
+    <!-- Asynchronous Append -->
+    <appender name="AsyncFile" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="File"/>
+    </appender>
+    <appender name="AsyncErrorFile" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="ErrorFile"/>
+    </appender>
+
     <!-- Loggers -->
     <logger name="by.zoomos" level="DEBUG" additivity="false">
         <appender-ref ref="Console"/>
-        <appender-ref ref="File"/>
-        <appender-ref ref="ErrorFile"/>
+        <appender-ref ref="AsyncFile"/>
+        <appender-ref ref="AsyncErrorFile"/>
     </logger>
 
     <!-- Spring Framework -->
-    <logger name="org.springframework" level="INFO"/>
-    <logger name="org.hibernate" level="INFO"/>
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
 
     <!-- Root -->
     <root level="INFO">
         <appender-ref ref="Console"/>
-        <appender-ref ref="File"/>
-        <appender-ref ref="ErrorFile"/>
+        <appender-ref ref="AsyncFile"/>
+        <appender-ref ref="AsyncErrorFile"/>
     </root>
 </configuration>

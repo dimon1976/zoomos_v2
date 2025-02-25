@@ -8,4 +8,5 @@ public class EntityField {
     private String description;      // Отображаемое название
     private String mappingKey;
     private int position;           // Позиция в экспорте
+    private boolean enabled;
 }

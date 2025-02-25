@@ -1,0 +1,695 @@
+<!-- src/main/resources/templates/client/dashboard.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${client.name + ' - Панель управления'}">Панель управления</title>
+    <div th:replace="~{fragments/navbar :: header-css}"></div>
+    <style>
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: "›";
+        }
+
+        .nav-tabs .nav-link {
+            color: #495057;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 1rem 1.5rem;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #2c3e50;
+            border: none;
+            border-bottom: 2px solid #3498db;
+            background: none;
+        }
+
+        .nav-tabs .nav-link:hover {
+            border: none;
+            border-bottom: 2px solid #95a5a6;
+        }
+
+        .tab-content {
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: header}"></div>
+
+<div class="container mt-4">
+    <!-- Хлебные крошки и кнопки навигации -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb" class="d-flex align-items-center">
+                <a th:href="@{/}" class="btn btn-sm btn-outline-secondary me-2" title="На главную">
+                    <i class="fas fa-home"></i>
+                </a>
+                <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
+                    <li class="breadcrumb-item active" th:text="${client.name}">Название магазина</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Заголовок и статус -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0" th:text="${client.name}">Название магазина</h1>
+                <div>
+                    <span th:class="${'badge ' + (client.active ? 'bg-success' : 'bg-danger')}"
+                          th:text="${client.active ? 'Активен' : 'Неактивен'}">
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="row">
+        <div class="col">
+            <ul class="nav nav-tabs" id="clientTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="overview-tab" data-bs-toggle="tab" href="#overview">
+                        <i class="fas fa-home"></i> Обзор
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="upload-tab" data-bs-toggle="tab" href="#upload">
+                        <i class="fas fa-upload"></i> Загрузка
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="export-tab" data-bs-toggle="tab" href="#export">
+                        <i class="fas fa-download"></i> Выгрузка
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="statistics-tab" data-bs-toggle="tab" href="#statistics">
+                        <i class="fas fa-chart-bar"></i> Статистика
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="settings-tab" data-bs-toggle="tab" href="#settings">
+                        <i class="fas fa-cog"></i> Настройки
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Содержимое вкладок -->
+            <div class="tab-content" id="clientTabsContent">
+                <!-- Вкладка Обзор -->
+                <div class="tab-pane fade show active" id="overview">
+                    <div class="row">
+                        <!-- Карточки со статистикой -->
+                        <div class="col-md-4 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        <i class="fas fa-file"></i> Файлы
+                                    </h6>
+                                    <h3 class="card-title" th:text="${dashboardData.stats.totalFiles}">0</h3>
+                                    <p class="card-text text-muted">
+                                        <span th:text="${dashboardData.stats.recentFilesCount}">0</span> за последние 2
+                                        недели
+                                    </p>
+                                    <p class="card-text small">
+                                        Общий объем: <span
+                                            th:text="${dashboardData.stats.formattedTotalSize}">0 MB</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        <i class="fas fa-tasks"></i> Операции
+                                    </h6>
+                                    <h3 class="card-title" th:text="${dashboardData.stats.activeOperationsCount}">0</h3>
+                                    <p class="card-text text-muted">Активные задачи</p>
+                                    <p class="card-text small">
+                                        Успешность: <span
+                                            th:text="${#numbers.formatDecimal(dashboardData.stats.overallSuccessRate, 1, 1)}">0</span>%
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        <i class="fas fa-microchip"></i> Системные ресурсы
+                                    </h6>
+                                    <h3 class="card-title"
+                                        th:text="${dashboardData.systemResources.currentMemoryUsage}">0 MB</h3>
+                                    <p class="card-text text-muted">Текущее использование памяти</p>
+                                    <p class="card-text small">
+                                        Пиковое: <span
+                                            th:text="${dashboardData.systemResources.peakMemoryUsage}">0 MB</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Последние операции -->
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">Последние операции</h5>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                                data-bs-toggle="dropdown">
+                                            Период
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="updatePeriod(14)">2
+                                                недели</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="updatePeriod(30)">Месяц</a>
+                                            </li>
+                                            <li><a class="dropdown-item" href="#" onclick="updatePeriod(90)">3
+                                                месяца</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                            <tr>
+                                                <th>Время</th>
+                                                <th>Тип</th>
+                                                <th>Статус</th>
+                                                <th>Прогресс</th>
+                                                <th>Действия</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <tr th:each="operation : ${dashboardData.recentOperations}">
+                                                <td>
+                                                    <span th:text="${#temporals.format(operation.startTime, 'dd.MM.yyyy HH:mm')}"></span>
+                                                </td>
+                                                <td>
+                                                    <span th:text="${operation.type.description}"></span>
+                                                </td>
+                                                <td>
+                            <span th:class="${'badge ' +
+                                (operation.status.name() == 'PENDING' ? 'bg-secondary' :
+                                operation.status.name() == 'IN_PROGRESS' ? 'bg-primary' :
+                                operation.status.name() == 'COMPLETED' ? 'bg-success' :
+                                operation.status.name() == 'FAILED' ? 'bg-danger' :
+                                operation.status.name() == 'CANCELLED' ? 'bg-secondary' :
+                                operation.status.name() == 'PARTIAL_SUCCESS' ? 'bg-warning' : 'bg-secondary')}"
+                                  th:text="${operation.status.description}">
+                            </span>
+                                                </td>
+                                                <td>
+                                                    <div class="progress" style="height: 20px;"
+                                                         th:if="${operation.status.name() == 'IN_PROGRESS'}">
+                                                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                             th:style="'width: ' + ${operation.metadata['currentProgress'] != null ?
+                                     operation.metadata['currentProgress']['currentProgress'] : 0} + '%'"
+                                                             th:text="${operation.metadata['currentProgress'] != null ?
+                                     operation.metadata['currentProgress']['currentProgress'] + '%' : '0%'}">
+                                                        </div>
+                                                    </div>
+                                                    <span th:if="${operation.status.name() != 'IN_PROGRESS'}"
+                                                          th:text="${operation.successRate != null ? #numbers.formatDecimal(operation.successRate, 1, 1) + '%' : '-'}">
+                            </span>
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <a th:href="@{/client/{clientName}/operations/{id}(clientName=${operation.clientId},id=${operation.id})}"
+                                                           class="btn btn-sm btn-info" title="Подробности">
+                                                            <i class="fas fa-info-circle"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr th:if="${#lists.isEmpty(dashboardData.recentOperations)}">
+                                                <td colspan="5" class="text-center">Нет операций</td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка Загрузка -->
+                <div class="tab-pane fade" id="upload">
+                    <!-- Сообщения об успехе/ошибке -->
+                    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                        <span th:text="${success}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <span th:text="${error}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+
+                    <!-- Форма загрузки -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Загрузка нового файла</h5>
+                            <a th:href="@{/client/{clientName}/mappings(clientName=${client.name})}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-cog"></i> Настройки маппинга
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <form th:action="@{/client/{clientName}/files/upload(clientName=${client.name})}"
+                                  method="post"
+                                  enctype="multipart/form-data">
+
+                                <div class="mb-3">
+                                    <label for="file" class="form-label">Выберите файл</label>
+                                    <input type="file" class="form-control" id="file" name="file" required
+                                           accept=".csv,.xlsx,.xls">
+                                    <div class="form-text">Поддерживаемые форматы: CSV, Excel (xlsx, xls)</div>
+                                </div>
+
+                                <div class="mb-3" th:if="${!#lists.isEmpty(mappings)}">
+                                    <label for="mappingId" class="form-label">Конфигурация маппинга</label>
+                                    <select class="form-select" id="mappingId" name="mappingId">
+                                        <option value="">Выберите конфигурацию маппинга</option>
+                                        <option th:each="mapping : ${mappings}"
+                                                th:value="${mapping.id}"
+                                                th:text="${mapping.name}">
+                                        </option>
+                                    </select>
+                                    <div class="form-text">Необязательно. Выберите, если хотите применить существующую
+                                        конфигурацию маппинга.
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload"></i> Загрузить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Таблица с недавно загруженными файлами -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Недавно загруженные файлы</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                    <tr>
+                                        <th>Имя файла</th>
+                                        <th>Тип</th>
+                                        <th>Статус</th>
+                                        <th>Дата загрузки</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="file : ${files}">
+                                        <td th:text="${file.originalFilename}"></td>
+                                        <td th:text="${file.fileType}"></td>
+                                        <td>
+            <span th:with="statusClass=${
+    file.status.name() == 'PENDING' ? 'bg-secondary' :
+    file.status.name() == 'IN_PROGRESS' ? 'bg-primary' :
+    file.status.name() == 'COMPLETED' ? 'bg-success' :
+    file.status.name() == 'FAILED' ? 'bg-danger' :
+    file.status.name() == 'CANCELLED' ? 'bg-secondary' :
+    file.status.name() == 'PARTIAL_SUCCESS' ? 'bg-warning' : 'bg-secondary'
+}"
+                  th:class="${'badge ' + statusClass}"
+                  th:text="${file.status}">
+</span>
+                                        </td>
+                                        <td th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a th:href="@{/client/{clientName}/files/status/{fileId}(clientName=${client.name},fileId=${file.id})}"
+                                                   class="btn btn-sm btn-info" title="Статус">
+                                                    <i class="fas fa-info-circle"></i>
+                                                </a>
+                                                <a th:if="${file.status.name == 'COMPLETED' or file.status == 'PARTIAL_SUCCESS'}"
+                                                   th:href="@{/client/{clientName}/files/{fileId}/statistics(clientName=${client.name},fileId=${file.id})}"
+                                                   class="btn btn-sm btn-success" title="Результаты">
+                                                    <i class="fas fa-chart-bar"></i>
+                                                </a>
+                                                <form th:action="@{/client/{clientName}/files/{fileId}/delete(clientName=${client.name},fileId=${file.id})}"
+                                                      method="post" class="d-inline"
+                                                      onsubmit="return confirm('Вы уверены, что хотите удалить этот файл?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Удалить">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(files)}">
+                                        <td colspan="5" class="text-center">Нет загруженных файлов</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка Выгрузка -->
+                <div class="tab-pane fade" id="export">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Выгрузка данных</h5>
+                            <a th:href="@{/client/{clientName}/export-mappings(clientName=${client.name})}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-cog"></i> Настройки маппинга
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <!-- Таблица файлов -->
+                            <div th:if="${files != null && !files.isEmpty()}" class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                    <tr>
+                                        <th>Имя файла</th>
+                                        <th>Дата загрузки</th>
+                                        <th>Количество записей</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="file : ${files}">
+                                        <td>
+                                            <i class="fas fa-file me-2"></i>
+                                            <span th:text="${file.originalFilename}"></span>
+                                        </td>
+                                        <td>
+                                            <i class="fas fa-calendar me-2"></i>
+                                            <span th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></span>
+                                        </td>
+                                        <td>
+                                            <i class="fas fa-list-ol me-2"></i>
+                                            <span th:text="${file.totalRecords}"></span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-primary btn-sm"
+                                                    onclick="showExportOptions(this)"
+                                                    th:data-file-id="${file.id}"
+                                                    th:data-file-name="${file.originalFilename}">
+                                                <i class="fas fa-download me-1"></i> Экспортировать
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Пустое состояние -->
+                            <div th:if="${files == null || files.isEmpty()}" class="text-center py-5">
+                                <i class="fas fa-file-export fa-3x text-muted mb-3"></i>
+                                <h5>Нет доступных файлов</h5>
+                                <p class="text-muted">Загрузите файлы через раздел "Загрузка"</p>
+                            </div>
+
+                            <!-- Форма настроек экспорта (изначально скрыта) -->
+                            <div id="exportOptions" class="mt-4" style="display: none;">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-cog me-2"></i>Настройки экспорта
+                                            <small class="text-muted" id="selectedFileName"></small>
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="exportForm" class="needs-validation" novalidate>
+                                            <input type="hidden" id="selectedFileId" name="fileId"/>
+
+                                            <div class="mb-3">
+                                                <label for="configId" class="form-label">Конфигурация экспорта</label>
+                                                <select class="form-select" id="configId" name="configId" required>
+                                                    <option value="">Выберите конфигурацию</option>
+                                                    <option th:each="config : ${configs}"
+                                                            th:value="${config.id}"
+                                                            th:text="${config.name}">
+                                                    </option>
+                                                </select>
+                                                <div class="invalid-feedback">
+                                                    Выберите конфигурацию экспорта
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label for="fileType" class="form-label">Формат файла</label>
+                                                <select class="form-select" id="fileType" name="fileType" required>
+                                                    <option value="">Выберите формат</option>
+                                                    <option value="CSV">CSV</option>
+                                                    <option value="XLSX">Excel (XLSX)</option>
+                                                </select>
+                                                <div class="invalid-feedback">
+                                                    Выберите формат файла
+                                                </div>
+                                            </div>
+                                            <!-- Добавить после выбора формата файла в форме exportForm -->
+                                            <div id="strategyParams" class="mb-3" style="display: none;">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h5 class="mb-0">
+                                                            <i class="fas fa-cog me-2"></i>Параметры стратегии
+                                                        </h5>
+                                                    </div>
+                                                    <div class="card-body" id="strategyParamsContent">
+                                                        <!-- Параметры будут добавлены динамически -->
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-secondary"
+                                                        onclick="hideExportOptions()">
+                                                    <i class="fas fa-times me-2"></i>Отмена
+                                                </button>
+                                                <button type="submit" class="btn btn-primary" id="exportButton">
+                                                    <i class="fas fa-download me-2"></i>Скачать файл
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка Статистика -->
+                <div class="tab-pane fade" id="statistics">
+                    <div class="text-center py-5">
+                        <h3>Статистика</h3>
+                        <p class="text-muted">Здесь будет статистика операций</p>
+                    </div>
+                </div>
+
+                <!-- Вкладка Настройки -->
+                <div class="tab-pane fade" id="settings">
+                    <div class="text-center py-5">
+                        <h3>Настройки</h3>
+                        <p class="text-muted">Здесь будут настройки магазина</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    function updatePeriod(days) {
+        const to = new Date();
+        const from = new Date();
+        from.setDate(from.getDate() - days);
+
+        window.location.href = window.location.pathname +
+            `?from=${from.toISOString()}&to=${to.toISOString()}`;
+    }
+
+    function showExportOptions(button) {
+        const fileId = button.getAttribute('data-file-id');
+        const fileName = button.getAttribute('data-file-name');
+        document.getElementById('selectedFileId').value = fileId;
+        document.getElementById('selectedFileName').textContent = ' - ' + fileName;
+        document.getElementById('exportOptions').style.display = 'block';
+
+        // Прокручиваем к форме
+        document.getElementById('exportOptions').scrollIntoView({behavior: 'smooth'});
+    }
+
+    function hideExportOptions() {
+        document.getElementById('exportOptions').style.display = 'none';
+    }
+
+    // Функция генерации HTML для параметра в зависимости от его типа
+    function generateParameterHtml(param) {
+        let inputHtml;
+        switch(param.type) {
+            case 'SELECT':
+                inputHtml = `
+                    <select class="form-select strategy-param"
+                            name="strategyParams[${param.key}]"
+                            data-param="${param.key}"
+                            ${param.required ? 'required' : ''}>
+                        <option value="">Выберите значение</option>
+                        ${param.allowedValues.map(value =>
+                    `<option value="${value}" ${value === param.defaultValue ? 'selected' : ''}>
+                                ${value}
+                            </option>`
+                ).join('')}
+                    </select>`;
+                break;
+            case 'DATE':
+                inputHtml = `
+                    <input type="date"
+                           class="form-control strategy-param"
+                           name="strategyParams[${param.key}]"
+                           data-param="${param.key}"
+                           ${param.required ? 'required' : ''}
+                           value="${param.defaultValue || ''}">`;
+                break;
+            case 'NUMBER':
+                inputHtml = `
+                    <input type="number"
+                           class="form-control strategy-param"
+                           name="strategyParams[${param.key}]"
+                           data-param="${param.key}"
+                           ${param.required ? 'required' : ''}
+                           value="${param.defaultValue || ''}">`;
+                break;
+            default: // STRING
+                inputHtml = `
+                    <input type="text"
+                           class="form-control strategy-param"
+                           name="strategyParams[${param.key}]"
+                           data-param="${param.key}"
+                           ${param.required ? 'required' : ''}
+                           value="${param.defaultValue || ''}">`;
+        }
+
+        return `
+            <div class="mb-3">
+                <label class="form-label">
+                    ${param.displayName}
+                    ${param.required ? '<span class="text-danger">*</span>' : ''}
+                </label>
+                ${inputHtml}
+                ${param.description ? `<div class="form-text">${param.description}</div>` : ''}
+                <div class="invalid-feedback">
+                    Это поле обязательно для заполнения
+                </div>
+            </div>
+        `;
+    }
+
+    // Обработчик изменения конфигурации
+    document.getElementById('configId')?.addEventListener('change', function() {
+        const configId = this.value;
+        const strategyParams = document.getElementById('strategyParams');
+        const strategyParamsContent = document.getElementById('strategyParamsContent');
+
+        if (!configId) {
+            strategyParams.style.display = 'none';
+            return;
+        }
+
+        const clientName = [[${client.name}]];
+
+        fetch(`/client/${clientName}/export-strategy-params/${configId}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Параметры стратегии:', data);
+                // Изменяем проверку на requiredParameters
+                if (data.requiredParameters && data.requiredParameters.length > 0) {
+                    const paramsHtml = data.requiredParameters.map(param => `
+                    <div class="mb-3">
+                        <label class="form-label">${param}</label>
+                        <input type="text"
+                               class="form-control strategy-param"
+                               name="strategyParams[${param}]"
+                               data-param="${param}"
+                               value="${data.currentValues[param] || ''}"
+                               required>
+                        <div class="invalid-feedback">
+                            Это поле обязательно для заполнения
+                        </div>
+                    </div>
+                `).join('');
+
+                    strategyParamsContent.innerHTML = paramsHtml;
+                    strategyParams.style.display = 'block';
+                } else {
+                    strategyParams.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка получения параметров стратегии:', error);
+                strategyParams.style.display = 'none';
+            });
+    });
+
+    // Обработчик отправки формы
+    document.getElementById('exportForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!this.checkValidity()) {
+            e.stopPropagation();
+            this.classList.add('was-validated');
+            return;
+        }
+
+        const fileId = document.getElementById('selectedFileId').value;
+        const configId = document.getElementById('configId').value;
+        const fileType = document.getElementById('fileType').value;
+        const clientName = [[${client.name}]];
+
+        // Собираем параметры стратегии
+        const strategyParams = {};
+        document.querySelectorAll('.strategy-param').forEach(input => {
+            if (input.type === 'checkbox') {
+                strategyParams[input.dataset.param] = input.checked;
+            } else {
+                strategyParams[input.dataset.param] = input.value;
+            }
+        });
+
+        const exportButton = document.getElementById('exportButton');
+        exportButton.disabled = true;
+        exportButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Экспорт...';
+
+        // Добавляем параметры стратегии в URL
+        const strategyParamsForUrl = Object.entries(strategyParams)
+            .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+            .join('&');
+
+        const url = `/client/${clientName}/export/download/${fileId}?configId=${configId}&fileType=${fileType}&${strategyParamsForUrl}`;
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => {
+            exportButton.disabled = false;
+            exportButton.innerHTML = '<i class="fas fa-download me-2"></i>Скачать файл';
+            hideExportOptions();
+        }, 2000);
+    });
+</script>
+
+<div th:replace="~{fragments/navbar :: footer}"></div>
+</body>
+</html>

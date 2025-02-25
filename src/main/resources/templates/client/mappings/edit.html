@@ -1,0 +1,302 @@
+<!-- src/main/resources/templates/client/mappings/edit.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title th:text="${mapping.id == null ? 'Новый маппинг' : 'Редактирование маппинга'}"></title>
+  <div th:replace="~{fragments/navbar :: header-css}"></div>
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: header}"></div>
+
+<div class="container mt-4">
+  <!-- Навигация -->
+  <div class="row mb-4">
+    <div class="col">
+      <nav aria-label="breadcrumb" class="d-flex align-items-center">
+        <a th:href="@{/}" class="btn btn-sm btn-outline-secondary me-2" title="На главную">
+          <i class="fas fa-home"></i>
+        </a>
+        <a th:href="@{/clients}" class="btn btn-sm btn-outline-secondary me-2" title="К списку магазинов">
+          <i class="fas fa-store"></i>
+        </a>
+        <a th:href="@{/client/{clientName}/mappings(clientName=${client.name})}"
+           class="btn btn-sm btn-outline-secondary me-2" title="К списку маппингов">
+          <i class="fas fa-arrow-left"></i>
+        </a>
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><a th:href="@{/clients}">Магазины</a></li>
+          <li class="breadcrumb-item">
+            <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}" th:text="${client.name}">Магазин</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a th:href="@{/client/{clientName}/mappings(clientName=${client.name})}">Настройки маппинга</a>
+          </li>
+          <li class="breadcrumb-item active"
+              th:text="${mapping.id == null ? 'Новый маппинг' : 'Редактирование маппинга'}">
+          </li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title h5 mb-0">
+        <i class="fas fa-exchange-alt me-2"></i>
+        <span th:text="${mapping.id == null ? 'Новый маппинг' : 'Редактирование маппинга'}"></span>
+      </h2>
+    </div>
+    <div class="card-body">
+      <!-- Сообщения об успехе/ошибке -->
+      <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <i class="fas fa-check-circle me-2"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+
+      <!-- Форма маппинга -->
+      <form th:action="${mapping.id == null ?
+                           '/client/' + client.name + '/mappings/create' :
+                           '/client/' + client.name + '/mappings/' + mapping.id + '/update'}"
+            method="post"
+            class="needs-validation"
+            novalidate>
+
+        <input type="hidden" name="id" th:value="${mapping.id}"/>
+        <input type="hidden" name="clientId" th:value="${client.id}"/>
+
+        <div class="row mb-4">
+          <!-- Основные настройки -->
+          <div class="col-md-6">
+            <h5 class="mb-3">
+              <i class="fas fa-cog me-2"></i>Основные настройки
+            </h5>
+
+            <div class="mb-3">
+              <label for="name" class="form-label">Название маппинга</label>
+              <input type="text" class="form-control" id="name"
+                     name="name" th:value="${mapping.name}" required
+                     placeholder="Введите название маппинга">
+              <div class="invalid-feedback">
+                Необходимо указать название маппинга
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="fileType" class="form-label">Тип файла</label>
+              <select class="form-select" id="fileType" name="fileType" required>
+                <option value="">Выберите тип файла</option>
+                <option value="CSV" th:selected="${mapping.fileType == 'CSV'}">CSV</option>
+                <option value="EXCEL" th:selected="${mapping.fileType == 'EXCEL'}">Excel (XLSX)</option>
+                <option value="XLS" th:selected="${mapping.fileType == 'XLS'}">Excel (XLS)</option>
+              </select>
+              <div class="invalid-feedback">
+                Необходимо выбрать тип файла
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="description" class="form-label">Описание</label>
+              <textarea class="form-control" id="description"
+                        name="description" th:text="${mapping.description}"
+                        rows="3" placeholder="Добавьте описание маппинга"></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label for="dataSource" class="form-label">Тип источника данных</label>
+              <select class="form-select" id="dataSource" name="dataSource" required>
+                <option value="">Выберите тип источника данных</option>
+                <option value="FILE" th:selected="${mapping.dataSource == null || mapping.dataSource == 'FILE'}">Файл</option>
+                <option value="TASK" th:selected="${mapping.dataSource == 'TASK'}">Задание</option>
+                <option value="REPORT" th:selected="${mapping.dataSource == 'REPORT'}">Отчет</option>
+                <option value="SYSTEM" th:selected="${mapping.dataSource == 'SYSTEM'}">Система</option>
+                <option value="API" th:selected="${mapping.dataSource == 'API'}">API</option>
+              </select>
+              <div class="invalid-feedback">
+                Необходимо выбрать тип источника данных
+              </div>
+              <small class="text-muted">
+                Укажите тип данных для правильной обработки файла
+              </small>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check form-switch">
+                <input type="checkbox" class="form-check-input" id="active"
+                       name="active" th:checked="${mapping.active}">
+                <label class="form-check-label" for="active">Активен</label>
+              </div>
+              <small class="text-muted">
+                Только активные маппинги доступны при загрузке файлов
+              </small>
+            </div>
+          </div>
+
+          <!-- Настройка колонок -->
+          <div class="col-md-6">
+            <h5 class="mb-3">
+              <i class="fas fa-columns me-2"></i>Настройка колонок
+            </h5>
+
+            <div id="columnsMapping" class="border rounded p-3">
+              <div class="row mb-2">
+                <div class="col-5">
+                  <label class="form-label">Колонка в файле</label>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Поле в системе</label>
+                </div>
+                <div class="col-1"></div>
+              </div>
+
+              <!-- Шаблон строки маппинга -->
+              <div class="mapping-row-template d-none">
+                <div class="row mb-2 mapping-row">
+                  <div class="col-5">
+                    <input type="text" class="form-control file-column"
+                           placeholder="Имя колонки">
+                  </div>
+                  <div class="col-6">
+                    <select class="form-select target-column">
+                      <option value="">Выберите поле</option>
+                      <th:block th:each="group : ${entityFields}">
+                        <optgroup th:label="${group.entityName}">
+                          <option th:each="field : ${group.fields}"
+                                  th:value="${field.mappingKey}"
+                                  th:text="${field.description}">
+                          </option>
+                        </optgroup>
+                      </th:block>
+                    </select>
+                  </div>
+                  <div class="col-1">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-mapping">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Контейнер для строк маппинга -->
+              <div id="mappingRows"></div>
+
+              <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addMapping">
+                <i class="fas fa-plus me-1"></i>Добавить колонку
+              </button>
+            </div>
+            <input type="hidden" id="columnsConfig" name="columnsConfig">
+          </div>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="d-flex justify-content-end gap-2">
+          <a th:href="@{/client/{clientName}/mappings(clientName=${client.name})}"
+             class="btn btn-outline-secondary">
+            <i class="fas fa-times me-2"></i>Отмена
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-2"></i>
+            <span th:text="${mapping.id == null ? 'Создать' : 'Сохранить'}"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div th:replace="~{fragments/navbar :: footer}"></div>
+
+<script th:inline="javascript">
+  document.addEventListener('DOMContentLoaded', function() {
+    const columnsMapping = document.getElementById('columnsMapping');
+    const mappingRows = document.getElementById('mappingRows');
+    const addButton = document.getElementById('addMapping');
+    const columnsConfigInput = document.getElementById('columnsConfig');
+    const template = document.querySelector('.mapping-row-template').innerHTML;
+
+    // Загрузка существующей конфигурации
+    const existingConfig = /*[[${mapping.columnsConfig}]]*/ '{}';
+
+    try {
+      const config = JSON.parse(existingConfig || '{}');
+      Object.entries(config).forEach(([fileCol, targetCol]) => {
+        addMappingRow(fileCol, targetCol);
+      });
+    } catch (e) {
+      console.error('Error parsing config:', e);
+      addMappingRow(); // Добавляем пустую строку если нет конфигурации
+    }
+
+    // Добавление новой строки
+    addButton.addEventListener('click', () => addMappingRow());
+
+    // Удаление строки
+    mappingRows.addEventListener('click', (e) => {
+      if (e.target.closest('.remove-mapping')) {
+        e.target.closest('.mapping-row').remove();
+        updateColumnsConfig();
+      }
+    });
+
+    // Обновление конфигурации при изменении полей
+    mappingRows.addEventListener('change', (e) => {
+      if (e.target.matches('.file-column, .target-column')) {
+        updateColumnsConfig();
+      }
+    });
+
+    function addMappingRow(fileCol = '', targetCol = '') {
+      const row = document.createElement('div');
+      row.innerHTML = template;
+      const mappingRow = row.querySelector('.mapping-row');
+
+      if (fileCol) {
+        mappingRow.querySelector('.file-column').value = fileCol;
+      }
+      if (targetCol) {
+        mappingRow.querySelector('.target-column').value = targetCol;
+      }
+
+      mappingRows.appendChild(mappingRow);
+      updateColumnsConfig();
+    }
+
+    function updateColumnsConfig() {
+      const config = {};
+      mappingRows.querySelectorAll('.mapping-row').forEach(row => {
+        const fileCol = row.querySelector('.file-column').value.trim();
+        const targetCol = row.querySelector('.target-column').value;
+        if (fileCol && targetCol) {
+          config[fileCol] = targetCol;
+        }
+      });
+      columnsConfigInput.value = JSON.stringify(config);
+    }
+
+    // Валидация формы
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+      if (!this.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      const config = JSON.parse(columnsConfigInput.value || '{}');
+      if (Object.keys(config).length === 0) {
+        e.preventDefault();
+        alert('Добавьте хотя бы одну настройку маппинга');
+        return false;
+      }
+
+      this.classList.add('was-validated');
+    });
+  });
+</script>
+
+</body>
+</html>
