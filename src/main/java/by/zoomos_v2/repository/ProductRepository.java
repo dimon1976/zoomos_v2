@@ -43,19 +43,44 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                                         Pageable pageable);
 
     /**
-     * Получает уникальные ключи валидации для задания
+     * Оптимизированный метод получения ключей валидации для задания.
+     * Использует прямой SQL запрос с индексами и без использования JOIN,
+     * что значительно ускоряет выполнение для больших наборов данных.
      *
      * @param dataSource тип источника данных
      * @param taskNumber номер задания
      * @return множество ключей валидации
      */
-    @Query("SELECT UPPER(CONCAT(p.productId, '_', p.productCategory1, '_', cd.competitorAdditional)) " +
-            "FROM Product p " +
-            "JOIN p.competitorDataList cd " +
-            "WHERE p.dataSource = :dataSource " +
-            "AND p.productAdditional1 = :taskNumber")
-    Set<String> findValidationKeysByTaskNumber(@Param("dataSource") DataSourceType dataSource,
-                                               @Param("taskNumber") String taskNumber);
+    @Query(value =
+            "SELECT DISTINCT UPPER(CONCAT(p.product_id, '_', p.product_category1, '_', c.competitor_additional)) " +
+                    "FROM zoomos_v2.public.products p " +
+                    "INNER JOIN zoomos_v2.public.site_data c ON c.product_id = p.id " +
+                    "WHERE p.data_source = :dataSource " +
+                    "AND p.product_additional1 = :taskNumber",
+            nativeQuery = true)
+    Set<String> findValidationKeysByTaskNumberOptimized(@Param("dataSource") String dataSource,
+                                                        @Param("taskNumber") String taskNumber);
+
+    /**
+     * Получает ключи валидации батчами для минимизации использования памяти.
+     *
+     * @param dataSource тип источника данных
+     * @param taskNumber номер задания
+     * @param size размер страницы
+     * @return множество ключей валидации для текущей страницы
+     */
+    @Query(value =
+            "SELECT DISTINCT UPPER(CONCAT(p.product_id, '_', p.product_category1, '_', c.competitor_additional)) " +
+                    "FROM zoomos_v2.public.products p " +
+                    "INNER JOIN zoomos_v2.public.site_data c ON c.product_id = p.id " +
+                    "WHERE p.data_source = :dataSource " +
+                    "AND p.product_additional1 = :taskNumber " +
+                    "LIMIT :size OFFSET :offset",
+            nativeQuery = true)
+    Set<String> findValidationKeysByTaskNumberPaginated(@Param("dataSource") String dataSource,
+                                                        @Param("taskNumber") String taskNumber,
+                                                        @Param("size") int size,
+                                                        @Param("offset") int offset);
 
     /**
      * Подсчитывает количество записей для задания/отчета
