@@ -20,22 +20,22 @@ import by.zoomos_v2.service.statistics.StatisticsProcessor;
 import by.zoomos_v2.util.PathResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -43,17 +43,17 @@ import java.util.stream.Collectors;
 /**
  * Оптимизированный сервис для асинхронной обработки файлов.
  * Реализует параллельную обработку данных и эффективное управление памятью.
- *
- * @author Dimon
- * @version 3.0
- * @since 2024-02-09
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileProcessingService {
     private static final int CHUNK_SIZE = 1000;
-    private static final int PARALLEL_CHUNKS = Runtime.getRuntime().availableProcessors() * 2;
+    private static final int PARALLEL_CHUNKS = Runtime.getRuntime().availableProcessors();
+    private static final int MAX_CONCURRENT_BATCHES = PARALLEL_CHUNKS * 2;
+
+    // Семафор для ограничения количества одновременных задач обработки
+    private final Semaphore concurrentProcessingLimiter = new Semaphore(MAX_CONCURRENT_BATCHES);
 
     private final FileMetadataRepository fileMetadataRepository;
     private final DataPersistenceService dataPersistenceService;
@@ -65,6 +65,7 @@ public class FileProcessingService {
     private final StatisticsProcessor statisticsProcessor;
     private final OperationProgressTracker progressTracker;
     private final OperationStateManager operationStateManager;
+    private final PlatformTransactionManager transactionManager;
 
     @Qualifier("fileProcessingExecutor")
     private final Executor fileProcessingExecutor;
@@ -83,33 +84,53 @@ public class FileProcessingService {
         CompletableFuture<Boolean> dataPersistenceFuture = null;
 
         try {
-            // Этап 1: Инициализация операции
-            FileMetadata metadata = getFileMetadata(fileId);
-            operation = initializeOperation(metadata);
+            // Создаем транзакционный шаблон для выполнения операций с БД
+            TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+            transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+            // Этап 1: Инициализация операции (в транзакции)
+            FileMetadata metadata = transactionTemplate.execute(status -> getFileMetadata(fileId));
+            operation = transactionTemplate.execute(status -> initializeOperation(metadata));
             log.debug("Операция инициализирована: {}", operation.getId());
 
-            // Этап 2: Асинхронное чтение файла
+            // Этап 2: Асинхронное чтение файла (не требует транзакций)
             fileReadingFuture = readFileAsync(metadata, operation);
 
             // Этап 3: Асинхронная обработка и сохранение данных
             BatchProcessingData batchData = fileReadingFuture.get(30, TimeUnit.MINUTES);
             if (!operationStateManager.isCancelled(operation.getId())) {
-                dataPersistenceFuture = persistDataAsync(metadata, operation, batchData);
+                dataPersistenceFuture = persistDataAsync(metadata, operation, batchData, transactionTemplate);
                 dataPersistenceFuture.get(60, TimeUnit.MINUTES);
             }
 
-            // Этап 4: Завершение операции
-            finalizeOperation(operation);
+            // Этап 4: Завершение операции (в транзакции)
+            final ImportOperation finalOperation = operation;
+            transactionTemplate.execute(status -> {
+                finalizeOperation(finalOperation);
+                return null;
+            });
 
         } catch (Exception e) {
-            handleProcessingError(operation, e);
+            log.error("Ошибка при обработке файла: {}", e.getMessage(), e);
+            if (operation != null) {
+                // Создаем новую транзакцию для обработки ошибки
+                TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+                transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+                final ImportOperation errorOperation = operation;
+                transactionTemplate.execute(status -> {
+                    handleProcessingError(errorOperation, e);
+                    return null;
+                });
+            }
         } finally {
             cleanup(operation, fileReadingFuture, dataPersistenceFuture);
         }
     }
 
     /**
-     * Асинхронно читает данные из файла
+     * Асинхронно читает данные из файла.
+     * Не требует транзакции, так как работает только с файловой системой.
      */
     private CompletableFuture<BatchProcessingData> readFileAsync(FileMetadata metadata, ImportOperation operation) {
         return CompletableFuture.supplyAsync(() -> {
@@ -161,17 +182,27 @@ public class FileProcessingService {
     }
 
     /**
-     * Асинхронно сохраняет обработанные данные в БД
+     * Асинхронно сохраняет обработанные данные в БД с использованием отдельных транзакций для каждого батча
      */
     private CompletableFuture<Boolean> persistDataAsync(FileMetadata metadata,
                                                         ImportOperation operation,
-                                                        BatchProcessingData batchData) {
+                                                        BatchProcessingData batchData,
+                                                        TransactionTemplate transactionTemplate) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 log.debug("Начало асинхронного сохранения данных: {}", metadata.getOriginalFilename());
                 progressTracker.trackProgress(operation, 41, "Подготовка к сохранению данных");
 
-                Map<String, String> columnsMapping = getMappingConfig(metadata.getMappingConfigId());
+                // Получаем конфигурацию маппинга (в транзакции)
+                Map<String, String> columnsMapping = transactionTemplate.execute(status ->
+                        getMappingConfig(metadata.getMappingConfigId())
+                );
+
+                // Получаем ClientMappingConfig для определения типа данных (в транзакции)
+                ClientMappingConfig mappingConfig = transactionTemplate.execute(status ->
+                        mappingConfigService.getMappingById(metadata.getMappingConfigId())
+                );
+                DataSourceType dataSourceType = mappingConfig.getDataSource();
 
                 // Создаем пул для параллельной обработки
                 ExecutorService chunkExecutor = Executors.newFixedThreadPool(PARALLEL_CHUNKS);
@@ -180,47 +211,86 @@ public class FileProcessingService {
                 try {
                     // Обрабатываем файл партиями
                     final AtomicInteger processedCount = new AtomicInteger(0);
+                    final List<String> errors = Collections.synchronizedList(new ArrayList<>());
 
                     batchData.processTempFileInBatches(CHUNK_SIZE, batch -> {
-                        if (!operationStateManager.isCancelled(operation.getId())) {
+                        if (operationStateManager.isCancelled(operation.getId())) {
+                            return;
+                        }
+
+                        try {
+                            // Получаем разрешение от семафора перед запуском задачи
+                            concurrentProcessingLimiter.acquire();
+
                             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                                 try {
-                                    // Получаем ClientMappingConfig для определения типа данных
-                                    ClientMappingConfig mappingConfig = mappingConfigService.getMappingById(metadata.getMappingConfigId());
-                                    DataSourceType dataSourceType = mappingConfig.getDataSource();
-                                    Map<String, Object> results = dataPersistenceService.saveEntities(
-                                            batch,
-                                            metadata.getClientId(),
-                                            columnsMapping,
-                                            metadata.getId(),
-                                            dataSourceType
-                                    );
+                                    // Создаем новую транзакцию для каждого батча
+                                    transactionTemplate.execute(status -> {
+                                        try {
+                                            Map<String, Object> results = dataPersistenceService.saveEntities(
+                                                    batch,
+                                                    metadata.getClientId(),
+                                                    columnsMapping,
+                                                    metadata.getId(),
+                                                    dataSourceType
+                                            );
 
-                                    synchronized (operation) {
-                                        updateOperationProgress(operation, results, operation.getTotalRecords());
-                                    }
+                                            synchronized (operation) {
+                                                updateOperationProgress(operation, results, operation.getTotalRecords());
+                                            }
+
+                                            return results;
+                                        } catch (Exception e) {
+                                            log.error("Ошибка при сохранении батча: {}", e.getMessage());
+                                            errors.add("Ошибка сохранения: " + e.getMessage());
+                                            status.setRollbackOnly();
+                                            throw e;
+                                        }
+                                    });
 
                                     int currentProcessed = processedCount.addAndGet(batch.size());
                                     updateProgressMessage(operation, currentProcessed);
-
-                                } catch (Exception e) {
-                                    log.error("Ошибка при сохранении батча: {}", e.getMessage());
-                                    throw new CompletionException(e);
+                                } finally {
+                                    // Освобождаем разрешение после выполнения задачи
+                                    concurrentProcessingLimiter.release();
                                 }
                             }, chunkExecutor);
 
                             futures.add(future);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            log.warn("Прерывание при ожидании разрешения семафора", e);
                         }
                     });
 
                     // Ожидаем завершения всех задач
-                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                            .get(30, TimeUnit.MINUTES);
+                    CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+                            futures.toArray(new CompletableFuture[0])
+                    );
+
+                    try {
+                        allFutures.get(30, TimeUnit.MINUTES);
+                    } catch (Exception e) {
+                        log.error("Ошибка при ожидании завершения задач: {}", e.getMessage());
+                        // Добавляем ошибки в операцию
+                        errors.add("Ошибка при обработке: " + e.getMessage());
+                    }
+
+                    // Обновляем операцию с ошибками (если они есть)
+                    if (!errors.isEmpty()) {
+                        transactionTemplate.execute(status -> {
+                            errors.forEach(error -> operation.addError(error, "DATA_SAVE_ERROR"));
+                            operationStatsService.updateOperation(operation);
+                            return null;
+                        });
+                    }
 
                     return true;
                 } finally {
+                    // Корректно завершаем пул потоков
                     chunkExecutor.shutdown();
                     if (!chunkExecutor.awaitTermination(5, TimeUnit.MINUTES)) {
+                        log.warn("Принудительное завершение пула потоков после тайм-аута");
                         chunkExecutor.shutdownNow();
                     }
                 }
@@ -233,14 +303,14 @@ public class FileProcessingService {
 
     private void updateOperationProgress(ImportOperation operation,
                                          Map<String, Object> results,
-                                         int chunkSize) {
+                                         int totalRecords) {
         int successCount = (Integer) results.getOrDefault("successCount", 0);
         operation.incrementProcessedRecords(successCount);
 
         // Обновляем прогресс
-        int progress = 41 + (int) ((((double) operation.getProcessedRecords()) / operation.getTotalRecords()) * 58);
+        int progress = 41 + (int) ((((double) operation.getProcessedRecords()) / totalRecords) * 58);
         String message = String.format("Обработано записей: %d из %d",
-                operation.getProcessedRecords(), operation.getTotalRecords());
+                operation.getProcessedRecords(), totalRecords);
 
         progressTracker.trackProgress(operation, Math.min(99, progress), message);
 
@@ -251,19 +321,28 @@ public class FileProcessingService {
         }
     }
 
-    // Вспомогательные методы...
-
+    /**
+     * Получает метаданные файла.
+     * Требует транзакцию.
+     */
     private FileMetadata getFileMetadata(Long fileId) {
         return fileMetadataRepository.findById(fileId)
                 .orElseThrow(() -> new FileProcessingException("Файл не найден: " + fileId));
     }
 
+    /**
+     * Инициализирует операцию импорта.
+     * Требует транзакцию.
+     */
     private ImportOperation initializeOperation(FileMetadata metadata) {
         ImportOperation operation = createInitialOperation(metadata);
         operationStatsService.updateOperationStatus(operation, OperationStatus.IN_PROGRESS, null, null);
         return operation;
     }
 
+    /**
+     * Создает начальный объект операции импорта.
+     */
     private ImportOperation createInitialOperation(FileMetadata metadata) {
         ImportOperation operation = new ImportOperation();
         operation.setFileId(metadata.getId());
@@ -283,6 +362,10 @@ public class FileProcessingService {
         return operationStatsService.createOperation(operation);
     }
 
+    /**
+     * Завершает операцию импорта.
+     * Требует транзакцию.
+     */
     private void finalizeOperation(ImportOperation operation) {
         if (operation.getStatus() != OperationStatus.CANCELLED) {
             boolean hasErrors = !operation.getErrors().isEmpty();
@@ -300,6 +383,10 @@ public class FileProcessingService {
         }
     }
 
+    /**
+     * Обрабатывает ошибку в процессе импорта.
+     * Требует транзакцию.
+     */
     private void handleProcessingError(ImportOperation operation, Exception e) {
         if (operation != null && !operationStateManager.isCancelled(operation.getId())) {
             String errorType = e instanceof FileProcessingException ?
@@ -309,6 +396,9 @@ public class FileProcessingService {
         log.error("Ошибка обработки файла: {}", e.getMessage(), e);
     }
 
+    /**
+     * Освобождает ресурсы после завершения обработки
+     */
     private void cleanup(ImportOperation operation,
                          CompletableFuture<BatchProcessingData> readingFuture,
                          CompletableFuture<Boolean> persistenceFuture) {
@@ -335,10 +425,11 @@ public class FileProcessingService {
     }
 
     /**
-     * Настраивает процессор файлов с оптимальными параметрами
+     * Настраивает процессор файлов с оптимальными параметрами.
+     * Не требует транзакцию.
      */
     private FileProcessor setupFileProcessor(FileMetadata metadata) {
-        if (metadata.getFileType()== FileType.CSV){
+        if (metadata.getFileType() == FileType.CSV) {
             FileProcessor processor = processorFactory.getProcessor(metadata);
             processor.configure(createProcessorConfig(metadata));
             return processor;
@@ -419,7 +510,8 @@ public class FileProcessingService {
     }
 
     /**
-     * Получает конфигурацию маппинга из кэша или БД
+     * Получает конфигурацию маппинга из базы данных.
+     * Требует транзакцию.
      */
     private Map<String, String> getMappingConfig(Long mappingConfigId) {
         try {
@@ -434,13 +526,13 @@ public class FileProcessingService {
     }
 
     /**
-     * Отменяет обработку файла с очисткой ресурсов
+     * Отменяет обработку файла с очисткой ресурсов.
+     * Создает новую транзакцию.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void cancelProcessing(Long fileId) {
         try {
             ImportOperation operation = operationStatsService.findOperationByFileId(fileId)
-                    .map(op -> (ImportOperation) op)
                     .orElseThrow(() -> new FileProcessingException("Операция не найдена"));
 
             operationStateManager.markAsCancelled(operation.getId());
