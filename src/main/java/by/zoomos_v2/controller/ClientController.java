@@ -1,14 +1,18 @@
 package by.zoomos_v2.controller;
 
+import by.zoomos_v2.DTO.ClientDTO;
+import by.zoomos_v2.DTO.dashboard.ClientDashboardStatsDTO;
 import by.zoomos_v2.DTO.dashboard.DashboardOverviewDTO;
 import by.zoomos_v2.aspect.LogExecution;
 import by.zoomos_v2.exception.TabDataException;
 import by.zoomos_v2.model.Client;
+import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.input.service.FileUploadService;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.mapping.ExportConfigService;
 import by.zoomos_v2.service.mapping.MappingConfigService;
+import by.zoomos_v2.service.statistics.OperationStatsService;
 import by.zoomos_v2.service.statistics.dashboard.DashboardStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +24,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Контроллер для управления клиентами.
@@ -39,6 +45,7 @@ public class ClientController {
     private final ExportConfigService exportConfigService;
     private final FileMetadataService fileMetadataService;
     private final DashboardStatisticsService dashboardStatisticsService;
+    private final OperationStatsService operationStatsService;
 
     /**
      * Отображает список всех клиентов
@@ -50,7 +57,52 @@ public class ClientController {
     public String showClients(Model model) {
         log.debug("Запрошен список клиентов");
         try {
-            model.addAttribute("clients", clientService.getAllClients());
+            List<Client> clients = clientService.getAllClients();
+
+            // Обогащаем клиентов статистикой
+            List<ClientDTO> clientDTOs = clients.stream()
+                    .map(client -> {
+                        ClientDTO dto = ClientDTO.fromClient(client);
+
+                        try {
+                            // Добавляем статистику операций
+                            Map<OperationStatus, Long> operationsByStatus = operationStatsService
+                                    .getClientOperations(client.getId(), null)
+                                    .stream()
+                                    .collect(Collectors.groupingBy(
+                                            op -> op.getStatus(),
+                                            Collectors.counting()
+                                    ));
+
+                            dto.setActiveOperationsCount(
+                                    operationsByStatus.getOrDefault(OperationStatus.IN_PROGRESS, 0L)
+                            );
+
+                            dto.setFailedOperationsCount(
+                                    operationsByStatus.getOrDefault(OperationStatus.FAILED, 0L)
+                            );
+
+                            // Добавляем статистику файлов
+                            long totalFiles = fileMetadataService.getFilesByClientId(client.getId()).size();
+                            dto.setTotalFiles(totalFiles);
+
+                            // Получаем общий размер данных
+                            ClientDashboardStatsDTO dashboardStats = dashboardStatisticsService
+                                    .getDashboardOverview(client.getId(), null, null)
+                                    .getStats();
+
+                            if (dashboardStats != null) {
+                                dto.setFormattedTotalSize(dashboardStats.getFormattedTotalSize());
+                            }
+                        } catch (Exception e) {
+                            log.warn("Не удалось получить статистику для клиента {}: {}", client.getName(), e.getMessage());
+                        }
+
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+
+            model.addAttribute("clients", clientDTOs);
             return "client/clients";
         } catch (Exception e) {
             log.error("Ошибка при получении списка магазинов: {}", e.getMessage(), e);
@@ -82,15 +134,14 @@ public class ClientController {
             model.addAttribute("client", client);
 
             // Данные для вкладки загрузки
-            model.addAttribute("files", fileMetadataService.getFilesInfoByClientId(clientService.getClientByName(clientName).getId()));
-            model.addAttribute("mappings", mappingConfigService.getMappingsForClient(clientService.getClientByName(clientName).getId()));
+            model.addAttribute("files", fileMetadataService.getFilesInfoByClientId(client.getId()));
+            model.addAttribute("mappings", mappingConfigService.getMappingsForClient(client.getId()));
 
             // Данные для вкладки экспорта
-            model.addAttribute("configs", exportConfigService.getConfigsByClientId(clientService.getClientByName(clientName).getId()));
+            model.addAttribute("configs", exportConfigService.getConfigsByClientId(client.getId()));
 
             // Добавляем данные дашборда
-            DashboardOverviewDTO dashboardData = dashboardStatisticsService.getDashboardOverview(clientService.getClientByName(clientName).getId(), from, to);
-            model.addAttribute("dashboardData", dashboardData);
+            model.addAttribute("dashboardData", dashboardStatisticsService.getDashboardOverview(client.getId(), from, to));
             model.addAttribute("from", from);
             model.addAttribute("to", to);
 
@@ -221,12 +272,11 @@ public class ClientController {
     @LogExecution("Удаление магазина")
     public String deleteClient(@PathVariable String clientName,
                                RedirectAttributes redirectAttributes) {
-        log.debug("Запрос на удаление магазина с clientName: {}", clientName);
+        log.debug("Запрос на удаление магазина с ID: {}", clientName);
         try {
             clientService.deleteClient(clientService.getClientByName(clientName).getId());
             redirectAttributes.addFlashAttribute("success", "Магазин успешно удален");
         } catch (Exception e) {
-            //TODO Починить удаление магазина (рекурсивно)
             log.error("Ошибка при удалении магазина: {}", e.getMessage(), e);
             redirectAttributes.addFlashAttribute("error",
                     "Ошибка при удалении магазина: " + e.getMessage());

@@ -5,27 +5,52 @@
     <title>Магазины</title>
     <div th:replace="~{fragments/navbar :: header-css}"></div>
     <style>
-        .client-card {
-            transition: transform 0.2s, box-shadow 0.2s;
+        .table-hover tbody tr {
+            transition: background-color 0.2s;
         }
-        .client-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        .table-hover tbody tr:hover {
+            background-color: rgba(52, 152, 219, 0.1);
         }
-        .stats-item {
-            border-right: 1px solid #dee2e6;
-            padding: 0 15px;
+        .status-badge {
+            width: 80px;
         }
-        .stats-item:last-child {
-            border-right: none;
+        .animate-pulse {
+            animation: pulse 2s infinite;
         }
-        .client-title {
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .stats-value {
+            font-weight: 600;
+        }
+        .client-actions .btn {
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .client-actions .btn:hover {
+            opacity: 1;
+        }
+        .client-name-link {
             color: #2c3e50;
             text-decoration: none;
+            font-weight: 500;
             transition: color 0.2s;
         }
-        .client-title:hover {
+        .client-name-link:hover {
             color: #3498db;
+        }
+        .search-container {
+            position: relative;
+        }
+        .search-container .fas {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            color: #6c757d;
+        }
+        .search-input {
+            padding-left: 30px;
         }
         .shake {
             animation: shake 0.5s;
@@ -35,12 +60,111 @@
             10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
             20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
-        .fade-out {
-            animation: fadeOut 0.5s;
+        .table-responsive {
+            border-radius: 0.25rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         }
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
+        .in-progress {
+            color: #2980b9;
+        }
+        .completed {
+            color: #27ae60;
+        }
+        .failed {
+            color: #e74c3c;
+        }
+        .operations-count {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            border-radius: 50%;
+            text-align: center;
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+        .in-progress-count {
+            background-color: #3498db;
+            color: white;
+        }
+        .failed-count {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .row-inactive {
+            opacity: 0.7;
+        }
+
+        /* Стили для футера */
+        .footer {
+            margin-top: 4rem;
+            padding: 2rem 0;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-brand {
+            font-weight: 600;
+            font-size: 1.25rem;
+            color: #2c3e50;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .footer-links a {
+            color: #6c757d;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: #3498db;
+        }
+
+        .footer-copyright {
+            color: #6c757d;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .footer-divider {
+            margin: 1rem 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .version-info {
+            font-size: 0.75rem;
+            color: #adb5bd;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-links a {
+            color: #6c757d;
+            font-size: 1.25rem;
+            transition: color 0.2s;
+        }
+
+        .social-links a:hover {
+            color: #3498db;
         }
     </style>
     <meta name="_csrf" th:content="${_csrf.token}"/>
@@ -50,35 +174,46 @@
 <div th:replace="~{fragments/navbar :: header}"></div>
 
 <div class="container mt-4">
-    <!-- Заголовок и поиск -->
-    <div class="row mb-4">
-        <div class="col-md-8 d-flex align-items-center">
+    <!-- Заголовок и кнопка добавления -->
+    <div class="row mb-4 align-items-center">
+        <div class="col">
             <h1 class="mb-0">Магазины</h1>
+            <p class="text-muted mb-0">Управление магазинами и доступ к данным</p>
         </div>
-        <div class="col-md-4 d-flex justify-content-end">
+        <div class="col-auto">
             <a th:href="@{/client/new}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Добавить магазин
             </a>
         </div>
     </div>
 
-    <!-- Поисковая строка -->
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="input-group">
-                <input type="text" id="searchInput" class="form-control"
-                       placeholder="Поиск по названию или ID магазина...">
-                <button class="btn btn-outline-secondary" type="button">
-                    <i class="fas fa-search"></i>
-                </button>
+    <!-- Панель поиска и фильтрации -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="form-control search-input"
+                               placeholder="Поиск по названию или ID магазина...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="statusFilter">
+                        <option value="all">Все статусы</option>
+                        <option value="active">Активные</option>
+                        <option value="inactive">Неактивные</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="sortSelect">
+                        <option value="name">Сортировать по названию</option>
+                        <option value="id">Сортировать по ID</option>
+                        <option value="status">Сортировать по статусу</option>
+                        <option value="operations">По активным операциям</option>
+                    </select>
+                </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <select class="form-select" id="sortSelect">
-                <option value="name">По названию</option>
-                <option value="id">По ID</option>
-                <option value="status">По статусу</option>
-            </select>
         </div>
     </div>
 
@@ -92,216 +227,264 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- Карточки магазинов -->
-    <div class="row row-cols-1 row-cols-lg-2 g-4">
-        <div class="col" th:each="client : ${clients}">
-            <div class="card h-100 client-card">
-                <div class="card-body">
-                    <!-- Статус -->
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
-                           class="h5 mb-0 client-title">
+    <!-- Таблица магазинов -->
+    <div class="table-responsive mb-4">
+        <table class="table table-hover align-middle mb-0" id="clientsTable">
+            <thead class="table-light">
+            <tr>
+                <th>Магазин</th>
+                <th>URL</th>
+                <th>Операции</th>
+                <th>Файлы</th>
+                <th>Статус</th>
+                <th class="text-end">Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="client : ${clients}" th:classappend="${!client.active ? 'row-inactive' : ''}">
+                <td>
+                    <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
+                       class="client-name-link d-flex align-items-center gap-2">
+                        <i class="fas fa-store"></i>
+                        <div>
                             <span th:text="${client.name}"></span>
-                            <small class="text-muted" th:text="'#' + ${client.name}"></small>
-                        </a>
-                        <span th:class="${'badge ' + (client.active ? 'bg-success' : 'bg-danger')}"
+                            <div class="text-muted small" th:text="'ID: ' + ${client.id}"></div>
+                        </div>
+                    </a>
+                </td>
+                <td>
+                    <a th:href="${client.url}" th:text="${client.url}"
+                       target="_blank" class="text-truncate d-inline-block"
+                       style="max-width: 200px;" title="Открыть сайт магазина"></a>
+                </td>
+                <td>
+                    <!-- Операции -->
+                    <div class="d-flex align-items-center">
+                        <div>
+                            <div>
+                                <i class="fas fa-sync-alt in-progress"></i>
+                                <span>В процессе</span>
+                                <span class="operations-count in-progress-count" th:text="${client.activeOperationsCount}"></span>
+                            </div>
+                            <div>
+                                <i class="fas fa-times-circle failed"></i>
+                                <span>Ошибок</span>
+                                <span class="operations-count failed-count" th:text="${client.failedOperationsCount}"></span>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <!-- Файлы -->
+                    <div class="d-flex flex-column">
+                        <div>
+                            <span class="stats-value" th:text="${client.totalFiles}"></span>
+                            <span class="text-muted">файлов</span>
+                        </div>
+                        <div>
+                            <span class="stats-value" th:text="${client.formattedTotalSize}"></span>
+                            <span class="text-muted">данных</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                        <span th:class="${'badge status-badge ' + (client.active ? 'bg-success' : 'bg-danger')}"
                               th:text="${client.active ? 'Активен' : 'Неактивен'}">
                         </span>
-                    </div>
-
-                    <!-- URL и API ключ -->
-                    <div class="mb-3">
-                        <div class="text-muted small mb-1">
-                            <i class="fas fa-link"></i>
-                            <a th:href="${client.url}" target="_blank"
-                               th:text="${client.url}" class="text-decoration-none"></a>
-                        </div>
-                        <div class="text-muted small">
-                            <i class="fas fa-key"></i>
-                            <code th:text="${#strings.abbreviate(client.apiKey, 20)}"></code>
-                        </div>
-                    </div>
-
-                    <!-- Статистика -->
-                    <div class="row text-center bg-light rounded py-2 mb-3">
-                        <div class="col stats-item">
-                            <div class="small text-muted">Файлов загружено</div>
-                            <div class="h6 mb-0">0</div>
-                        </div>
-                        <div class="col stats-item">
-                            <div class="small text-muted">Размер данных</div>
-                            <div class="h6 mb-0">0 MB</div>
-                        </div>
-                        <div class="col stats-item">
-                            <div class="small text-muted">Активных задач</div>
-                            <div class="h6 mb-0">0</div>
-                        </div>
-                    </div>
-
-                    <!-- Действия -->
-                    <div class="d-flex gap-2">
+                </td>
+                <td>
+                    <div class="client-actions d-flex justify-content-end gap-2">
                         <a th:href="@{/client/{clientName}/dashboard(clientName=${client.name})}"
-                           class="btn btn-sm btn-primary flex-grow-1">
-                            <i class="fas fa-columns"></i> Панель управления
+                           class="btn btn-sm btn-primary"
+                           title="Панель управления">
+                            <i class="fas fa-columns"></i>
                         </a>
                         <a th:href="@{/client/{clientName}/settings(clientName=${client.name})}"
                            class="btn btn-sm btn-outline-secondary"
                            title="Настройки">
                             <i class="fas fa-cog"></i>
                         </a>
-                        <button class="btn btn-sm btn-outline-danger"
-                                th:data-client-id="${client.id}"
-                                th:data-client-name="${client.name}"
-                                onclick="showDeleteConfirmation(this)"
-                                title="Удалить">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <form th:action="@{/client/{clientName}/delete(clientName=${client.name})}" method="post" style="display: inline;">
+                            <input type="hidden" name="_csrf" th:value="${_csrf.token}" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Вы действительно хотите удалить магазин ' + '[[${client.name}]]' + '?');"
+                                    title="Удалить">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
                     </div>
-                </div>
-            </div>
-        </div>
+                </td>
+            </tr>
 
-        <!-- Пустое состояние -->
-        <div class="col-12" th:if="${#lists.isEmpty(clients)}">
-            <div class="card">
-                <div class="card-body text-center py-5">
+            <!-- Пустое состояние -->
+            <tr th:if="${#lists.isEmpty(clients)}">
+                <td colspan="6" class="text-center py-5">
                     <i class="fas fa-store-alt-slash fa-3x text-muted mb-3"></i>
                     <h5>Нет доступных магазинов</h5>
                     <p class="text-muted">Добавьте свой первый магазин, нажав кнопку "Добавить магазин"</p>
-                </div>
-            </div>
-        </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
     </div>
 </div>
-
-<!-- Модальное окно удаления -->
-<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Подтверждение удаления</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Вы действительно хотите удалить магазин <span id="clientNameSpan"></span>?</p>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="confirmCheck">
-                    <label class="form-check-label" for="confirmCheck">
-                        Я понимаю, что это действие необратимо
-                    </label>
-                </div>
-                <div class="alert alert-danger">
-                    Внимание! Удаление магазина приведет к удалению всех связанных данных!
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled>
-                    Удалить
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        let currentClientId = null;
-        let deleteAttempts = 0;
-        let modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-        const confirmCheck = document.getElementById('confirmCheck');
-        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        console.log('DOM загружен - финальная версия');
 
-        // Поиск по клиентам
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            const searchValue = e.target.value.toLowerCase();
-            const cards = document.querySelectorAll('.client-card');
+        // Получаем элементы управления
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const sortSelect = document.getElementById('sortSelect');
+        const tableBody = document.querySelector('#clientsTable tbody');
 
-            cards.forEach(card => {
-                const clientName = card.querySelector('.client-title').textContent.toLowerCase();
-                const clientId = card.querySelector('.text-muted').textContent.toLowerCase();
-
-                if (clientName.includes(searchValue) || clientId.includes(searchValue)) {
-                    card.closest('.col').style.display = '';
-                } else {
-                    card.closest('.col').style.display = 'none';
-                }
-            });
-        });
-
-        confirmCheck.addEventListener('change', function() {
-            confirmBtn.disabled = !this.checked;
-        });
-
-        window.showDeleteConfirmation = function(button) {
-            currentClientId = button.getAttribute('data-client-id');
-            const clientName = button.getAttribute('data-client-name');
-            document.getElementById('clientNameSpan').textContent = clientName;
-            deleteAttempts = 0;
-            confirmCheck.checked = false;
-            confirmBtn.disabled = true;
-            modal.show();
+        // Проверяем наличие элементов
+        if (!searchInput || !statusFilter || !sortSelect || !tableBody) {
+            console.error('Не удалось найти один или несколько элементов управления таблицей');
+            return;
         }
 
-        document.getElementById('deleteConfirmModal').addEventListener('hidden.bs.modal', function () {
-            deleteAttempts = 0;
-            confirmCheck.checked = false;
-            confirmBtn.disabled = true;
-        });
+        // Получаем все строки таблицы (исключая строку с сообщением «нет данных»)
+        const originalRows = Array.from(tableBody.querySelectorAll('tr')).filter(row =>
+            !row.querySelector('td[colspan]')
+        );
+        console.log(`Найдено ${originalRows.length} строк в таблице`);
 
-        confirmBtn.addEventListener('click', function() {
-            deleteAttempts++;
-            const button = this;
+        // Сохраняем оригинальный порядок строк
+        const originalOrder = [...originalRows];
 
-            if (deleteAttempts < 3) {
-                button.classList.add('shake');
-                setTimeout(() => button.classList.remove('shake'), 500);
-                return;
+        // Функция для обновления отображения таблицы
+        function updateTableDisplay() {
+            // Получаем значения фильтров
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const statusFilterValue = statusFilter.value;
+            const sortType = sortSelect.value;
+
+            console.log(`Применяем: поиск="${searchTerm}", статус="${statusFilterValue}", сортировка="${sortType}"`);
+
+            // Удаляем строку с сообщением "Нет результатов", если она есть
+            const emptyRow = tableBody.querySelector('.empty-result');
+            if (emptyRow) {
+                emptyRow.remove();
             }
 
-            fetch(`/client/${currentClientId}/delete`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    [document.querySelector('meta[name="_csrf_header"]').content]:
-                    document.querySelector('meta[name="_csrf"]').content
+            // Фильтрация строк
+            let visibleRows = originalRows.filter(row => {
+                // Получаем данные для поиска
+                const nameElement = row.querySelector('.client-name-link span');
+                const idElement = row.querySelector('.text-muted');
+
+                // Если элементы не найдены, строка не показывается
+                if (!nameElement || !idElement) return false;
+
+                const nameText = nameElement.textContent.toLowerCase();
+                const idText = idElement.textContent.toLowerCase();
+
+                // Проверяем совпадение по поиску
+                const matchesSearch = searchTerm === '' ||
+                    nameText.includes(searchTerm) ||
+                    idText.includes(searchTerm);
+
+                // Проверяем совпадение по статусу
+                if (statusFilterValue === 'all') {
+                    return matchesSearch;
                 }
-            })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                    } else {
-                        throw new Error('Ошибка при удалении');
+
+                const badge = row.querySelector('.badge');
+                const isActive = badge && badge.textContent.trim() === 'Активен';
+
+                if (statusFilterValue === 'active') {
+                    return matchesSearch && isActive;
+                } else {
+                    return matchesSearch && !isActive;
+                }
+            });
+
+            console.log(`После фильтрации осталось ${visibleRows.length} строк`);
+
+            // Сортировка строк
+            if (sortType !== 'original') {
+                visibleRows.sort((a, b) => {
+                    if (sortType === 'name') {
+                        // Сортировка по имени
+                        const nameA = a.querySelector('.client-name-link span').textContent.toLowerCase();
+                        const nameB = b.querySelector('.client-name-link span').textContent.toLowerCase();
+                        return nameA.localeCompare(nameB);
                     }
-                })
-                .catch(error => {
-                    modal.hide();
-                    showErrorMessage('Произошла ошибка при удалении магазина');
+
+                    if (sortType === 'id') {
+                        // Сортировка по ID (извлекаем числовое значение из строки ID)
+                        const idTextA = a.querySelector('.text-muted').textContent;
+                        const idTextB = b.querySelector('.text-muted').textContent;
+
+                        const idA = parseInt(idTextA.replace(/\D/g, ''));
+                        const idB = parseInt(idTextB.replace(/\D/g, ''));
+
+                        console.log(`Сравниваем ID: ${idA} vs ${idB}`);
+                        return idA - idB;
+                    }
+
+                    if (sortType === 'status') {
+                        // Сортировка по статусу
+                        const statusA = a.querySelector('.badge').textContent.trim();
+                        const statusB = b.querySelector('.badge').textContent.trim();
+                        return statusA.localeCompare(statusB);
+                    }
+
+                    if (sortType === 'operations') {
+                        // Сортировка по количеству операций (по убыванию)
+                        const opsA = parseInt(a.querySelector('.in-progress-count').textContent);
+                        const opsB = parseInt(b.querySelector('.in-progress-count').textContent);
+                        return opsB - opsA;
+                    }
+
+                    return 0;
                 });
-        });
+            }
+
+            // Скрываем все строки
+            originalRows.forEach(row => {
+                row.style.display = 'none';
+            });
+
+            // Показываем только отфильтрованные и отсортированные строки
+            visibleRows.forEach(row => {
+                row.style.display = '';
+            });
+
+            // Перестраиваем таблицу, добавляя строки в новом порядке
+            if (visibleRows.length > 0) {
+                visibleRows.forEach(row => {
+                    tableBody.appendChild(row);
+                });
+            }
+
+            // Если нет видимых строк и есть какие-то данные, показываем сообщение
+            if (visibleRows.length === 0 && originalRows.length > 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.className = 'empty-result';
+                emptyRow.innerHTML = `
+                <td colspan="6" class="text-center py-4">
+                    <i class="fas fa-search fa-2x text-muted mb-3 d-block"></i>
+                    <h6>Нет магазинов, соответствующих критериям поиска</h6>
+                    <p class="text-muted">Попробуйте изменить параметры поиска или фильтрации</p>
+                </td>
+            `;
+                tableBody.appendChild(emptyRow);
+            }
+        }
+
+        // Привязка обработчиков событий
+        searchInput.addEventListener('input', updateTableDisplay);
+        statusFilter.addEventListener('change', updateTableDisplay);
+        sortSelect.addEventListener('change', updateTableDisplay);
+
+        // Запускаем начальную сортировку по умолчанию
+        setTimeout(updateTableDisplay, 100); // Небольшая задержка для гарантии полной загрузки DOM
     });
-
-    function showSuccessMessage(message) {
-        const alert = `
-        <div class="alert alert-success alert-dismissible fade show">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    `;
-        document.querySelector('.card-body').insertAdjacentHTML('afterbegin', alert);
-    }
-
-    function showErrorMessage(message) {
-        const alert = `
-        <div class="alert alert-danger alert-dismissible fade show">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    `;
-        document.querySelector('.card-body').insertAdjacentHTML('afterbegin', alert);
-    }
 </script>
 
+<!-- Футер -->
 <div th:replace="~{fragments/navbar :: footer}"></div>
 </body>
 </html>
