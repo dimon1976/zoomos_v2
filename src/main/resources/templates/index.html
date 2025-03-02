@@ -1,7 +1,9 @@
-<!-- src/main/resources/templates/index.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="fragments/navbar :: header-css">
+    <title>Zoomos - Панель управления</title>
+    <!-- Добавляем библиотеку Chart.js для графиков -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <header th:replace="fragments/navbar :: header">
@@ -59,6 +61,64 @@
         </div>
     </div>
 
+    <!-- Состояние системы -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-server"></i> Состояние системы</h5>
+                    <small th:text="'Обновлено: ' + ${#temporals.format(systemResources.lastUpdated, 'dd.MM.yyyy HH:mm:ss')}">Обновлено: 01.01.2025 00:00:00</small>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Использование памяти</h6>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar"
+                                     th:style="'width: ' + ${systemResources.memoryUsagePercentage} + '%'"
+                                     th:text="${systemResources.memoryUsagePercentage} + '%'"></div>
+                            </div>
+                            <small class="text-muted" th:text="'Используется: ' + ${systemResources.currentMemoryUsage}">Используется: 0 MB</small>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Дисковое пространство</h6>
+                            <div class="progress">
+                                <div class="progress-bar bg-info" role="progressbar"
+                                     th:style="'width: ' + ${systemResources.diskUsagePercentage != null ? systemResources.diskUsagePercentage : 0} + '%'"
+                                     th:text="${systemResources.diskUsagePercentage != null ? systemResources.diskUsagePercentage : 0} + '%'"></div>
+                            </div>
+                            <small class="text-muted">Используется для файлов магазинов</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Диаграммы -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Распределение операций</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="operationTypeChart" width="400" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Операции за неделю</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="operationsTimelineChart" width="400" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Быстрые действия -->
     <div class="row mb-4">
         <div class="col">
@@ -74,13 +134,18 @@
                             </a>
                         </div>
                         <div class="col-md-3">
-                            <a th:href="@{/statistics/operations}" class="btn btn-outline-success w-100 mb-2">
+                            <a th:href="@{/operations}" class="btn btn-outline-success w-100 mb-2">
                                 <i class="fas fa-chart-line"></i> Статистика операций
                             </a>
                         </div>
                         <div class="col-md-3">
                             <a th:href="@{/utils}" class="btn btn-outline-info w-100 mb-2">
                                 <i class="fas fa-tools"></i> Утилиты
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a th:href="@{/directories}" class="btn btn-outline-secondary w-100 mb-2">
+                                <i class="fas fa-book"></i> Справочники
                             </a>
                         </div>
                     </div>
@@ -95,7 +160,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5><i class="fas fa-history"></i> Последние операции</h5>
-                    <div class="btn-group">
+                    <div class="btn-group" role="group" aria-label="Фильтр операций">
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterOperations('IMPORT')">Импорт</button>
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterOperations('EXPORT')">Экспорт</button>
                         <button type="button" class="btn btn-sm btn-outline-primary active" onclick="filterOperations('ALL')">Все</button>
@@ -115,24 +180,27 @@
                                 <th>Действия</th>
                             </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="operations-table-body">
                             <tr th:each="operation : ${recentOperations}">
-                                <td th:text="${#temporals.format(operation.startTime, 'dd.MM.yyyy HH:mm')}"></td>
-                                <td th:text="${operation.clientId}"></td>
-                                <td th:text="${operation.type.description}"></td>
-                                <td th:text="${operation.status}"></td>
+                                <td th:text="${#temporals.format(operation.startTime, 'dd.MM.yyyy HH:mm')}">01.01.2025 00:00</td>
+                                <td th:text="${operation.clientName}">Магазин</td>
+                                <td th:text="${operation.type.description}">Тип</td>
+                                <td th:text="${operation.sourceIdentifier}">file.csv</td>
                                 <td>
-                                    <span th:text="${operation.processedRecords + '/' + operation.totalRecords}"></span>
+                                    <span th:text="${operation.processedRecords + '/' + operation.totalRecords}">0/0</span>
                                 </td>
                                 <td>
-                                <span th:class="${(operation.status != null ? #strings.toLowerCase(operation.status) : '')}"
-                                      th:text="${operation.status.description}"></span>
+                                    <span th:class="'badge ' + ${
+                                        (operation.status == T(by.zoomos_v2.model.enums.OperationStatus).COMPLETED ? 'bg-success' :
+                                        (operation.status == T(by.zoomos_v2.model.enums.OperationStatus).IN_PROGRESS ? 'bg-primary' :
+                                        (operation.status == T(by.zoomos_v2.model.enums.OperationStatus).FAILED ? 'bg-danger' :
+                                        (operation.status == T(by.zoomos_v2.model.enums.OperationStatus).CANCELLED ? 'bg-secondary' : 'bg-warning'))))}"
+                                          th:text="${operation.status.description}">Статус</span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-info"
-                                            th:onclick="'showDetails(\'' + ${operation.id} + '\')'">
+                                    <a th:href="@{'/operations/' + ${operation.id} + '/details'}" class="btn btn-sm btn-info">
                                         <i class="fas fa-info-circle"></i>
-                                    </button>
+                                    </a>
                                 </td>
                             </tr>
                             </tbody>
@@ -146,6 +214,171 @@
 
 <div th:replace="fragments/navbar :: footer">
 </div>
+
+<!-- JavaScript для графиков и фильтрации -->
+<script th:inline="javascript">
+    // Исправленная версия для оптимизации графиков
+
+    // Инициализация диаграмм при загрузке страницы - оптимизированная версия
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            // Предотвращаем создание диаграмм, если нет данных
+            if (!operationTypeCounts || !operationTypeCounts.labels || operationTypeCounts.labels.length === 0) {
+                console.warn("Нет данных для диаграммы типов операций");
+                document.getElementById('operationTypeChart').parentNode.innerHTML =
+                    '<div class="alert alert-info">Нет данных для отображения</div>';
+                return;
+            }
+
+            // Диаграмма типов операций - с ограничением анимации для производительности
+            const typeCtx = document.getElementById('operationTypeChart').getContext('2d');
+            const typeChart = new Chart(typeCtx, {
+                type: 'pie',
+                data: {
+                    labels: operationTypeCounts.labels.map(type => operationTypeCounts.descriptions[type] || type),
+                    datasets: [{
+                        data: operationTypeCounts.data,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(255, 206, 86, 0.7)',
+                            'rgba(75, 192, 192, 0.7)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    // Отключаем анимацию для лучшей производительности
+                    animation: {
+                        duration: 0
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Распределение по типам операций'
+                        }
+                    }
+                }
+            });
+
+            // Предотвращаем создание второй диаграммы, если нет данных
+            if (!operationsTimeline || !operationsTimeline.labels || operationsTimeline.labels.length === 0) {
+                console.warn("Нет данных для диаграммы операций по времени");
+                document.getElementById('operationsTimelineChart').parentNode.innerHTML =
+                    '<div class="alert alert-info">Нет данных для отображения</div>';
+                return;
+            }
+
+            // Диаграмма временной шкалы операций - с ограничением анимации
+            const timelineCtx = document.getElementById('operationsTimelineChart').getContext('2d');
+            const timelineChart = new Chart(timelineCtx, {
+                type: 'bar',
+                data: {
+                    labels: operationsTimeline.labels,
+                    datasets: [{
+                        label: 'Количество операций',
+                        data: operationsTimeline.data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    // Отключаем анимацию для лучшей производительности
+                    animation: {
+                        duration: 0
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Операции за последние 7 дней'
+                        }
+                    }
+                }
+            });
+
+            console.log("Диаграммы успешно инициализированы");
+        } catch (error) {
+            console.error("Ошибка при инициализации диаграмм:", error);
+        }
+    });
+
+    // Оптимизированная функция фильтрации с защитой от множественных вызовов
+    let filterInProgress = false;
+    let lastFilterType = 'ALL';
+
+    function filterOperations(type) {
+        // Предотвращаем повторные вызовы одного и того же фильтра
+        if (filterInProgress || type === lastFilterType) {
+            console.log("Фильтрация пропущена: уже выполняется или тип не изменился");
+            return;
+        }
+
+        filterInProgress = true;
+        lastFilterType = type;
+
+        console.log("Фильтрация операций по типу:", type);
+
+        // Установка активной кнопки
+        document.querySelectorAll('.btn-group .btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`.btn-group .btn[onclick="filterOperations('${type}')"]`).classList.add('active');
+
+        // Показываем индикатор загрузки
+        document.getElementById('operations-table-body').innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <p>Загрузка данных...</p>
+            </td>
+        </tr>
+    `;
+
+        // AJAX запрос на сервер
+        fetch(`/api/operations?type=${type}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при получении данных');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Получены данные операций:", data);
+                // Обновление таблицы
+                renderOperationsTable(data);
+            })
+            .catch(error => {
+                console.error("Ошибка при фильтрации операций:", error);
+                document.getElementById('operations-table-body').innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger">
+                        <i class="fas fa-exclamation-circle"></i> Ошибка загрузки данных: ${error.message}
+                    </td>
+                </tr>
+            `;
+            })
+            .finally(() => {
+                // Сбрасываем флаг блокировки
+                filterInProgress = false;
+            });
+    }
+</script>
 
 </body>
 </html>

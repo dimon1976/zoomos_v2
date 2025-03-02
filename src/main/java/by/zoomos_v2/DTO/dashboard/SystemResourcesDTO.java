@@ -9,5 +9,8 @@ import java.time.LocalDateTime;
 public class SystemResourcesDTO {
     private String peakMemoryUsage;
     private String currentMemoryUsage;
+    private int memoryUsagePercentage;
+    private int diskUsagePercentage;
+    private String uptime;
     private LocalDateTime lastUpdated;
 }
