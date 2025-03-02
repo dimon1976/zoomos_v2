@@ -81,8 +81,7 @@
                                     <th>Обработано записей</th>
                                     <td>
         <span class="processed-records"
-              th:text="${operation.processedRecords != null ?
-                      operation.processedRecords + ' из ' + operation.totalRecords : '0 из 0'}">
+              th:text="${(operation.processedRecords ?: 0) + ' из ' + (operation.totalRecords ?: 0)}">
         </span>
                                     </td>
                                 </tr>
