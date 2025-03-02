@@ -4,8 +4,6 @@ import by.zoomos_v2.exception.FileProcessingException;
 import by.zoomos_v2.model.FileMetadata;
 import by.zoomos_v2.model.FileType;
 import by.zoomos_v2.model.TextFileParameters;
-import by.zoomos_v2.model.enums.OperationStatus;
-import by.zoomos_v2.model.operation.ImportOperation;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.util.FileTypeDetector;
 import by.zoomos_v2.util.FileUtils;
@@ -34,7 +32,6 @@ public class FileUploadService {
     private final FileValidationService fileValidationService;
     private final FileUtils fileUtils;
     private final PathResolver pathResolver;
-    private final FileProcessingService fileProcessingService;
 
     /**
      * Загружает файл и создает метаданные.

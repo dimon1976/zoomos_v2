@@ -1,4 +1,4 @@
-package by.zoomos_v2.controller;
+package by.zoomos_v2.controller.api;
 
 import by.zoomos_v2.DTO.statistics.ProcessingStatsDTO;
 import by.zoomos_v2.model.operation.BaseOperation;
