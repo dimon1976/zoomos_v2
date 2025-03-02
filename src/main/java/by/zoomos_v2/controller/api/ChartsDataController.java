@@ -11,7 +11,6 @@ import java.util.*;
 
 /**
  * REST контроллер для получения данных для графиков
- * Без зависимостей от репозиториев
  */
 @RestController
 @RequestMapping("/api/charts")
@@ -25,22 +24,20 @@ public class ChartsDataController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // Здесь в будущем должен быть код получения данных из вашего источника
-            // Сейчас используем заглушку с демо-данными
+            // ПРИМЕЧАНИЕ: В реальном приложении здесь должен быть запрос к базе данных
+            // Сейчас используем тестовые данные для демонстрации
 
-            // Определяем типы операций (замените на ваши реальные типы)
-            List<String> types = Arrays.asList("IMPORT", "EXPORT", "PRODUCT_UPDATE", "PRICE_UPDATE");
+            List<String> labels = Arrays.asList("IMPORT", "EXPORT", "PRODUCT_UPDATE", "PRICE_UPDATE");
+            List<Integer> data = Arrays.asList(15, 8, 3, 5);
+
             Map<String, String> descriptions = new HashMap<>();
             descriptions.put("IMPORT", "Импорт");
             descriptions.put("EXPORT", "Экспорт");
             descriptions.put("PRODUCT_UPDATE", "Обновление товаров");
             descriptions.put("PRICE_UPDATE", "Обновление цен");
 
-            // Генерируем случайные данные для демонстрации
-            List<Long> counts = Arrays.asList(15L, 8L, 3L, 5L);
-
-            response.put("labels", types);
-            response.put("data", counts);
+            response.put("labels", labels);
+            response.put("data", data);
             response.put("descriptions", descriptions);
 
             return ResponseEntity.ok(response);
@@ -58,26 +55,20 @@ public class ChartsDataController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // Здесь в будущем должен быть код получения данных из вашего источника
-            // Сейчас используем заглушку с демо-данными
+            // ПРИМЕЧАНИЕ: В реальном приложении здесь должен быть запрос к базе данных
+            // Сейчас используем тестовые данные для демонстрации
 
-            // Форматируем даты для отображения
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM");
-
-            // Создаем метки для последних 7 дней
             List<String> labels = new ArrayList<>();
-            List<Long> data = new ArrayList<>();
+            List<Integer> data = new ArrayList<>();
 
             LocalDate today = LocalDate.now();
             Random random = new Random();
 
-            // Генерируем данные для последних 7 дней
             for (int i = 6; i >= 0; i--) {
                 LocalDate date = today.minusDays(i);
                 labels.add(date.format(formatter));
-
-                // Случайное количество операций для демонстрации
-                data.add((long) random.nextInt(10));
+                data.add(random.nextInt(10)); // Случайное число от 0 до 9
             }
 
             response.put("labels", labels);

@@ -1,362 +1,283 @@
 /**
- * Скрипт для автоматического обновления системных ресурсов
- * Добавьте его в конец вашего HTML перед закрывающим тегом </body>
+ * Полный скрипт для обновления информации о системных ресурсах
+ * Добавьте этот код перед закрывающим тегом </body>
  */
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Регистрируем обработчики событий после загрузки DOM
-    setupSystemResourcesUpdater();
-    setupChartsUpdater();
+    // Инициализация обработчиков событий
+    initSystemResourcesUpdater();
+
+    // Запуск первого обновления
+    updateSystemResources(false);
+
+    // Установка интервала обновления (каждые 60 секунд)
+    setInterval(function() {
+        updateSystemResources(false);
+    }, 60000);
 });
 
 /**
- * Настраивает автоматическое обновление системных ресурсов
+ * Инициализирует обработчики событий
  */
-function setupSystemResourcesUpdater() {
-    // Сначала проверяем, существуют ли необходимые элементы на странице
-    const memoryProgressBar = document.querySelector('.progress-bar:first-of-type');
-    const diskProgressBar = document.querySelector('.progress-bar.bg-info');
+function initSystemResourcesUpdater() {
+    // Обработчик для кнопки обновления системных ресурсов
+    const refreshSystemBtn = document.getElementById('refresh-system-btn');
+    if (refreshSystemBtn) {
+        refreshSystemBtn.addEventListener('click', function() {
+            updateSystemResources(true);
+        });
+    }
+}
 
-    if (!memoryProgressBar || !diskProgressBar) {
-        console.warn('Элементы системных ресурсов не найдены на странице');
+/**
+ * Обновляет всю информацию о системных ресурсах
+ * @param {boolean} forceUpdate - флаг принудительного обновления
+ */
+function updateSystemResources(forceUpdate = false) {
+    // Показываем индикатор загрузки
+    if (forceUpdate) {
+        const refreshBtn = document.getElementById('refresh-system-btn');
+        if (refreshBtn) {
+            const icon = refreshBtn.querySelector('i');
+            if (icon) {
+                icon.className = 'fas fa-spinner fa-spin';
+            }
+            refreshBtn.disabled = true;
+        }
+    }
+
+    // Запрос к API
+    fetch(`/api/system/resources?forceUpdate=${forceUpdate ? 'true' : 'false'}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Ошибка HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Получены данные о системных ресурсах:', data);
+
+            // Обновляем информацию о CPU
+            updateCpuInfo(data);
+
+            // Обновляем информацию о памяти
+            updateMemoryInfo(data);
+
+            // Обновляем информацию о диске
+            updateDiskInfo(data);
+
+            // Обновляем время последнего обновления
+            updateLastUpdatedTime(data);
+        })
+        .catch(error => {
+            console.error('Ошибка при получении данных о системных ресурсах:', error);
+            showErrorMessage(error.message);
+        })
+        .finally(() => {
+            // Возвращаем кнопку в исходное состояние
+            if (forceUpdate) {
+                const refreshBtn = document.getElementById('refresh-system-btn');
+                if (refreshBtn) {
+                    const icon = refreshBtn.querySelector('i');
+                    if (icon) {
+                        icon.className = 'fas fa-sync-alt';
+                    }
+                    refreshBtn.disabled = false;
+                }
+            }
+        });
+}
+
+/**
+ * Обновляет информацию о CPU
+ */
+function updateCpuInfo(data) {
+    // Обновляем прогресс-бар CPU
+    const cpuBar = document.querySelector('#cpu-usage-bar');
+    if (cpuBar && data.cpuUsagePercentage !== undefined) {
+        const cpuPercentage = parseFloat(data.cpuUsagePercentage) || 0;
+        cpuBar.style.width = cpuPercentage + '%';
+        cpuBar.textContent = cpuPercentage + '%';
+        cpuBar.setAttribute('aria-valuenow', cpuPercentage);
+
+        // Изменяем цвет в зависимости от загрузки
+        if (cpuPercentage > 90) {
+            cpuBar.className = 'progress-bar bg-danger';
+        } else if (cpuPercentage > 70) {
+            cpuBar.className = 'progress-bar bg-warning';
+        } else {
+            cpuBar.className = 'progress-bar bg-success';
+        }
+    }
+
+    // Обновляем детали CPU
+    const cpuDetailsText = document.querySelector('#cpu-usage-bar').closest('.col-md-6').querySelector('small.text-muted');
+    if (cpuDetailsText) {
+        const cores = data.availableProcessors || 0;
+        const systemLoad = data.systemCpuLoad || data.cpuUsagePercentage || 0;
+        cpuDetailsText.textContent = `Ядер: ${cores}, Загрузка системы: ${systemLoad}%`;
+    }
+}
+
+/**
+ * Обновляет информацию о памяти
+ */
+function updateMemoryInfo(data) {
+    // Обновляем прогресс-бар памяти
+    const memoryBar = document.querySelector('#memory-usage-bar');
+    if (memoryBar && data.memoryUsagePercentage !== undefined) {
+        const memoryPercentage = parseFloat(data.memoryUsagePercentage) || 0;
+        memoryBar.style.width = memoryPercentage + '%';
+        memoryBar.textContent = memoryPercentage + '%';
+        memoryBar.setAttribute('aria-valuenow', memoryPercentage);
+
+        // Изменяем цвет в зависимости от загрузки
+        if (memoryPercentage > 90) {
+            memoryBar.className = 'progress-bar bg-danger';
+        } else if (memoryPercentage > 70) {
+            memoryBar.className = 'progress-bar bg-warning';
+        } else {
+            memoryBar.className = 'progress-bar bg-info';
+        }
+    }
+
+    // Обновляем детали памяти
+    const memoryDetailsText = document.querySelector('#memory-usage-bar').closest('.col-md-6').querySelector('small.text-muted');
+    if (memoryDetailsText) {
+        const used = data.currentMemoryUsage || data.usedHeapMemory || '0 MB';
+        const total = data.totalMemory || data.maxHeapMemory || '0 GB';
+        memoryDetailsText.textContent = `Используется: ${used} из ${total}`;
+    }
+}
+
+/**
+ * Обновляет информацию о дисковом пространстве
+ */
+function updateDiskInfo(data) {
+    // Проверяем наличие ошибок
+    if (data.diskError) {
+        showDiskError(data.diskError);
         return;
     }
 
-    // Добавляем кнопку для ручного обновления (если её ещё нет)
-    const cardHeader = document.querySelector('.card-header');
-    if (cardHeader && !document.getElementById('refresh-system-resources')) {
-        const refreshButton = document.createElement('button');
-        refreshButton.id = 'refresh-system-resources';
-        refreshButton.className = 'btn btn-sm btn-outline-primary me-2';
-        refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i> Обновить';
+    // Общее использование диска
+    const diskBar = document.querySelector('#disk-usage-bar');
+    if (diskBar && data.diskUsagePercentage !== undefined) {
+        const diskPercentage = parseFloat(data.diskUsagePercentage) || 0;
+        diskBar.style.width = diskPercentage + '%';
+        diskBar.textContent = diskPercentage + '%';
+        diskBar.setAttribute('aria-valuenow', diskPercentage);
 
-        // Добавляем обработчик клика
-        refreshButton.addEventListener('click', function() {
-            const icon = this.querySelector('i');
-            icon.classList.add('fa-spin');
-
-            updateSystemResources().finally(() => {
-                setTimeout(() => {
-                    icon.classList.remove('fa-spin');
-                }, 1000);
-            });
-        });
-
-        // Добавляем кнопку к заголовку карточки
-        const headerContent = cardHeader.querySelector('div');
-        if (headerContent) {
-            headerContent.prepend(refreshButton);
+        // Изменяем цвет в зависимости от заполнения
+        if (diskPercentage > 90) {
+            diskBar.className = 'progress-bar bg-danger';
+        } else if (diskPercentage > 75) {
+            diskBar.className = 'progress-bar bg-warning';
         } else {
-            // Если div не существует, создаем новый
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'd-flex justify-content-between align-items-center';
-            headerDiv.appendChild(cardHeader.querySelector('h5')); // Перемещаем заголовок
-            headerDiv.appendChild(refreshButton);
-
-            // Добавляем элемент для отображения времени обновления
-            const timeSpan = document.createElement('small');
-            timeSpan.id = 'last-updated-time';
-            timeSpan.textContent = 'Обновлено: ' + getCurrentFormattedTime();
-            headerDiv.appendChild(timeSpan);
-
-            // Очищаем и заполняем заголовок карточки
-            cardHeader.innerHTML = '';
-            cardHeader.appendChild(headerDiv);
+            diskBar.className = 'progress-bar bg-info';
         }
     }
 
-    // Добавляем секцию для отображения CPU, если её нет
-    const systemResourcesCard = document.querySelector('.card');
-    const cardBody = systemResourcesCard.querySelector('.card-body');
-
-    if (cardBody && !document.querySelector('.cpu-usage')) {
-        // Создаем новую строку
-        const newRow = document.createElement('div');
-        newRow.className = 'row mb-3';
-
-        // Добавляем секцию CPU
-        newRow.innerHTML = `
-            <div class="col-md-6 cpu-usage">
-                <h6>Использование CPU</h6>
-                <div class="progress">
-                    <div class="progress-bar bg-danger" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                </div>
-                <small class="text-muted">Средняя загрузка процессора</small>
-            </div>
-        `;
-
-        // Добавляем строку в начало содержимого карточки
-        cardBody.prepend(newRow);
-
-        // Перемещаем существующую секцию памяти в новую строку
-        const memorySection = document.querySelector('.progress-bar').closest('.col-md-6');
-        if (memorySection) {
-            newRow.appendChild(memorySection.cloneNode(true));
-            memorySection.remove();
-        }
+    // Обновляем текст с информацией об использовании диска
+    const diskUsageText = document.getElementById('disk-usage-text');
+    if (diskUsageText) {
+        const used = data.usedDiskSpace || '0 GB';
+        const total = data.totalDiskSpace || '0 GB';
+        const percentage = data.diskUsagePercentage || 0;
+        diskUsageText.textContent = `Используется: ${used} из ${total} (${percentage}%)`;
     }
 
-    // Улучшаем информацию о диске, если необходимо
-    const diskUsageText = document.querySelector('.progress-bar.bg-info').closest('.col-md-6 ,.col-md-12').querySelector('small.text-muted');
-    if (diskUsageText && !diskUsageText.textContent.includes('из')) {
-        diskUsageText.textContent = 'Используется: 0 GB из 0 GB (0%)';
+    // Обновляем текст с информацией о свободном пространстве
+    const diskFreeText = document.getElementById('disk-free-text');
+    if (diskFreeText && data.freeDiskSpace) {
+        diskFreeText.textContent = `Свободно: ${data.freeDiskSpace}`;
     }
 
-    // Запускаем первое обновление
-    updateSystemResources();
+    // Пространство файлов клиентов
+    // Обновляем прогресс-бар файлов клиентов
+    const clientsBar = document.querySelector('#clients-usage-bar');
+    if (clientsBar && data.clientsDataPercentage !== undefined) {
+        const percentage = parseFloat(data.clientsDataPercentage) || 0;
+        clientsBar.style.width = percentage + '%';
+        clientsBar.textContent = percentage + '%';
+        clientsBar.setAttribute('aria-valuenow', percentage);
+    }
 
-    // Устанавливаем интервал обновления каждые 30 секунд
-    setInterval(updateSystemResources, 30000);
-}
+    // Обновляем информацию о размере файлов клиентов
+    const clientsSizeText = document.getElementById('clients-size-text');
+    if (clientsSizeText) {
+        const size = data.clientsDataSize || '0 GB';
+        const percentage = data.clientsDataPercentage || 0;
+        clientsSizeText.textContent = `Размер файлов: ${size} (${percentage}% от общего)`;
+    }
 
-/**
- * Обновляет информацию о системных ресурсах через AJAX запрос
- */
-async function updateSystemResources() {
-    try {
-        const response = await fetch('/api/system/resources');
-        if (!response.ok) {
-            throw new Error(`Ошибка HTTP: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('Получены данные о системных ресурсах:', data);
-
-        // Обновляем CPU (если есть)
-        const cpuProgressBar = document.querySelector('.progress-bar.bg-danger');
-        if (cpuProgressBar && data.cpuUsagePercentage !== undefined) {
-            cpuProgressBar.style.width = data.cpuUsagePercentage + '%';
-            cpuProgressBar.textContent = data.cpuUsagePercentage + '%';
-            cpuProgressBar.setAttribute('aria-valuenow', data.cpuUsagePercentage);
-        }
-
-        // Обновляем память
-        const memoryProgressBar = document.querySelector('.progress-bar:not(.bg-danger):not(.bg-info)');
-        if (memoryProgressBar && data.memoryUsagePercentage !== undefined) {
-            memoryProgressBar.style.width = data.memoryUsagePercentage + '%';
-            memoryProgressBar.textContent = data.memoryUsagePercentage + '%';
-            memoryProgressBar.setAttribute('aria-valuenow', data.memoryUsagePercentage);
-
-            // Обновляем текст с информацией о памяти
-            const memoryText = memoryProgressBar.closest('.col-md-6').querySelector('small.text-muted');
-            if (memoryText && data.currentMemoryUsage) {
-                memoryText.textContent = `Используется: ${data.currentMemoryUsage}${data.totalMemory ? ' из ' + data.totalMemory : ''}`;
-            }
-        }
-
-        // Обновляем диск
-        const diskProgressBar = document.querySelector('.progress-bar.bg-info');
-        if (diskProgressBar && data.diskUsagePercentage !== undefined) {
-            diskProgressBar.style.width = data.diskUsagePercentage + '%';
-            diskProgressBar.textContent = data.diskUsagePercentage + '%';
-            diskProgressBar.setAttribute('aria-valuenow', data.diskUsagePercentage);
-
-            // Обновляем текст с информацией о диске
-            const diskText = diskProgressBar.closest('.col-md-6, .col-md-12').querySelector('small.text-muted');
-            if (diskText) {
-                diskText.textContent = `Используется: ${data.usedDiskSpace || '0 GB'} из ${data.totalDiskSpace || '0 GB'} (${data.diskUsagePercentage || 0}%)`;
-            }
-        }
-
-        // Обновляем время последнего обновления
-        const lastUpdatedElement = document.getElementById('last-updated-time');
-        if (lastUpdatedElement) {
-            if (data.lastUpdatedFormatted) {
-                lastUpdatedElement.textContent = 'Обновлено: ' + data.lastUpdatedFormatted;
-            } else {
-                lastUpdatedElement.textContent = 'Обновлено: ' + getCurrentFormattedTime();
-            }
-        }
-
-        console.log('Системные ресурсы успешно обновлены');
-    } catch (error) {
-        console.error('Ошибка при обновлении системных ресурсов:', error);
+    // Обновляем информацию о количестве файлов
+    const clientsCountText = document.getElementById('clients-count-text');
+    if (clientsCountText) {
+        const count = data.clientsFileCount || 0;
+        clientsCountText.textContent = `Файлов: ${count}`;
     }
 }
 
 /**
- * Возвращает текущее время в формате "дд.мм.гггг чч:мм:сс"
+ * Обновляет время последнего обновления
  */
-function getCurrentFormattedTime() {
-    const now = new Date();
+function updateLastUpdatedTime(data) {
+    const lastUpdatedElement = document.querySelector('.card-header small');
+    if (lastUpdatedElement) {
+        if (data.lastUpdatedFormatted) {
+            lastUpdatedElement.textContent = 'Обновлено: ' + data.lastUpdatedFormatted;
+        } else {
+            lastUpdatedElement.textContent = 'Обновлено: ' + formatDateTime(new Date());
+        }
+    }
+}
 
-    // Форматирование компонентов даты и времени
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
+/**
+ * Показывает ошибку при получении информации о диске
+ */
+function showDiskError(errorMessage) {
+    const diskInfoElement = document.querySelector('.fa-spinner')?.parentNode;
+    if (diskInfoElement) {
+        diskInfoElement.innerHTML = `<i class="fas fa-exclamation-circle text-danger"></i> Ошибка: ${errorMessage}`;
+    }
+}
+
+/**
+ * Показывает общую ошибку при получении данных
+ */
+function showErrorMessage(errorMessage) {
+    // Вариант 1: Показать в блоке системных ресурсов
+    const systemCard = document.querySelector('.card');
+    if (systemCard) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger mt-3';
+        alertDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Ошибка обновления: ${errorMessage}`;
+
+        // Удаляем предыдущее сообщение об ошибке
+        const existingAlert = systemCard.querySelector('.alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        systemCard.querySelector('.card-body').appendChild(alertDiv);
+
+        // Удаляем сообщение через 5 секунд
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 5000);
+    }
+}
+
+/**
+ * Форматирует дату и время
+ */
+function formatDateTime(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
 
     return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
-}
-
-/**
- * Настраивает автоматическое обновление графиков
- */
-function setupChartsUpdater() {
-    // Проверяем наличие графиков на странице
-    const typeChart = document.getElementById('operationTypeChart');
-    const timelineChart = document.getElementById('operationsTimelineChart');
-
-    if (!typeChart && !timelineChart) {
-        console.warn('Элементы графиков не найдены на странице');
-        return;
-    }
-
-    // Загружаем данные и инициализируем графики
-    updateCharts();
-}
-
-/**
- * Обновляет все графики на странице
- */
-async function updateCharts() {
-    try {
-        // Загружаем данные для графиков
-        const operationTypeCounts = await loadChartData('/api/charts/operation-types');
-        const operationsTimeline = await loadChartData('/api/charts/operations-timeline');
-
-        // Инициализируем графики
-        if (operationTypeCounts) {
-            initOperationTypeChart(operationTypeCounts);
-        }
-
-        if (operationsTimeline) {
-            initOperationsTimelineChart(operationsTimeline);
-        }
-
-    } catch (error) {
-        console.error('Ошибка при обновлении графиков:', error);
-    }
-}
-
-/**
- * Загружает данные для графика с указанного URL
- */
-async function loadChartData(url) {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Ошибка HTTP: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error(`Ошибка при загрузке данных с ${url}:`, error);
-        return null;
-    }
-}
-
-// Глобальные переменные для хранения экземпляров графиков
-let _typeChart = null;
-let _timelineChart = null;
-
-/**
- * Инициализирует график распределения типов операций
- */
-function initOperationTypeChart(data) {
-    const ctx = document.getElementById('operationTypeChart');
-    if (!ctx) return;
-
-    // Уничтожаем существующий график, если он есть
-    if (_typeChart) {
-        _typeChart.destroy();
-    }
-
-    // Проверяем наличие данных
-    if (!data || !data.labels || data.labels.length === 0) {
-        ctx.parentNode.innerHTML = '<div class="alert alert-info">Нет данных для отображения</div>';
-        return;
-    }
-
-    // Создаем новый график
-    _typeChart = new Chart(ctx.getContext('2d'), {
-        type: 'pie',
-        data: {
-            labels: Array.isArray(data.labels) ?
-                data.labels.map(type => data.descriptions && data.descriptions[type] ? data.descriptions[type] : type) :
-                [],
-            datasets: [{
-                data: data.data || [],
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.7)',
-                    'rgba(54, 162, 235, 0.7)',
-                    'rgba(255, 206, 86, 0.7)',
-                    'rgba(75, 192, 192, 0.7)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            animation: {
-                duration: 500
-            },
-            plugins: {
-                legend: {
-                    position: 'right',
-                },
-                title: {
-                    display: true,
-                    text: 'Распределение по типам операций'
-                }
-            }
-        }
-    });
-}
-
-/**
- * Инициализирует график временной шкалы операций
- */
-function initOperationsTimelineChart(data) {
-    const ctx = document.getElementById('operationsTimelineChart');
-    if (!ctx) return;
-
-    // Уничтожаем существующий график, если он есть
-    if (_timelineChart) {
-        _timelineChart.destroy();
-    }
-
-    // Проверяем наличие данных
-    if (!data || !data.labels || data.labels.length === 0) {
-        ctx.parentNode.innerHTML = '<div class="alert alert-info">Нет данных для отображения</div>';
-        return;
-    }
-
-    // Создаем новый график
-    _timelineChart = new Chart(ctx.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: data.labels || [],
-            datasets: [{
-                label: 'Количество операций',
-                data: data.data || [],
-                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            animation: {
-                duration: 500
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Операции за последние 7 дней'
-                }
-            }
-        }
-    });
 }
