@@ -43,26 +43,37 @@ public class SystemResourcesController {
             com.sun.management.OperatingSystemMXBean sunOsBean =
                     (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
 
+            // Получаем количество доступных процессоров/ядер
+            int processorCount = Runtime.getRuntime().availableProcessors();
+            resources.put("availableProcessors", processorCount);
+
             // Используем getCpuLoad() для общей загрузки системы
             double cpuLoad = sunOsBean.getCpuLoad();
             if (cpuLoad >= 0) {
-                double cpuPercentage = Math.round(cpuLoad * 10000) / 100.0; // Округляем до 2 знаков
+                // Правильный перевод в проценты (0.0 - 1.0 -> 0% - 100%)
+                double systemLoadValue = cpuLoad * 100.0;
+
+                // Округляем до 2 знаков после запятой
+                double cpuPercentage = Math.round(systemLoadValue * 100) / 100.0;
                 resources.put("cpuUsagePercentage", cpuPercentage);
 
-                // Добавляем дополнительную информацию о CPU
-                resources.put("availableProcessors", Runtime.getRuntime().availableProcessors());
+                // Добавляем системную загрузку (как в диспетчере задач)
                 resources.put("systemCpuLoad", cpuPercentage);
             } else {
                 // Пробуем другой метод для получения загрузки CPU
                 try {
                     double processCpuLoad = sunOsBean.getProcessCpuLoad();
-                    double processPercentage = Math.round(processCpuLoad * 10000) / 100.0;
-                    resources.put("cpuUsagePercentage", processPercentage);
-                    resources.put("availableProcessors", Runtime.getRuntime().availableProcessors());
-                    resources.put("processCpuLoad", processPercentage);
+                    if (processCpuLoad >= 0) {
+                        double processPercentage = Math.round(processCpuLoad * 10000) / 100.0;
+                        resources.put("cpuUsagePercentage", processPercentage);
+                        resources.put("processCpuLoad", processPercentage);
+                    } else {
+                        resources.put("cpuUsagePercentage", 0.0);
+                        resources.put("cpuInfo", "Недоступно на этой платформе");
+                    }
                 } catch (Exception e) {
                     resources.put("cpuUsagePercentage", 0.0);
-                    resources.put("cpuInfo", "Недоступно на этой платформе");
+                    resources.put("cpuInfo", "Ошибка при получении загрузки процесса: " + e.getMessage());
                 }
             }
         } catch (Exception e) {
