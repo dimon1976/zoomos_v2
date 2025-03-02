@@ -2,8 +2,6 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="fragments/navbar :: header-css">
     <title>Zoomos - Панель управления</title>
-    <!-- Добавляем библиотеку Chart.js для графиков -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <header th:replace="fragments/navbar :: header">
@@ -62,33 +60,75 @@
     </div>
 
     <!-- Состояние системы -->
-    <div class="row mb-4">
-        <div class="col">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5><i class="fas fa-server"></i> Состояние системы</h5>
-                    <small th:text="'Обновлено: ' + ${#temporals.format(systemResources.lastUpdated, 'dd.MM.yyyy HH:mm:ss')}">Обновлено: 01.01.2025 00:00:00</small>
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-server"></i> Состояние системы</h5>
+            <div>
+                <button id="refresh-system-btn" class="btn btn-sm btn-outline-primary me-2">
+                    <i class="fas fa-sync-alt"></i> Обновить
+                </button>
+                <small>Обновлено: --</small>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- CPU и память -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6>Использование CPU</h6>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div id="cpu-usage-bar" class="progress-bar bg-danger" role="progressbar"
+                             style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <small class="text-muted">Ядер: 0, Загрузка системы: 0%</small>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Использование памяти</h6>
-                            <div class="progress">
-                                <div class="progress-bar" role="progressbar"
-                                     th:style="'width: ' + ${systemResources.memoryUsagePercentage} + '%'"
-                                     th:text="${systemResources.memoryUsagePercentage} + '%'"></div>
-                            </div>
-                            <small class="text-muted" th:text="'Используется: ' + ${systemResources.currentMemoryUsage}">Используется: 0 MB</small>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Дисковое пространство</h6>
-                            <div class="progress">
-                                <div class="progress-bar bg-info" role="progressbar"
-                                     th:style="'width: ' + ${systemResources.diskUsagePercentage != null ? systemResources.diskUsagePercentage : 0} + '%'"
-                                     th:text="${systemResources.diskUsagePercentage != null ? systemResources.diskUsagePercentage : 0} + '%'"></div>
-                            </div>
-                            <small class="text-muted">Используется для файлов магазинов</small>
-                        </div>
+                <div class="col-md-6">
+                    <h6>Использование памяти</h6>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div id="memory-usage-bar" class="progress-bar" role="progressbar"
+                             style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <small class="text-muted">Используется: 0 MB из 0 GB</small>
+                </div>
+            </div>
+
+            <!-- Дисковое пространство -->
+            <h5 class="mb-3"><i class="fas fa-hdd"></i> Дисковое пространство</h5>
+
+            <!-- Общее использование диска -->
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <h6 class="text-muted">Общее использование диска</h6>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div id="disk-usage-bar" class="progress-bar bg-info" role="progressbar"
+                             style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span id="disk-usage-text">Используется: 0 GB из 0 GB</span>
+                        <span id="disk-free-text">Свободно: 0 GB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Пространство файлов клиентов -->
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <h6 class="text-muted">Пространство файлов клиентов</h6>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div id="clients-usage-bar" class="progress-bar bg-success" role="progressbar"
+                             style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span id="clients-size-text">Размер файлов: 0 GB</span>
+                        <span id="clients-count-text">Файлов: 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Индикатор загрузки или ошибки -->
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="alert alert-info p-2 mb-0 small">
+                        <i class="fas fa-spinner fa-spin"></i> Загрузка информации о дисковом пространстве...
                     </div>
                 </div>
             </div>
@@ -214,171 +254,9 @@
 
 <div th:replace="fragments/navbar :: footer">
 </div>
-
-<!-- JavaScript для графиков и фильтрации -->
-<script th:inline="javascript">
-    // Исправленная версия для оптимизации графиков
-
-    // Инициализация диаграмм при загрузке страницы - оптимизированная версия
-    document.addEventListener('DOMContentLoaded', function() {
-        try {
-            // Предотвращаем создание диаграмм, если нет данных
-            if (!operationTypeCounts || !operationTypeCounts.labels || operationTypeCounts.labels.length === 0) {
-                console.warn("Нет данных для диаграммы типов операций");
-                document.getElementById('operationTypeChart').parentNode.innerHTML =
-                    '<div class="alert alert-info">Нет данных для отображения</div>';
-                return;
-            }
-
-            // Диаграмма типов операций - с ограничением анимации для производительности
-            const typeCtx = document.getElementById('operationTypeChart').getContext('2d');
-            const typeChart = new Chart(typeCtx, {
-                type: 'pie',
-                data: {
-                    labels: operationTypeCounts.labels.map(type => operationTypeCounts.descriptions[type] || type),
-                    datasets: [{
-                        data: operationTypeCounts.data,
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.7)',
-                            'rgba(54, 162, 235, 0.7)',
-                            'rgba(255, 206, 86, 0.7)',
-                            'rgba(75, 192, 192, 0.7)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    // Отключаем анимацию для лучшей производительности
-                    animation: {
-                        duration: 0
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                        },
-                        title: {
-                            display: true,
-                            text: 'Распределение по типам операций'
-                        }
-                    }
-                }
-            });
-
-            // Предотвращаем создание второй диаграммы, если нет данных
-            if (!operationsTimeline || !operationsTimeline.labels || operationsTimeline.labels.length === 0) {
-                console.warn("Нет данных для диаграммы операций по времени");
-                document.getElementById('operationsTimelineChart').parentNode.innerHTML =
-                    '<div class="alert alert-info">Нет данных для отображения</div>';
-                return;
-            }
-
-            // Диаграмма временной шкалы операций - с ограничением анимации
-            const timelineCtx = document.getElementById('operationsTimelineChart').getContext('2d');
-            const timelineChart = new Chart(timelineCtx, {
-                type: 'bar',
-                data: {
-                    labels: operationsTimeline.labels,
-                    datasets: [{
-                        label: 'Количество операций',
-                        data: operationsTimeline.data,
-                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    // Отключаем анимацию для лучшей производительности
-                    animation: {
-                        duration: 0
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Операции за последние 7 дней'
-                        }
-                    }
-                }
-            });
-
-            console.log("Диаграммы успешно инициализированы");
-        } catch (error) {
-            console.error("Ошибка при инициализации диаграмм:", error);
-        }
-    });
-
-    // Оптимизированная функция фильтрации с защитой от множественных вызовов
-    let filterInProgress = false;
-    let lastFilterType = 'ALL';
-
-    function filterOperations(type) {
-        // Предотвращаем повторные вызовы одного и того же фильтра
-        if (filterInProgress || type === lastFilterType) {
-            console.log("Фильтрация пропущена: уже выполняется или тип не изменился");
-            return;
-        }
-
-        filterInProgress = true;
-        lastFilterType = type;
-
-        console.log("Фильтрация операций по типу:", type);
-
-        // Установка активной кнопки
-        document.querySelectorAll('.btn-group .btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`.btn-group .btn[onclick="filterOperations('${type}')"]`).classList.add('active');
-
-        // Показываем индикатор загрузки
-        document.getElementById('operations-table-body').innerHTML = `
-        <tr>
-            <td colspan="7" class="text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Загрузка...</span>
-                </div>
-                <p>Загрузка данных...</p>
-            </td>
-        </tr>
-    `;
-
-        // AJAX запрос на сервер
-        fetch(`/api/operations?type=${type}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Ошибка при получении данных');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log("Получены данные операций:", data);
-                // Обновление таблицы
-                renderOperationsTable(data);
-            })
-            .catch(error => {
-                console.error("Ошибка при фильтрации операций:", error);
-                document.getElementById('operations-table-body').innerHTML = `
-                <tr>
-                    <td colspan="7" class="text-center text-danger">
-                        <i class="fas fa-exclamation-circle"></i> Ошибка загрузки данных: ${error.message}
-                    </td>
-                </tr>
-            `;
-            })
-            .finally(() => {
-                // Сбрасываем флаг блокировки
-                filterInProgress = false;
-            });
-    }
-</script>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="/js/operations-filter.js"></script>
+<script src="/js/dashboard-charts.js"></script>
+<script src="/js/system-updater.js"></script>
 </body>
 </html>

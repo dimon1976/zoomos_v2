@@ -2,12 +2,10 @@ package by.zoomos_v2.DTO.statistics;
 
 import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.model.operation.BaseOperation;
-import by.zoomos_v2.service.file.input.service.FileProcessingService;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
 
 /**
  * DTO для отображения статистики обработки файла
