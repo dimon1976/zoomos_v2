@@ -155,32 +155,32 @@ function renderOperationsTableImproved(operations, tableBody) {
         const startTime = operation.startTimeFormatted || formatLocalDateTime(operation.startTime) || '01.03.2025 12:00';
         const clientName = operation.clientName || 'Клиент';
 
-        // Корректно обрабатываем тип операции, который может быть объектом
-        let typeDescription = 'Неизвестно';
+        // Корректное получение типа операции
+        let type = 'Неизвестно';
         if (operation.type) {
             if (typeof operation.type === 'object' && operation.type.description) {
-                typeDescription = operation.type.description;
+                type = operation.type.description;
             } else if (operation.typeDescription) {
-                typeDescription = operation.typeDescription;
+                type = operation.typeDescription;
             } else {
-                typeDescription = getOperationTypeDescription(operation.type);
+                type = getOperationTypeDescription(operation.type);
             }
         }
 
         const sourceId = operation.sourceIdentifier || 'файл.csv';
         const processed = (operation.processedRecords || 0) + '/' + (operation.totalRecords || 0);
 
-        // Корректно обрабатываем статус, который может быть объектом
-        let statusValue = 'PENDING';
-        let statusDescription = 'В ожидании';
+        // Корректное получение статуса
+        let status = 'PENDING';
+        let statusDesc = 'В ожидании';
 
         if (operation.status) {
-            if (typeof operation.status === 'object') {
-                statusValue = operation.status.name || 'PENDING';
-                statusDescription = operation.status.description || 'В ожидании';
+            if (typeof operation.status === 'object' && operation.status.name) {
+                status = operation.status.name;
+                statusDesc = operation.status.description || getStatusDescription(status);
             } else {
-                statusValue = operation.status;
-                statusDescription = operation.statusDescription || getStatusDescription(statusValue);
+                status = operation.status;
+                statusDesc = operation.statusDescription || getStatusDescription(status);
             }
         }
 
@@ -190,11 +190,11 @@ function renderOperationsTableImproved(operations, tableBody) {
             <tr>
                 <td>${startTime}</td>
                 <td>${clientName}</td>
-                <td>${typeDescription}</td>
+                <td>${type}</td>
                 <td>${sourceId}</td>
                 <td>${processed}</td>
                 <td>
-                    <span class="badge ${getBadgeClassForOperationStatus(statusValue)}">${statusDescription}</span>
+                    <span class="badge ${getBadgeClassForOperationStatus(status)}">${statusDesc}</span>
                 </td>
                 <td>
                     <a href="/operations/${id}/details" class="btn btn-sm btn-info">
