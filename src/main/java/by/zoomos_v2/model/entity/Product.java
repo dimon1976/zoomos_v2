@@ -32,11 +32,11 @@ public class Product {
     @FieldDescription("ID товара")
     private String productId;
 
-    @FieldDescription("Наименование товара")
+    @FieldDescription("Модель")
     @Column(length = 400)
     private String productName;
 
-    @FieldDescription("Бренд товара")
+    @FieldDescription("Бренд")
     private String productBrand;
 
     @FieldDescription("Штрихкод")

@@ -44,15 +44,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Оптимизированный метод получения ключей валидации для задания.
-     * Использует прямой SQL запрос с индексами и без использования JOIN,
-     * что значительно ускоряет выполнение для больших наборов данных.
+     * Теперь возвращает только значения поля competitor_additional
      *
      * @param dataSource тип источника данных
      * @param taskNumber номер задания
      * @return множество ключей валидации
      */
     @Query(value =
-            "SELECT DISTINCT UPPER(CONCAT(p.product_id, '_', p.product_category1, '_', c.competitor_additional)) " +
+            "SELECT DISTINCT UPPER(c.competitor_additional) " +
                     "FROM zoomos_v2.public.products p " +
                     "INNER JOIN zoomos_v2.public.site_data c ON c.product_id = p.id " +
                     "WHERE p.data_source = :dataSource " +
@@ -63,14 +62,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     /**
      * Получает ключи валидации батчами для минимизации использования памяти.
+     * Теперь возвращает только значения поля competitor_additional
      *
      * @param dataSource тип источника данных
      * @param taskNumber номер задания
      * @param size размер страницы
+     * @param offset смещение
      * @return множество ключей валидации для текущей страницы
      */
     @Query(value =
-            "SELECT DISTINCT UPPER(CONCAT(p.product_id, '_', p.product_category1, '_', c.competitor_additional)) " +
+            "SELECT DISTINCT UPPER(c.competitor_additional) " +
                     "FROM zoomos_v2.public.products p " +
                     "INNER JOIN zoomos_v2.public.site_data c ON c.product_id = p.id " +
                     "WHERE p.data_source = :dataSource " +
