@@ -154,11 +154,36 @@ function renderOperationsTableImproved(operations, tableBody) {
     operations.forEach(operation => {
         const startTime = operation.startTimeFormatted || formatLocalDateTime(operation.startTime) || '01.03.2025 12:00';
         const clientName = operation.clientName || 'Клиент';
-        const type = operation.typeDescription || getOperationTypeDescription(operation.type) || 'Неизвестно';
+
+        // Корректное получение типа операции
+        let type = 'Неизвестно';
+        if (operation.type) {
+            if (typeof operation.type === 'object' && operation.type.description) {
+                type = operation.type.description;
+            } else if (operation.typeDescription) {
+                type = operation.typeDescription;
+            } else {
+                type = getOperationTypeDescription(operation.type);
+            }
+        }
+
         const sourceId = operation.sourceIdentifier || 'файл.csv';
         const processed = (operation.processedRecords || 0) + '/' + (operation.totalRecords || 0);
-        const status = operation.status || 'IN_PROGRESS';
-        const statusDesc = operation.statusDescription || getStatusDescription(status);
+
+        // Корректное получение статуса
+        let status = 'PENDING';
+        let statusDesc = 'В ожидании';
+
+        if (operation.status) {
+            if (typeof operation.status === 'object' && operation.status.name) {
+                status = operation.status.name;
+                statusDesc = operation.status.description || getStatusDescription(status);
+            } else {
+                status = operation.status;
+                statusDesc = operation.statusDescription || getStatusDescription(status);
+            }
+        }
+
         const id = operation.id || 0;
 
         html += `

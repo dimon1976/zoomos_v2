@@ -45,6 +45,9 @@ function updateSystemResources(forceUpdate = false) {
         }
     }
 
+    // Показываем индикатор загрузки данных о диске
+    showDiskLoadingIndicator();
+
     // Запрос к API
     fetch(`/api/system/resources?forceUpdate=${forceUpdate ? 'true' : 'false'}`)
         .then(response => {
@@ -67,10 +70,14 @@ function updateSystemResources(forceUpdate = false) {
 
             // Обновляем время последнего обновления
             updateLastUpdatedTime(data);
+
+            // Убираем индикатор загрузки
+            hideDiskLoadingIndicator();
         })
         .catch(error => {
             console.error('Ошибка при получении данных о системных ресурсах:', error);
             showErrorMessage(error.message);
+            hideDiskLoadingIndicator();
         })
         .finally(() => {
             // Возвращаем кнопку в исходное состояние
@@ -88,13 +95,54 @@ function updateSystemResources(forceUpdate = false) {
 }
 
 /**
+ * Показывает индикатор загрузки данных о дисковом пространстве
+ */
+function showDiskLoadingIndicator() {
+    // Находим область сообщений
+    const messageContainer = document.querySelector('.alert.alert-info.p-2.mb-0.small');
+
+    // Если индикатор уже есть, ничего не делаем
+    if (messageContainer) {
+        messageContainer.style.display = 'block';
+        return;
+    }
+
+    // Создаем новый индикатор загрузки
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-info p-2 mb-0 small';
+    alertDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка информации о дисковом пространстве...';
+
+    // Находим область, куда добавить индикатор
+    const containingRow = document.querySelector('.row.mt-3');
+    if (containingRow) {
+        const col = containingRow.querySelector('.col-md-12');
+        if (col) {
+            col.appendChild(alertDiv);
+        }
+    }
+}
+
+
+/**
+ * Скрывает индикатор загрузки данных о дисковом пространстве
+ */
+function hideDiskLoadingIndicator() {
+    const loadingIndicator = document.querySelector('.alert.alert-info.p-2.mb-0.small');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+}
+
+/**
  * Обновляет информацию о CPU
  */
 function updateCpuInfo(data) {
     // Обновляем прогресс-бар CPU
     const cpuBar = document.querySelector('#cpu-usage-bar');
     if (cpuBar && data.cpuUsagePercentage !== undefined) {
-        const cpuPercentage = parseFloat(data.cpuUsagePercentage) || 0;
+        // Округляем до десятых и обеспечиваем, что значение находится в диапазоне 0-100
+        const cpuPercentage = Math.min(Math.max(parseFloat(data.cpuUsagePercentage) || 0, 0), 100).toFixed(1);
+
         cpuBar.style.width = cpuPercentage + '%';
         cpuBar.textContent = cpuPercentage + '%';
         cpuBar.setAttribute('aria-valuenow', cpuPercentage);
@@ -113,7 +161,8 @@ function updateCpuInfo(data) {
     const cpuDetailsText = document.querySelector('#cpu-usage-bar').closest('.col-md-6').querySelector('small.text-muted');
     if (cpuDetailsText) {
         const cores = data.availableProcessors || 0;
-        const systemLoad = data.systemCpuLoad || data.cpuUsagePercentage || 0;
+        const systemLoad = parseFloat(data.systemCpuLoad || data.cpuUsagePercentage || 0).toFixed(2);
+        // Форматируем вывод как в диспетчере задач: "Ядер: X, Загрузка системы: Y.YY%"
         cpuDetailsText.textContent = `Ядер: ${cores}, Загрузка системы: ${systemLoad}%`;
     }
 }
