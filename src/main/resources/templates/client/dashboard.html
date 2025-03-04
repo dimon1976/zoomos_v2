@@ -373,42 +373,73 @@
                             </a>
                         </div>
                         <div class="card-body">
-                            <!-- Таблица файлов -->
-                            <div th:if="${files != null && !files.isEmpty()}" class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead>
-                                    <tr>
-                                        <th>Имя файла</th>
-                                        <th>Дата загрузки</th>
-                                        <th>Количество записей</th>
-                                        <th>Действия</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr th:each="file : ${files}">
-                                        <td>
-                                            <i class="fas fa-file me-2"></i>
-                                            <span th:text="${file.originalFilename}"></span>
-                                        </td>
-                                        <td>
-                                            <i class="fas fa-calendar me-2"></i>
-                                            <span th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></span>
-                                        </td>
-                                        <td>
-                                            <i class="fas fa-list-ol me-2"></i>
-                                            <span th:text="${file.totalRecords}"></span>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-primary btn-sm"
-                                                    onclick="showExportOptions(this)"
-                                                    th:data-file-id="${file.id}"
-                                                    th:data-file-name="${file.originalFilename}">
-                                                <i class="fas fa-download me-1"></i> Экспортировать
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    </tbody>
-                                </table>
+                            <!-- Таблица файлов с поддержкой множественного выбора -->
+                            <div th:if="${files != null && !files.isEmpty()}" class="mb-3">
+                                <div class="file-selection-controls mb-3">
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllFiles(true)">
+                                            <i class="fas fa-check-square me-1"></i> Выбрать все
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllFiles(false)">
+                                            <i class="fas fa-square me-1"></i> Снять выбор
+                                        </button>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-primary ms-2" onclick="showMultiExportOptions()">
+                                        <i class="fas fa-file-export me-1"></i> Экспортировать выбранные
+                                    </button>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                        <tr>
+                                            <th style="width: 40px;">
+                                                <input type="checkbox" id="selectAllFiles" onchange="toggleAllFilesCheckbox(this.checked)">
+                                            </th>
+                                            <th>Имя файла</th>
+                                            <th>Дата загрузки</th>
+                                            <th>Количество записей</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr th:each="file : ${files}">
+                                            <td>
+                                                <input type="checkbox" class="file-checkbox" th:data-id="${file.id}"
+                                                       th:data-records="${file.totalRecords}" th:data-name="${file.originalFilename}"
+                                                       onchange="updateSelectedFilesCounter()">
+                                            </td>
+                                            <td>
+                                                <i class="fas fa-file me-2"></i>
+                                                <span th:text="${file.originalFilename}"></span>
+                                            </td>
+                                            <td>
+                                                <i class="fas fa-calendar me-2"></i>
+                                                <span th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></span>
+                                            </td>
+                                            <td>
+                                                <i class="fas fa-list-ol me-2"></i>
+                                                <span th:text="${file.totalRecords}"></span>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-primary btn-sm"
+                                                        onclick="showExportOptions(this)"
+                                                        th:data-file-id="${file.id}"
+                                                        th:data-file-name="${file.originalFilename}">
+                                                    <i class="fas fa-download me-1"></i> Экспортировать
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="export-summary mt-2">
+                                    <p class="mb-0">
+                                        <span class="fw-bold">Выбрано файлов:</span> <span id="selectedFilesCount">0</span>
+                                        <span class="fw-bold ms-3">Всего записей:</span> <span id="totalRecordsCount">0</span>
+                                    </p>
+                                </div>
                             </div>
 
                             <!-- Пустое состояние -->
@@ -430,10 +461,14 @@
                                     <div class="card-body">
                                         <form id="exportForm" class="needs-validation" novalidate>
                                             <input type="hidden" id="selectedFileId" name="fileId"/>
+                                            <input type="hidden" id="isMultiExport" name="isMultiExport" value="false"/>
+                                            <div id="selectedFilesContainer" style="display: none;">
+                                                <!-- Здесь будут hidden-поля для выбранных файлов -->
+                                            </div>
 
                                             <div class="mb-3">
                                                 <label for="configId" class="form-label">Конфигурация экспорта</label>
-                                                <select class="form-select" id="configId" name="configId" required>
+                                                <select class="form-select" id="configId" name="configId" required onchange="loadStrategyParams()">
                                                     <option value="">Выберите конфигурацию</option>
                                                     <option th:each="config : ${configs}"
                                                             th:value="${config.id}"
@@ -456,7 +491,8 @@
                                                     Выберите формат файла
                                                 </div>
                                             </div>
-                                            <!-- Добавить после выбора формата файла в форме exportForm -->
+
+                                            <!-- Параметры стратегии -->
                                             <div id="strategyParams" class="mb-3" style="display: none;">
                                                 <div class="card">
                                                     <div class="card-header">
@@ -466,6 +502,28 @@
                                                     </div>
                                                     <div class="card-body" id="strategyParamsContent">
                                                         <!-- Параметры будут добавлены динамически -->
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Параметр максимальной даты -->
+                                            <div id="dateFilterBox" class="mb-3" style="display: none;">
+                                                <div class="card">
+                                                    <div class="card-header">
+                                                        <h5 class="mb-0">
+                                                            <i class="fas fa-calendar me-2"></i>Фильтрация по дате
+                                                        </h5>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="mb-3">
+                                                            <label for="maxDate" class="form-label">Максимальная дата данных</label>
+                                                            <input type="date" id="maxDate" name="strategyParams[maxDate]" class="form-control"
+                                                                   placeholder="YYYY-MM-DD">
+                                                            <div class="form-text">
+                                                                Данные с датой старше указанной будут изменены на эту дату.
+                                                                Оставьте пустым, если ограничение не требуется.
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

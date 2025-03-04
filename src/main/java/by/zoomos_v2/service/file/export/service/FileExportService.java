@@ -28,6 +28,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
 import java.rmi.server.ExportException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -92,6 +94,145 @@ public class FileExportService {
             return ExportResult.error(e.getMessage());
         }
     }
+
+    /**
+     * Экспортирует данные из нескольких файлов с оптимизированной обработкой
+     *
+     * @param fileIds      Список ID файлов для экспорта
+     * @param exportConfig конфигурация экспорта
+     * @param fileType     тип экспорта (CSV, XLSX)
+     * @return результат экспорта
+     */
+    @Transactional()
+    public ExportResult exportFilesData(List<Long> fileIds, ExportConfig exportConfig, String fileType) {
+        log.info("Начало экспорта из нескольких файлов. FileIds: {}, стратегия: {}", fileIds, exportConfig.getStrategyType());
+        ExportOperation operation = null;
+
+        try {
+            // Проверка на пустой список файлов
+            if (fileIds == null || fileIds.isEmpty()) {
+                throw new IllegalArgumentException("Список файлов для экспорта пуст");
+            }
+
+            // Получаем метаданные первого файла для инициализации операции
+            FileMetadata firstMetadata = getFileMetadata(fileIds.get(0));
+            operation = initializeMultiFileOperation(fileIds, firstMetadata, fileType, exportConfig);
+
+            // Получаем стратегию и проверяем параметры
+            DataProcessingStrategy strategy = strategyManager.getStrategy(exportConfig.getStrategyType());
+            strategyManager.validateStrategyParameters(exportConfig.getStrategyType(), exportConfig.getParams());
+
+            // Обрабатываем данные батчами для экономии памяти
+            List<Map<String, Object>> allData = new ArrayList<>();
+            int totalRecords = 0;
+
+            for (Long fileId : fileIds) {
+                FileMetadata metadata = getFileMetadata(fileId);
+
+                // Обновляем метрики прогресса
+                updateOperationProgress(operation, fileIds.indexOf(fileId), fileIds.size());
+
+                // Получаем и добавляем данные из текущего файла
+                List<Map<String, Object>> fileData = getDataFromFile(metadata);
+                allData.addAll(fileData);
+                totalRecords += fileData.size();
+
+                // Обновляем статистику операции
+                operation.setTotalRecords(totalRecords);
+                statisticsProcessor.updateOperationStats(operation);
+            }
+
+            // Обрабатываем все собранные данные с помощью стратегии
+            BatchProcessingData batchData = BatchProcessingData.createNew();
+            List<Map<String, Object>> processedData = strategy.processData(allData, exportConfig, batchData);
+
+            // Экспортируем обработанные данные
+            ExportResult result = createExportResult(processedData, firstMetadata, getExporter(fileType),
+                    exportConfig, fileType);
+
+            // Формируем имя выходного файла с учетом нескольких источников
+            result.setFileName(generateMultiFileExportName(fileIds, fileType));
+
+            // Обновляем статистику
+            if (operation != null) {
+                operation.setFilesGenerated(1);
+                operation.setProcessedRecords(processedData.size());
+                operation.setTargetPath(result.getFileName());
+                statisticsProcessor.updateOperationStats(operation);
+            }
+
+            return result;
+
+        } catch (Exception e) {
+            handleExportError(operation, e);
+            return ExportResult.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Обновляет прогресс операции при многофайловом экспорте
+     */
+    private void updateOperationProgress(ExportOperation operation, int currentFileIndex, int totalFiles) {
+        int progressPercentage = (int) ((currentFileIndex * 100.0) / totalFiles);
+        String message = String.format("Обработка файла %d из %d", currentFileIndex + 1, totalFiles);
+
+        // Добавляем информацию о прогрессе в метаданные
+        Map<String, Object> progressInfo = new HashMap<>();
+        progressInfo.put("currentFile", currentFileIndex + 1);
+        progressInfo.put("totalFiles", totalFiles);
+        progressInfo.put("message", message);
+        progressInfo.put("progress", progressPercentage);
+
+        operation.getMetadata().put("progressInfo", progressInfo);
+        operation.setCurrentProgress(progressPercentage);
+
+        // Обновляем операцию
+        statisticsProcessor.handleProgress(operation, progressPercentage, message);
+    }
+
+    /**
+     * Генерирует имя файла для экспорта из нескольких источников
+     */
+    private String generateMultiFileExportName(List<Long> fileIds, String fileType) {
+        // Формируем базовое имя файла с учетом количества источников
+        String baseName = "multi_export_" + fileIds.size() + "_files";
+
+        // Добавляем текущую дату и время для уникальности
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+
+        return String.format("%s_%s.%s", baseName, timestamp, fileType.toLowerCase());
+    }
+
+    /**
+     * Инициализирует операцию экспорта для нескольких файлов
+     */
+    private ExportOperation initializeMultiFileOperation(List<Long> fileIds,
+                                                         FileMetadata firstMetadata,
+                                                         String fileType,
+                                                         ExportConfig exportConfig) {
+        ExportOperation operation = new ExportOperation();
+        operation.setClientId(firstMetadata.getClientId());
+        operation.setType(OperationType.EXPORT);
+        operation.setExportFormat(fileType);
+
+        // Формируем идентификатор источника из списка ID файлов
+        String sourceIdentifier = fileIds.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(", "));
+        operation.setSourceIdentifier(sourceIdentifier);
+
+        operation.setProcessingStrategy(exportConfig.getStrategyType().name());
+        operation.setExportConfig(convertExportConfigToMap(exportConfig));
+
+        // Добавляем метаданные о многофайловом экспорте
+        Map<String, Object> multiFileMetadata = new HashMap<>();
+        multiFileMetadata.put("fileCount", fileIds.size());
+        multiFileMetadata.put("fileIds", fileIds);
+        operation.getMetadata().put("multiFileExport", multiFileMetadata);
+
+        return operationStatsService.createOperation(operation);
+    }
+
 
     private ExportOperation initializeExportOperation(FileMetadata metadata,
                                                       String fileType,

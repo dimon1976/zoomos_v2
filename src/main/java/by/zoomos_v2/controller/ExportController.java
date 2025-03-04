@@ -10,8 +10,10 @@ import by.zoomos_v2.model.operation.ExportOperation;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.export.service.FileExportService;
 import by.zoomos_v2.service.file.export.service.ProcessingStrategyService;
+import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
 import by.zoomos_v2.service.file.export.strategy.StrategyManager;
+import by.zoomos_v2.service.file.export.strategy.StrategyParameterDescriptor;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.mapping.ExportFieldConfigService;
 import by.zoomos_v2.service.statistics.OperationStatsService;
@@ -223,14 +225,14 @@ public class ExportController {
     }
 
     /**
-     * Начало асинхронного экспорта
+     * Начало экспорта (поддерживает как одиночный, так и множественный выбор файлов)
      */
     @PostMapping("/client/{clientName}/export/start")
     @ResponseBody
     public Map<String, Object> startExport(@PathVariable String clientName,
                                            @RequestBody StartExportRequest request) {
-        log.debug("Запуск экспорта. FileId: {}, ConfigId: {}, FileType: {}",
-                request.getFileId(), request.getConfigId(), request.getFileType());
+        log.debug("Запуск экспорта. ConfigId: {}, FileType: {}",
+                request.getConfigId(), request.getFileType());
 
         try {
             // Получаем конфигурацию
@@ -241,18 +243,32 @@ public class ExportController {
                 config.setParams(request.getStrategyParams());
             }
 
-            // Запускаем экспорт
-//            ExportOperation operation = fileExportService.startExport(
-//                    request.getFileId(),
-//                    config,
-//                    request.getFileType()
-//            );
+            // Определяем, используется ли множественный или одиночный выбор файлов
+            ExportResult result;
 
-            return Map.of(
-//                    "operationId", operation.getId(),
-                    "status", "started"
-            );
+            if (request.getFileIds() != null && !request.getFileIds().isEmpty()) {
+                log.debug("Экспорт из нескольких файлов: {}", request.getFileIds());
+                result = fileExportService.exportFilesData(request.getFileIds(), config, request.getFileType());
+            } else if (request.getFileId() != null) {
+                log.debug("Экспорт из одного файла: {}", request.getFileId());
+                result = fileExportService.exportFileData(request.getFileId(), config, request.getFileType());
+            } else {
+                throw new IllegalArgumentException("Не указаны файлы для экспорта");
+            }
 
+            if (result.isSuccess()) {
+                return Map.of(
+                        "status", "success",
+                        "fileName", result.getFileName(),
+                        "recordsProcessed", result.getBatchProcessingData() != null ?
+                                result.getBatchProcessingData().getSuccessCount() : 0
+                );
+            } else {
+                return Map.of(
+                        "status", "error",
+                        "error", result.getErrorMessage()
+                );
+            }
         } catch (Exception e) {
             log.error("Ошибка при запуске экспорта: {}", e.getMessage(), e);
             return Map.of(
@@ -366,20 +382,35 @@ public class ExportController {
         try {
             ExportConfig config = exportFieldConfigService.getConfigById(configId);
 
-            // Добавляем проверку
+            // Проверка типа стратегии
             ProcessingStrategyType strategyType = config.getStrategyType();
             if (strategyType == null) {
                 log.warn("Тип стратегии не задан для конфигурации {}", configId);
                 return Map.of("error", "Тип стратегии не задан");
             }
 
-            Set<String> requiredParams = strategyManager.getRequiredParameters(strategyType);
-            log.debug("Получены параметры стратегии: {}", requiredParams);
+            // Получаем список обязательных и опциональных параметров
+            DataProcessingStrategy strategy = strategyManager.getStrategy(strategyType);
+            List<StrategyParameterDescriptor> allParams = strategy.getParameterDescriptors();
+            Set<String> requiredParams = strategy.getRequiredParameters();
 
-            return Map.of(
-                    "requiredParameters", requiredParams,
-                    "currentValues", config.getParams() != null ? config.getParams() : Collections.emptyMap()
-            );
+            // Получаем текущие значения параметров
+            Map<String, String> currentValues = config.getParams() != null ?
+                    config.getParams() : new HashMap<>();
+
+            // Формируем структуру для возврата клиенту
+            Map<String, Object> result = new HashMap<>();
+            result.put("requiredParameters", requiredParams);
+            result.put("allParameters", allParams);
+            result.put("currentValues", currentValues);
+
+            // Определяем, есть ли параметр maxDate
+            boolean hasDateParam = allParams.stream()
+                    .anyMatch(p -> "maxDate".equals(p.getKey()));
+            result.put("hasDateParam", hasDateParam);
+
+            log.debug("Параметры стратегии собраны: {}", result);
+            return result;
         } catch (Exception e) {
             log.error("Ошибка при получении параметров стратегии: {}", e.getMessage(), e);
             return Map.of("error", e.getMessage());
