@@ -31,6 +31,51 @@
         .tab-content {
             padding: 20px 0;
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .spinner-container {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .strategy-params {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .export-summary {
+            font-weight: bold;
+        }
+
+        /* Стилизация для чекбоксов */
+        #selectAllCheckbox, .file-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Стилизация для строк таблицы */
+        #filesTable tbody tr {
+            cursor: pointer;
+        }
+
+        #filesTable tbody tr:hover {
+            background-color: #f5f5f5;
+        }
     </style>
 </head>
 <body>
@@ -363,184 +408,98 @@
                 </div>
 
                 <!-- Вкладка Выгрузка -->
-                <div class="tab-pane fade" id="export">
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">Выгрузка данных</h5>
-                            <a th:href="@{/client/{clientName}/export-mappings(clientName=${client.name})}"
-                               class="btn btn-outline-secondary btn-sm">
-                                <i class="fas fa-cog"></i> Настройки маппинга
-                            </a>
+                <div class="export-form card p-4">
+                    <h3>Экспорт данных</h3>
+
+                    <div class="form-group mb-3">
+                        <label for="configSelect">Выберите конфигурацию экспорта:</label>
+                        <select id="configSelect" class="form-control" onchange="loadStrategyParams()">
+                            <option value="">Выберите конфигурацию...</option>
+                            <th:block th:each="config : ${configs}">
+                                <option th:value="${config.id}" th:text="${config.name}"></option>
+                            </th:block>
+                        </select>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="fileTypeSelect">Формат экспорта:</label>
+                        <select id="fileTypeSelect" class="form-control">
+                            <option value="CSV">CSV</option>
+                            <option value="XLSX">Excel (XLSX)</option>
+                        </select>
+                    </div>
+
+                    <!-- Явно добавляем поле для максимальной даты -->
+                    <div id="maxDateBox" class="form-group mb-3">
+                        <label for="maxDate">Максимальная дата данных:</label>
+                        <input type="date" id="maxDate" name="maxDate" class="form-control">
+                        <small class="form-text text-muted">
+                            Данные с датой старше указанной будут изменены на эту дату. Оставьте пустым, если ограничение не требуется.
+                        </small>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label>Выберите файлы для экспорта:</label>
+                        <div class="file-selection-controls mb-2 mt-2">
+                            <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-secondary">Выбрать все</button>
+                            <button type="button" id="deselectAllBtn" class="btn btn-sm btn-outline-secondary ms-2">Снять выбор</button>
                         </div>
-                        <div class="card-body">
-                            <!-- Таблица файлов с поддержкой множественного выбора -->
-                            <div th:if="${files != null && !files.isEmpty()}" class="mb-3">
-                                <div class="file-selection-controls mb-3">
-                                    <div class="btn-group">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllFiles(true)">
-                                            <i class="fas fa-check-square me-1"></i> Выбрать все
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllFiles(false)">
-                                            <i class="fas fa-square me-1"></i> Снять выбор
-                                        </button>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-primary ms-2" onclick="showMultiExportOptions()">
-                                        <i class="fas fa-file-export me-1"></i> Экспортировать выбранные
-                                    </button>
-                                </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover" id="filesTable">
+                                <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" id="selectAllCheckbox">
+                                    </th>
+                                    <th>Имя файла</th>
+                                    <th>Дата загрузки</th>
+                                    <th>Записей</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <th:block th:each="file : ${files}">
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="file-checkbox"
+                                                   th:data-id="${file.id}"
+                                                   th:data-records="${file.totalRecords}">
+                                        </td>
+                                        <td th:text="${file.originalFilename}"></td>
+                                        <td th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></td>
+                                        <td th:text="${file.totalRecords}"></td>
+                                    </tr>
+                                </th:block>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead>
-                                        <tr>
-                                            <th style="width: 40px;">
-                                                <input type="checkbox" id="selectAllFiles" onchange="toggleAllFilesCheckbox(this.checked)">
-                                            </th>
-                                            <th>Имя файла</th>
-                                            <th>Дата загрузки</th>
-                                            <th>Количество записей</th>
-                                            <th>Действия</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        <tr th:each="file : ${files}">
-                                            <td>
-                                                <input type="checkbox" class="file-checkbox" th:data-id="${file.id}"
-                                                       th:data-records="${file.totalRecords}" th:data-name="${file.originalFilename}"
-                                                       onchange="updateSelectedFilesCounter()">
-                                            </td>
-                                            <td>
-                                                <i class="fas fa-file me-2"></i>
-                                                <span th:text="${file.originalFilename}"></span>
-                                            </td>
-                                            <td>
-                                                <i class="fas fa-calendar me-2"></i>
-                                                <span th:text="${#temporals.format(file.uploadedAt, 'dd.MM.yyyy HH:mm')}"></span>
-                                            </td>
-                                            <td>
-                                                <i class="fas fa-list-ol me-2"></i>
-                                                <span th:text="${file.totalRecords}"></span>
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-primary btn-sm"
-                                                        onclick="showExportOptions(this)"
-                                                        th:data-file-id="${file.id}"
-                                                        th:data-file-name="${file.originalFilename}">
-                                                    <i class="fas fa-download me-1"></i> Экспортировать
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                    <!-- Динамически загружаемые параметры стратегии -->
+                    <div id="strategyParams" class="strategy-params mt-3 p-3 mb-3" style="display: none;">
+                        <h4>Параметры обработки данных</h4>
+                        <div id="strategyParamsContent">
+                            <!-- Параметры будут загружены динамически -->
+                        </div>
+                    </div>
 
-                                <div class="export-summary mt-2">
-                                    <p class="mb-0">
-                                        <span class="fw-bold">Выбрано файлов:</span> <span id="selectedFilesCount">0</span>
-                                        <span class="fw-bold ms-3">Всего записей:</span> <span id="totalRecordsCount">0</span>
-                                    </p>
-                                </div>
+                    <div class="export-summary mt-3 mb-3 p-2 bg-light rounded">
+                        <p class="mb-1">Выбрано файлов: <span id="selectedFilesCount" class="font-weight-bold">0</span></p>
+                        <p class="mb-1">Всего записей: <span id="totalRecordsCount" class="font-weight-bold">0</span></p>
+                    </div>
+
+                    <div class="form-actions mt-4">
+                        <button type="button" id="exportBtn" class="btn btn-primary">
+                            Экспортировать выбранное
+                        </button>
+                    </div>
+
+                    <!-- Индикатор загрузки -->
+                    <div id="loadingIndicator" class="loading-overlay" style="display: none;">
+                        <div class="spinner-container">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
                             </div>
-
-                            <!-- Пустое состояние -->
-                            <div th:if="${files == null || files.isEmpty()}" class="text-center py-5">
-                                <i class="fas fa-file-export fa-3x text-muted mb-3"></i>
-                                <h5>Нет доступных файлов</h5>
-                                <p class="text-muted">Загрузите файлы через раздел "Загрузка"</p>
-                            </div>
-
-                            <!-- Форма настроек экспорта (изначально скрыта) -->
-                            <div id="exportOptions" class="mt-4" style="display: none;">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0">
-                                            <i class="fas fa-cog me-2"></i>Настройки экспорта
-                                            <small class="text-muted" id="selectedFileName"></small>
-                                        </h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <form id="exportForm" class="needs-validation" novalidate>
-                                            <input type="hidden" id="selectedFileId" name="fileId"/>
-                                            <input type="hidden" id="isMultiExport" name="isMultiExport" value="false"/>
-                                            <div id="selectedFilesContainer" style="display: none;">
-                                                <!-- Здесь будут hidden-поля для выбранных файлов -->
-                                            </div>
-
-                                            <div class="mb-3">
-                                                <label for="configId" class="form-label">Конфигурация экспорта</label>
-                                                <select class="form-select" id="configId" name="configId" required onchange="loadStrategyParams()">
-                                                    <option value="">Выберите конфигурацию</option>
-                                                    <option th:each="config : ${configs}"
-                                                            th:value="${config.id}"
-                                                            th:text="${config.name}">
-                                                    </option>
-                                                </select>
-                                                <div class="invalid-feedback">
-                                                    Выберите конфигурацию экспорта
-                                                </div>
-                                            </div>
-
-                                            <div class="mb-3">
-                                                <label for="fileType" class="form-label">Формат файла</label>
-                                                <select class="form-select" id="fileType" name="fileType" required>
-                                                    <option value="">Выберите формат</option>
-                                                    <option value="CSV">CSV</option>
-                                                    <option value="XLSX">Excel (XLSX)</option>
-                                                </select>
-                                                <div class="invalid-feedback">
-                                                    Выберите формат файла
-                                                </div>
-                                            </div>
-
-                                            <!-- Параметры стратегии -->
-                                            <div id="strategyParams" class="mb-3" style="display: none;">
-                                                <div class="card">
-                                                    <div class="card-header">
-                                                        <h5 class="mb-0">
-                                                            <i class="fas fa-cog me-2"></i>Параметры стратегии
-                                                        </h5>
-                                                    </div>
-                                                    <div class="card-body" id="strategyParamsContent">
-                                                        <!-- Параметры будут добавлены динамически -->
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Параметр максимальной даты -->
-                                            <div id="dateFilterBox" class="mb-3" style="display: none;">
-                                                <div class="card">
-                                                    <div class="card-header">
-                                                        <h5 class="mb-0">
-                                                            <i class="fas fa-calendar me-2"></i>Фильтрация по дате
-                                                        </h5>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <div class="mb-3">
-                                                            <label for="maxDate" class="form-label">Максимальная дата данных</label>
-                                                            <input type="date" id="maxDate" name="strategyParams[maxDate]" class="form-control"
-                                                                   placeholder="YYYY-MM-DD">
-                                                            <div class="form-text">
-                                                                Данные с датой старше указанной будут изменены на эту дату.
-                                                                Оставьте пустым, если ограничение не требуется.
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="d-flex gap-2">
-                                                <button type="button" class="btn btn-secondary"
-                                                        onclick="hideExportOptions()">
-                                                    <i class="fas fa-times me-2"></i>Отмена
-                                                </button>
-                                                <button type="submit" class="btn btn-primary" id="exportButton">
-                                                    <i class="fas fa-download me-2"></i>Скачать файл
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
+                            <div id="loadingMessage" class="mt-2">Выполняется экспорт...</div>
                         </div>
                     </div>
                 </div>
@@ -746,6 +705,316 @@
             hideExportOptions();
         }, 2000);
     });
+    // Глобальные переменные
+    let currentStrategyParams = {};
+
+    // Инициализация при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Инициализация интерфейса экспорта');
+
+        // Привязываем обработчики к кнопкам выбора файлов
+        document.getElementById('selectAllBtn').addEventListener('click', function() {
+            selectAllFiles(true);
+        });
+
+        document.getElementById('deselectAllBtn').addEventListener('click', function() {
+            selectAllFiles(false);
+        });
+
+        // Привязываем обработчик к основному чекбоксу "Выбрать все"
+        document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+            selectAllFiles(this.checked);
+        });
+
+        // Привязываем обработчики к чекбоксам файлов
+        document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updateFileSelectionCounters);
+        });
+
+        // Привязываем обработчик к кнопке экспорта
+        document.getElementById('exportBtn').addEventListener('click', startExport);
+
+        // Инициализируем счетчики
+        updateFileSelectionCounters();
+
+        console.log('Инициализация завершена');
+    });
+
+    // Функция выбора/снятия выбора со всех файлов
+    function selectAllFiles(select) {
+        console.log('Выбор всех файлов:', select);
+
+        // Обновляем состояние основного чекбокса
+        document.getElementById('selectAllCheckbox').checked = select;
+
+        // Обновляем состояние всех чекбоксов файлов
+        document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+            checkbox.checked = select;
+        });
+
+        // Обновляем счетчики
+        updateFileSelectionCounters();
+    }
+
+    // Обновление счетчиков выбранных файлов и записей
+    function updateFileSelectionCounters() {
+        const selectedFiles = document.querySelectorAll('.file-checkbox:checked');
+        const selectedFilesCount = selectedFiles.length;
+
+        document.getElementById('selectedFilesCount').textContent = selectedFilesCount;
+
+        let totalRecords = 0;
+        selectedFiles.forEach(checkbox => {
+            const records = parseInt(checkbox.getAttribute('data-records') || 0);
+            if (!isNaN(records)) {
+                totalRecords += records;
+            }
+        });
+
+        document.getElementById('totalRecordsCount').textContent = totalRecords;
+
+        // Обновляем состояние основного чекбокса
+        const allCheckboxes = document.querySelectorAll('.file-checkbox');
+        document.getElementById('selectAllCheckbox').checked =
+            selectedFiles.length > 0 && selectedFiles.length === allCheckboxes.length;
+
+        console.log('Обновлены счетчики: файлов -', selectedFilesCount, 'записей -', totalRecords);
+    }
+
+    // Загрузка параметров стратегии
+    function loadStrategyParams() {
+        const configId = document.getElementById('configSelect').value;
+        if (!configId) {
+            document.getElementById('strategyParams').style.display = 'none';
+            return;
+        }
+
+        console.log('Загрузка параметров стратегии для конфигурации:', configId);
+
+        const clientName = /*[[${client.name}]]*/ '';
+
+        // Показываем индикатор загрузки
+        showLoading('Загрузка параметров...');
+
+        fetch(`/client/${clientName}/export-strategy-params/${configId}`)
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+
+                if (data.error) {
+                    showError('Ошибка получения параметров стратегии: ' + data.error);
+                    return;
+                }
+
+                currentStrategyParams = data.currentValues || {};
+                const paramsContainer = document.getElementById('strategyParamsContent');
+                paramsContainer.innerHTML = '';
+
+                // Проверяем наличие параметров
+                const allParams = data.allParameters || [];
+                if (allParams.length > 0) {
+                    document.getElementById('strategyParams').style.display = 'block';
+
+                    // Отображаем параметры стратегии (кроме maxDate, который обрабатывается отдельно)
+                    allParams.forEach(param => {
+                        if (param.key !== 'maxDate') {
+                            const formGroup = document.createElement('div');
+                            formGroup.className = 'form-group mb-3';
+
+                            const label = document.createElement('label');
+                            label.setAttribute('for', param.key);
+                            label.textContent = param.displayName + ':';
+
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.className = 'form-control';
+                            input.id = param.key;
+                            input.name = param.key;
+                            input.value = currentStrategyParams[param.key] || '';
+                            input.placeholder = param.description;
+
+                            if (param.required) {
+                                input.required = true;
+                                label.innerHTML += ' <span class="text-danger">*</span>';
+                            }
+
+                            formGroup.appendChild(label);
+                            formGroup.appendChild(input);
+
+                            if (param.description) {
+                                const helpText = document.createElement('small');
+                                helpText.className = 'form-text text-muted';
+                                helpText.textContent = param.description;
+                                formGroup.appendChild(helpText);
+                            }
+
+                            paramsContainer.appendChild(formGroup);
+                        }
+                    });
+                } else {
+                    document.getElementById('strategyParams').style.display = 'none';
+                }
+
+                // Обновляем значение поля maxDate, если оно присутствует в параметрах
+                if (currentStrategyParams.maxDate) {
+                    document.getElementById('maxDate').value = currentStrategyParams.maxDate;
+                }
+
+                console.log('Параметры стратегии загружены:', allParams);
+
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Ошибка при загрузке параметров стратегии:', error);
+                showError('Ошибка при загрузке параметров стратегии');
+            });
+    }
+
+    // Запуск экспорта
+    function startExport() {
+        const configId = document.getElementById('configSelect').value;
+        if (!configId) {
+            showError('Выберите конфигурацию экспорта');
+            return;
+        }
+
+        // Получаем выбранные файлы
+        const selectedFiles = document.querySelectorAll('.file-checkbox:checked');
+        if (selectedFiles.length === 0) {
+            showError('Выберите хотя бы один файл для экспорта');
+            return;
+        }
+
+        console.log('Начало экспорта для', selectedFiles.length, 'файлов');
+
+        const fileIds = Array.from(selectedFiles).map(checkbox =>
+            parseInt(checkbox.getAttribute('data-id')));
+        const fileType = document.getElementById('fileTypeSelect').value;
+
+        // Собираем параметры стратегии
+        const strategyParams = {};
+        document.querySelectorAll('#strategyParamsContent input').forEach(input => {
+            if (input.value.trim() !== '') {
+                strategyParams[input.name] = input.value.trim();
+            }
+        });
+
+        // Добавляем параметр maxDate, если он заполнен
+        const maxDateValue = document.getElementById('maxDate').value;
+        if (maxDateValue) {
+            strategyParams.maxDate = maxDateValue;
+        }
+
+        // Проверяем обязательные параметры
+        const requiredParams = document.querySelectorAll('#strategyParamsContent input[required]');
+        let allValid = true;
+        requiredParams.forEach(input => {
+            if (!input.value.trim()) {
+                input.classList.add('is-invalid');
+                allValid = false;
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        });
+
+        if (!allValid) {
+            showError('Заполните все обязательные параметры стратегии');
+            return;
+        }
+
+        // Показываем индикатор загрузки
+        showLoading('Выполняется экспорт данных...');
+
+        // Отправляем запрос на экспорт
+        const clientName = /*[[${client.name}]]*/ '';
+
+        console.log('Отправка запроса на экспорт:', {
+            fileIds: fileIds,
+            configId: parseInt(configId),
+            fileType: fileType,
+            strategyParams: strategyParams
+        });
+
+        fetch(`/client/${clientName}/export/start`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                fileIds: fileIds,
+                configId: parseInt(configId),
+                fileType: fileType,
+                strategyParams: strategyParams
+            })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка сервера: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                hideLoading();
+
+                if (data.status === 'success') {
+                    console.log('Экспорт успешно выполнен:', data);
+
+                    // Генерируем URL для скачивания
+                    const downloadUrl = `/client/${clientName}/export/download?` + new URLSearchParams({
+                        fileIds: fileIds.join(','),
+                        configId: configId,
+                        fileType: fileType,
+                        ...strategyParams
+                    });
+
+                    // Инициируем скачивание
+                    window.location.href = downloadUrl;
+
+                    showSuccess(`Экспорт успешно выполнен. Обработано записей: ${data.recordsProcessed || 0}`);
+                } else {
+                    showError('Ошибка при экспорте: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Ошибка при экспорте:', error);
+                showError('Ошибка при отправке запроса на экспорт: ' + error.message);
+            });
+    }
+
+    // Вспомогательные функции для уведомлений
+    function showError(message) {
+        console.error('Ошибка:', message);
+        alert(message); // В реальном приложении лучше использовать toast или другой компонент уведомлений
+    }
+
+    function showSuccess(message) {
+        console.log('Успех:', message);
+        alert(message); // В реальном приложении лучше использовать toast или другой компонент уведомлений
+    }
+
+    function showLoading(message) {
+        console.log('Загрузка:', message);
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingMessage = document.getElementById('loadingMessage');
+
+        if (loadingMessage) {
+            loadingMessage.textContent = message || 'Загрузка...';
+        }
+
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'flex';
+        }
+    }
+
+    function hideLoading() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
+    }
+
+
 </script>
 
 <div th:replace="~{fragments/navbar :: footer}"></div>
