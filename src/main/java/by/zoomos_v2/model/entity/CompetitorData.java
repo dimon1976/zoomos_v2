@@ -39,7 +39,7 @@ public class CompetitorData {
     @FieldDescription("Дата:Время")
     private LocalDateTime competitorLocalDateTime;
 
-    @FieldDescription("Статус наличия товара")
+    @FieldDescription("Статус")
     private String competitorStockStatus;
 
     @FieldDescription("Дополнительная цена конкурента")

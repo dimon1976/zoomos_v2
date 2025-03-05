@@ -38,12 +38,6 @@ public class TaskValidationService {
      * Создает набор ключей валидации для указанного задания.
      * Ключ формируется в формате: productId_category_retailCode
      *
-     * Использует оптимизации:
-     * 1. Кэширование результатов
-     * 2. Оптимизированные SQL запросы
-     * 3. Батчевую загрузку
-     * 4. Параллельную обработку для больших заданий
-     *
      * @param taskNumber номер задания
      * @return множество ключей валидации
      */
@@ -51,9 +45,14 @@ public class TaskValidationService {
     public Set<String> createValidationKeysForTask(String taskNumber) {
         // Проверяем наличие в кэше
         if (taskValidationCache.containsKey(taskNumber)) {
-            log.debug("Используем кэшированные ключи валидации для задания {}: {} ключей",
-                    taskNumber, taskValidationCache.get(taskNumber).size());
-            return taskValidationCache.get(taskNumber);
+            Set<String> cachedKeys = taskValidationCache.get(taskNumber);
+            if (cachedKeys != null && !cachedKeys.isEmpty()) {
+                log.debug("Используем кэшированные ключи валидации для задания {}: {} ключей",
+                        taskNumber, cachedKeys.size());
+                return cachedKeys;
+            }
+            // Удаляем пустой или null кэш
+            taskValidationCache.remove(taskNumber);
         }
 
         log.info("Создание ключей валидации для задания {}. Начало выполнения...", taskNumber);
@@ -76,7 +75,7 @@ public class TaskValidationService {
 
         } catch (Exception e) {
             log.error("Ошибка при создании ключей валидации для задания {}: {}", taskNumber, e.getMessage(), e);
-            throw new IllegalStateException("Ошибка при создании ключей валидации: " + e.getMessage(), e);
+            return new HashSet<>();
         } finally {
             log.info("Создание ключей валидации для задания {} завершено за {} мс",
                     taskNumber, System.currentTimeMillis() - startTime);
@@ -90,16 +89,29 @@ public class TaskValidationService {
     private Set<String> loadKeysInSingleQuery(String taskNumber) {
         long startTime = System.currentTimeMillis();
 
-        Set<String> validationKeys = productRepository.findValidationKeysByTaskNumberOptimized(
-                DataSourceType.TASK.name(), taskNumber);
+        try {
+            Set<String> validationKeys = productRepository.findValidationKeysByTaskNumberOptimized(
+                    DataSourceType.TASK.name(), taskNumber);
 
-        log.info("Загружено {} ключей валидации одним запросом за {} мс",
-                validationKeys.size(), System.currentTimeMillis() - startTime);
+            if (validationKeys == null) {
+                log.warn("Repository вернул null вместо пустого набора для задания {}", taskNumber);
+                validationKeys = new HashSet<>();
+            }
 
-        // Кэшируем результат
-        taskValidationCache.put(taskNumber, validationKeys);
+            log.info("Загружено {} ключей валидации одним запросом за {} мс",
+                    validationKeys.size(), System.currentTimeMillis() - startTime);
 
-        return validationKeys;
+            // Кэшируем только непустой результат
+            if (!validationKeys.isEmpty()) {
+                taskValidationCache.put(taskNumber, validationKeys);
+            }
+
+            return validationKeys;
+        } catch (Exception e) {
+            log.error("Ошибка при выполнении loadKeysInSingleQuery для задания {}: {}",
+                    taskNumber, e.getMessage(), e);
+            return new HashSet<>();
+        }
     }
 
     /**
@@ -109,52 +121,70 @@ public class TaskValidationService {
     private Set<String> loadKeysInBatches(String taskNumber, long totalRecords) {
         long startTime = System.currentTimeMillis();
 
-        // Рассчитываем количество батчей
-        int totalBatches = (int) Math.ceil((double) totalRecords / BATCH_SIZE);
-        log.info("Задание будет загружено {} батчами по {} записей", totalBatches, BATCH_SIZE);
-
-        // Создаем потокобезопасный набор для результатов
-        Set<String> validationKeys = ConcurrentHashMap.newKeySet(Math.toIntExact(totalRecords));
-
-        // Параллельная загрузка батчами
-        ExecutorService executor = Executors.newFixedThreadPool(MAX_THREADS);
-
         try {
-            for (int batch = 0; batch < totalBatches; batch++) {
-                final int currentBatch = batch;
+            // Рассчитываем количество батчей
+            int totalBatches = (int) Math.ceil((double) totalRecords / BATCH_SIZE);
+            log.info("Задание будет загружено {} батчами по {} записей", totalBatches, BATCH_SIZE);
 
-                executor.submit(() -> {
-                    int offset = currentBatch * BATCH_SIZE;
-                    log.debug("Загрузка батча {}/{} (смещение: {})", currentBatch + 1, totalBatches, offset);
+            // Создаем потокобезопасный набор для результатов
+            Set<String> validationKeys = ConcurrentHashMap.newKeySet(Math.toIntExact(totalRecords));
 
-                    Set<String> batchKeys = productRepository.findValidationKeysByTaskNumberPaginated(
-                            DataSourceType.TASK.name(), taskNumber, BATCH_SIZE, offset);
+            // Параллельная загрузка батчами
+            ExecutorService executor = Executors.newFixedThreadPool(MAX_THREADS);
 
-                    validationKeys.addAll(batchKeys);
-                    log.debug("Батч {}/{} загружен, добавлено {} ключей, всего: {}",
-                            currentBatch + 1, totalBatches, batchKeys.size(), validationKeys.size());
-                });
-            }
+            try {
+                for (int batch = 0; batch < totalBatches; batch++) {
+                    final int currentBatch = batch;
 
-            // Корректно завершаем ExecutorService и ждем выполнения всех задач
-            executor.shutdown();
-            if (!executor.awaitTermination(30, TimeUnit.MINUTES)) {
-                log.warn("Превышено время ожидания загрузки ключей валидации. Принудительное завершение.");
+                    executor.submit(() -> {
+                        int offset = currentBatch * BATCH_SIZE;
+                        log.debug("Загрузка батча {}/{} (смещение: {})", currentBatch + 1, totalBatches, offset);
+
+                        try {
+                            Set<String> batchKeys = productRepository.findValidationKeysByTaskNumberPaginated(
+                                    DataSourceType.TASK.name(), taskNumber, BATCH_SIZE, offset);
+
+                            if (batchKeys != null) {
+                                validationKeys.addAll(batchKeys);
+                                log.debug("Батч {}/{} загружен, добавлено {} ключей, всего: {}",
+                                        currentBatch + 1, totalBatches, batchKeys.size(), validationKeys.size());
+                            } else {
+                                log.warn("Batch {}/{} вернул null вместо пустого набора",
+                                        currentBatch + 1, totalBatches);
+                            }
+                        } catch (Exception e) {
+                            log.error("Ошибка при загрузке батча {}/{} для задания {}: {}",
+                                    currentBatch + 1, totalBatches, taskNumber, e.getMessage(), e);
+                        }
+                    });
+                }
+
+                // Корректно завершаем ExecutorService и ждем выполнения всех задач
+                executor.shutdown();
+                if (!executor.awaitTermination(30, TimeUnit.MINUTES)) {
+                    log.warn("Превышено время ожидания загрузки ключей валидации. Принудительное завершение.");
+                    executor.shutdownNow();
+                }
+
+                log.info("Загружено {} ключей валидации батчами за {} мс",
+                        validationKeys.size(), System.currentTimeMillis() - startTime);
+
+                // Кэшируем только непустой результат
+                if (!validationKeys.isEmpty()) {
+                    taskValidationCache.put(taskNumber, validationKeys);
+                }
+
+                return validationKeys;
+
+            } catch (Exception e) {
+                log.error("Ошибка при батчевой загрузке ключей валидации: {}", e.getMessage(), e);
                 executor.shutdownNow();
+                return validationKeys; // Возвращаем то, что успели загрузить
             }
-
-            log.info("Загружено {} ключей валидации батчами за {} мс",
-                    validationKeys.size(), System.currentTimeMillis() - startTime);
-
-            // Кэшируем результат
-            taskValidationCache.put(taskNumber, validationKeys);
-
-            return validationKeys;
-
         } catch (Exception e) {
-            log.error("Ошибка при батчевой загрузке ключей валидации: {}", e.getMessage(), e);
-            executor.shutdownNow();
-            throw new IllegalStateException("Ошибка при батчевой загрузке ключей валидации", e);
+            log.error("Критическая ошибка в loadKeysInBatches для задания {}: {}",
+                    taskNumber, e.getMessage(), e);
+            return new HashSet<>();
         }
     }
 

@@ -18,7 +18,7 @@ public class RegionData {
     @FieldDescription(value = "пропустить", skipMapping = true)
     private Long clientId;
 
-    @FieldDescription("Регион (город, область)")
+    @FieldDescription("Город")
     private String region;
 
     @FieldDescription("Адрес")

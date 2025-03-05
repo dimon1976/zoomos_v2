@@ -10,8 +10,10 @@ import by.zoomos_v2.model.operation.ExportOperation;
 import by.zoomos_v2.service.client.ClientService;
 import by.zoomos_v2.service.file.export.service.FileExportService;
 import by.zoomos_v2.service.file.export.service.ProcessingStrategyService;
+import by.zoomos_v2.service.file.export.strategy.DataProcessingStrategy;
 import by.zoomos_v2.service.file.export.strategy.ProcessingStrategyType;
 import by.zoomos_v2.service.file.export.strategy.StrategyManager;
+import by.zoomos_v2.service.file.export.strategy.StrategyParameterDescriptor;
 import by.zoomos_v2.service.file.metadata.FileMetadataService;
 import by.zoomos_v2.service.mapping.ExportFieldConfigService;
 import by.zoomos_v2.service.statistics.OperationStatsService;
@@ -223,14 +225,14 @@ public class ExportController {
     }
 
     /**
-     * Начало асинхронного экспорта
+     * Начало экспорта (поддерживает как одиночный, так и множественный выбор файлов)
      */
     @PostMapping("/client/{clientName}/export/start")
     @ResponseBody
     public Map<String, Object> startExport(@PathVariable String clientName,
                                            @RequestBody StartExportRequest request) {
-        log.debug("Запуск экспорта. FileId: {}, ConfigId: {}, FileType: {}",
-                request.getFileId(), request.getConfigId(), request.getFileType());
+        log.debug("Запуск экспорта. ConfigId: {}, FileType: {}",
+                request.getConfigId(), request.getFileType());
 
         try {
             // Получаем конфигурацию
@@ -241,18 +243,32 @@ public class ExportController {
                 config.setParams(request.getStrategyParams());
             }
 
-            // Запускаем экспорт
-//            ExportOperation operation = fileExportService.startExport(
-//                    request.getFileId(),
-//                    config,
-//                    request.getFileType()
-//            );
+            // Определяем, используется ли множественный или одиночный выбор файлов
+            ExportResult result;
 
-            return Map.of(
-//                    "operationId", operation.getId(),
-                    "status", "started"
-            );
+            if (request.getFileIds() != null && !request.getFileIds().isEmpty()) {
+                log.debug("Экспорт из нескольких файлов: {}", request.getFileIds());
+                result = fileExportService.exportFilesData(request.getFileIds(), config, request.getFileType());
+            } else if (request.getFileId() != null) {
+                log.debug("Экспорт из одного файла: {}", request.getFileId());
+                result = fileExportService.exportFileData(request.getFileId(), config, request.getFileType());
+            } else {
+                throw new IllegalArgumentException("Не указаны файлы для экспорта");
+            }
 
+            if (result.isSuccess()) {
+                return Map.of(
+                        "status", "success",
+                        "fileName", result.getFileName(),
+                        "recordsProcessed", result.getBatchProcessingData() != null ?
+                                result.getBatchProcessingData().getSuccessCount() : 0
+                );
+            } else {
+                return Map.of(
+                        "status", "error",
+                        "error", result.getErrorMessage()
+                );
+            }
         } catch (Exception e) {
             log.error("Ошибка при запуске экспорта: {}", e.getMessage(), e);
             return Map.of(
@@ -299,38 +315,73 @@ public class ExportController {
     @LogExecution("Скачивание экспортированного файла")
     public ResponseEntity<Resource> downloadExportedFile(
             @PathVariable String clientName,
-            @PathVariable Long fileId,
+            @RequestParam(required = false) Long fileId,
+            @RequestParam(required = false) String fileIds,
             @RequestParam Long configId,
             @RequestParam String fileType,
-            @RequestParam Map<String, String> strategyParams) {
+            @RequestParam Map<String, String> allParams) {
 
-        log.debug("Запрос на экспорт файла. FileId: {}, ConfigId: {}, FileType: {}",
-                fileId, configId, fileType);
+        log.debug("Запрос на экспорт и скачивание файла. ClientName: {}, ConfigId: {}, FileType: {}",
+                clientName, configId, fileType);
+
         try {
             ExportConfig exportConfig = exportFieldConfigService.getConfigById(configId);
+
+            // Извлекаем параметры стратегии из всех параметров запроса
+            // Исключаем системные параметры
+            Map<String, String> strategyParams = new HashMap<>();
+            for (Map.Entry<String, String> entry : allParams.entrySet()) {
+                String key = entry.getKey();
+                if (!key.equals("fileId") && !key.equals("fileIds") &&
+                        !key.equals("configId") && !key.equals("fileType")) {
+                    strategyParams.put(key, entry.getValue());
+                }
+            }
+
+            log.debug("Параметры стратегии: {}", strategyParams);
             exportConfig.setParams(strategyParams);
 
-            ExportResult exportResult = fileExportService.exportFileData(fileId, exportConfig, fileType);
+            ExportResult exportResult;
+
+            // Проверяем, используется ли множественный или одиночный выбор файлов
+            if (fileIds != null && !fileIds.isEmpty()) {
+                List<Long> fileIdList = Arrays.stream(fileIds.split(","))
+                        .map(Long::parseLong)
+                        .collect(Collectors.toList());
+
+                log.debug("Экспорт из нескольких файлов: {}", fileIdList);
+                exportResult = fileExportService.exportFilesData(fileIdList, exportConfig, fileType);
+            } else if (fileId != null) {
+                log.debug("Экспорт из одного файла: {}", fileId);
+                exportResult = fileExportService.exportFileData(fileId, exportConfig, fileType);
+            } else {
+                return ResponseEntity.badRequest().build();
+            }
 
             if (!exportResult.isSuccess()) {
                 log.error("Ошибка при экспорте файла: {}", exportResult.getErrorMessage());
                 return ResponseEntity.badRequest().build();
             }
 
-            if (!fileType.equalsIgnoreCase("csv")) {
-                return ResponseEntity.badRequest().body(null);
-            }
-
-            // 🔹 Кодируем имя файла для корректного отображения в браузере
+            // Кодируем имя файла для корректного отображения в браузере
             String filename = exportResult.getFileName();
             String encodedFilename = new String(filename.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
 
-            // 🔹 Устанавливаем HTTP-заголовки
+            // Устанавливаем HTTP-заголовки
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType("text/csv; charset=windows-1251")); // Можно убрать, если не нужно
+
+            // Выбираем MIME-тип в зависимости от формата файла
+            if ("CSV".equalsIgnoreCase(fileType)) {
+                headers.setContentType(MediaType.parseMediaType("text/csv; charset=windows-1251"));
+            } else if ("XLSX".equalsIgnoreCase(fileType)) {
+                headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            } else {
+                headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            }
+
             headers.setContentDispositionFormData("attachment", encodedFilename);
 
-            // 🔹 Просто передаём файл (он уже закодирован в CP1251)
+            // Создаем ресурс для скачивания
             ByteArrayResource resource = new ByteArrayResource(exportResult.getFileContent());
 
             return ResponseEntity.ok()
@@ -339,7 +390,7 @@ public class ExportController {
                     .body(resource);
 
         } catch (Exception e) {
-            log.error("Ошибка при экспорте файла: {}", e.getMessage(), e);
+            log.error("Ошибка при экспорте и скачивании файла: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }
@@ -366,20 +417,35 @@ public class ExportController {
         try {
             ExportConfig config = exportFieldConfigService.getConfigById(configId);
 
-            // Добавляем проверку
+            // Проверка типа стратегии
             ProcessingStrategyType strategyType = config.getStrategyType();
             if (strategyType == null) {
                 log.warn("Тип стратегии не задан для конфигурации {}", configId);
                 return Map.of("error", "Тип стратегии не задан");
             }
 
-            Set<String> requiredParams = strategyManager.getRequiredParameters(strategyType);
-            log.debug("Получены параметры стратегии: {}", requiredParams);
+            // Получаем список обязательных и опциональных параметров
+            DataProcessingStrategy strategy = strategyManager.getStrategy(strategyType);
+            List<StrategyParameterDescriptor> allParams = strategy.getParameterDescriptors();
+            Set<String> requiredParams = strategy.getRequiredParameters();
 
-            return Map.of(
-                    "requiredParameters", requiredParams,
-                    "currentValues", config.getParams() != null ? config.getParams() : Collections.emptyMap()
-            );
+            // Получаем текущие значения параметров
+            Map<String, String> currentValues = config.getParams() != null ?
+                    config.getParams() : new HashMap<>();
+
+            // Формируем структуру для возврата клиенту
+            Map<String, Object> result = new HashMap<>();
+            result.put("requiredParameters", requiredParams);
+            result.put("allParameters", allParams);
+            result.put("currentValues", currentValues);
+
+            // Определяем, есть ли параметр maxDate
+            boolean hasDateParam = allParams.stream()
+                    .anyMatch(p -> "maxDate".equals(p.getKey()));
+            result.put("hasDateParam", hasDateParam);
+
+            log.debug("Параметры стратегии собраны: {}", result);
+            return result;
         } catch (Exception e) {
             log.error("Ошибка при получении параметров стратегии: {}", e.getMessage(), e);
             return Map.of("error", e.getMessage());
