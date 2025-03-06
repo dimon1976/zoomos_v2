@@ -739,10 +739,7 @@
 
     // Запуск экспорта
     function startExport() {
-        const configSelect = document.getElementById('configSelect');
-        if (!configSelect) return;
-
-        const configId = configSelect.value;
+        const configId = document.getElementById('configSelect').value;
         if (!configId) {
             showError('Выберите конфигурацию экспорта');
             return;
@@ -759,11 +756,7 @@
 
         const fileIds = Array.from(selectedFiles).map(checkbox =>
             parseInt(checkbox.getAttribute('data-id')));
-
-        const fileTypeSelect = document.getElementById('fileTypeSelect');
-        if (!fileTypeSelect) return;
-
-        const fileType = fileTypeSelect.value;
+        const fileType = document.getElementById('fileTypeSelect').value;
 
         // Собираем параметры стратегии
         const strategyParams = {};
@@ -774,9 +767,9 @@
         });
 
         // Добавляем параметр maxDate, если он заполнен
-        const maxDateElement = document.getElementById('maxDate');
-        if (maxDateElement && maxDateElement.value) {
-            strategyParams.maxDate = maxDateElement.value;
+        const maxDateValue = document.getElementById('maxDate').value;
+        if (maxDateValue) {
+            strategyParams.maxDate = maxDateValue;
         }
 
         // Проверяем обязательные параметры
@@ -812,7 +805,8 @@
         fetch(`/client/${clientName}/export/start`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 fileIds: fileIds,
@@ -833,13 +827,13 @@
                 if (data.status === 'success') {
                     console.log('Экспорт успешно выполнен:', data);
 
-                    // Генерируем URL для скачивания с использованием более безопасного способа
+                    // Генерируем URL для скачивания
                     const params = new URLSearchParams();
                     params.append('fileIds', fileIds.join(','));
                     params.append('configId', configId);
                     params.append('fileType', fileType);
 
-                    // Добавляем параметры стратегии безопасным способом
+                    // Добавляем параметры стратегии
                     Object.entries(strategyParams).forEach(([key, value]) => {
                         params.append(key, value);
                     });

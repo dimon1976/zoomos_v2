@@ -243,18 +243,22 @@ public class ExportController {
                 config.setParams(request.getStrategyParams());
             }
 
-            // Определяем, используется ли множественный или одиночный выбор файлов
-            ExportResult result;
+            // Определяем файлы для экспорта
+            List<Long> fileIdsToExport = new ArrayList<>();
 
             if (request.getFileIds() != null && !request.getFileIds().isEmpty()) {
                 log.debug("Экспорт из нескольких файлов: {}", request.getFileIds());
-                result = fileExportService.exportFilesData(request.getFileIds(), config, request.getFileType());
+                fileIdsToExport.addAll(request.getFileIds());
             } else if (request.getFileId() != null) {
                 log.debug("Экспорт из одного файла: {}", request.getFileId());
-                result = fileExportService.exportFileData(request.getFileId(), config, request.getFileType());
+                fileIdsToExport.add(request.getFileId());
             } else {
                 throw new IllegalArgumentException("Не указаны файлы для экспорта");
             }
+
+            // Всегда используем экспорт нескольких файлов, даже для одного файла
+            // Это гарантирует создание только одной операции экспорта
+            ExportResult result = fileExportService.exportFilesData(fileIdsToExport, config, request.getFileType());
 
             if (result.isSuccess()) {
                 return Map.of(
@@ -311,18 +315,17 @@ public class ExportController {
     /**
      * Скачивание экспортированного файла
      */
-    @GetMapping("/client/{clientName}/export/download/{fileId}")
+    @GetMapping("/client/{clientName}/export/download")
     @LogExecution("Скачивание экспортированного файла")
     public ResponseEntity<Resource> downloadExportedFile(
             @PathVariable String clientName,
-            @RequestParam(required = false) Long fileId,
             @RequestParam(required = false) String fileIds,
             @RequestParam Long configId,
             @RequestParam String fileType,
             @RequestParam Map<String, String> allParams) {
 
-        log.debug("Запрос на экспорт и скачивание файла. ClientName: {}, ConfigId: {}, FileType: {}",
-                clientName, configId, fileType);
+        log.debug("Запрос на экспорт и скачивание файла. ClientName: {}, ConfigId: {}, FileType: {}, FileIds: {}",
+                clientName, configId, fileType, fileIds);
 
         try {
             ExportConfig exportConfig = exportFieldConfigService.getConfigById(configId);
@@ -332,8 +335,7 @@ public class ExportController {
             Map<String, String> strategyParams = new HashMap<>();
             for (Map.Entry<String, String> entry : allParams.entrySet()) {
                 String key = entry.getKey();
-                if (!key.equals("fileId") && !key.equals("fileIds") &&
-                        !key.equals("configId") && !key.equals("fileType")) {
+                if (!key.equals("fileIds") && !key.equals("configId") && !key.equals("fileType")) {
                     strategyParams.put(key, entry.getValue());
                 }
             }
@@ -341,22 +343,19 @@ public class ExportController {
             log.debug("Параметры стратегии: {}", strategyParams);
             exportConfig.setParams(strategyParams);
 
-            ExportResult exportResult;
-
-            // Проверяем, используется ли множественный или одиночный выбор файлов
+            // Преобразуем список ID файлов из строки в список Long
+            List<Long> fileIdList;
             if (fileIds != null && !fileIds.isEmpty()) {
-                List<Long> fileIdList = Arrays.stream(fileIds.split(","))
+                fileIdList = Arrays.stream(fileIds.split(","))
                         .map(Long::parseLong)
                         .collect(Collectors.toList());
-
-                log.debug("Экспорт из нескольких файлов: {}", fileIdList);
-                exportResult = fileExportService.exportFilesData(fileIdList, exportConfig, fileType);
-            } else if (fileId != null) {
-                log.debug("Экспорт из одного файла: {}", fileId);
-                exportResult = fileExportService.exportFileData(fileId, exportConfig, fileType);
             } else {
                 return ResponseEntity.badRequest().build();
             }
+
+            log.debug("Экспорт из файлов: {}", fileIdList);
+            // Используем exportFilesData для создания одной операции
+            ExportResult exportResult = fileExportService.exportFilesData(fileIdList, exportConfig, fileType);
 
             if (!exportResult.isSuccess()) {
                 log.error("Ошибка при экспорте файла: {}", exportResult.getErrorMessage());
