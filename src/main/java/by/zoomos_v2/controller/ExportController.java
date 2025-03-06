@@ -20,11 +20,13 @@ import by.zoomos_v2.service.statistics.OperationStatsService;
 import by.zoomos_v2.util.EntityField;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -32,6 +34,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -317,12 +320,13 @@ public class ExportController {
      */
     @GetMapping("/client/{clientName}/export/download")
     @LogExecution("Скачивание экспортированного файла")
-    public ResponseEntity<Resource> downloadExportedFile(
-            @PathVariable String clientName,
-            @RequestParam(required = false) String fileIds,
-            @RequestParam Long configId,
-            @RequestParam String fileType,
-            @RequestParam Map<String, String> allParams) {
+    public void downloadExportedFile(  // Меняем тип на void для прямой записи в OutputStream
+                                       @PathVariable String clientName,
+                                       @RequestParam(required = false) String fileIds,
+                                       @RequestParam Long configId,
+                                       @RequestParam String fileType,
+                                       @RequestParam Map<String, String> allParams,
+                                       HttpServletResponse response) {  // Добавляем HttpServletResponse
 
         log.debug("Запрос на экспорт и скачивание файла. ClientName: {}, ConfigId: {}, FileType: {}, FileIds: {}",
                 clientName, configId, fileType, fileIds);
@@ -350,7 +354,8 @@ public class ExportController {
                         .map(Long::parseLong)
                         .collect(Collectors.toList());
             } else {
-                return ResponseEntity.badRequest().build();
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                return;
             }
 
             log.debug("Экспорт из файлов: {}", fileIdList);
@@ -359,38 +364,40 @@ public class ExportController {
 
             if (!exportResult.isSuccess()) {
                 log.error("Ошибка при экспорте файла: {}", exportResult.getErrorMessage());
-                return ResponseEntity.badRequest().build();
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                return;
             }
 
             // Кодируем имя файла для корректного отображения в браузере
             String filename = exportResult.getFileName();
-            String encodedFilename = new String(filename.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
-
-            // Устанавливаем HTTP-заголовки
-            HttpHeaders headers = new HttpHeaders();
 
             // Выбираем MIME-тип в зависимости от формата файла
+            String contentType;
             if ("CSV".equalsIgnoreCase(fileType)) {
-                headers.setContentType(MediaType.parseMediaType("text/csv; charset=windows-1251"));
+                contentType = "text/csv; charset=windows-1251";
             } else if ("XLSX".equalsIgnoreCase(fileType)) {
-                headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             } else {
-                headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+                contentType = "application/octet-stream";
             }
 
-            headers.setContentDispositionFormData("attachment", encodedFilename);
+            // Настраиваем ответ
+            response.setContentType(contentType);
+            response.setContentLength(exportResult.getFileContent().length);
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
 
-            // Создаем ресурс для скачивания
-            ByteArrayResource resource = new ByteArrayResource(exportResult.getFileContent());
+            // Записываем байты прямо в output stream ответа
+            try (OutputStream outputStream = response.getOutputStream()) {
+                outputStream.write(exportResult.getFileContent());
+                outputStream.flush();
+            }
 
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .contentLength(exportResult.getFileContent().length)
-                    .body(resource);
+            log.info("Файл успешно отправлен пользователю: {}, размер: {} байт",
+                    filename, exportResult.getFileContent().length);
 
         } catch (Exception e) {
             log.error("Ошибка при экспорте и скачивании файла: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 
