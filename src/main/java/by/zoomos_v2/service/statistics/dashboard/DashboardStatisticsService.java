@@ -198,9 +198,20 @@ public class DashboardStatisticsService {
     }
 
     private double calculateOperationSuccessRate(BaseOperation operation) {
-        if (operation.getTotalRecords() == null || operation.getTotalRecords() == 0) {
+        // Проверяем на null значения
+        if (operation.getTotalRecords() == null || operation.getProcessedRecords() == null) {
+            return 0.0; // Возвращаем 0, если нет информации
+        }
+
+        int totalRecords = operation.getTotalRecords();
+        int processedRecords = operation.getProcessedRecords();
+
+        // Избегаем деления на ноль
+        if (totalRecords == 0) {
             return 0.0;
         }
-        return (operation.getProcessedRecords() * 100.0) / operation.getTotalRecords();
+
+        // Рассчитываем процент успешности
+        return (double) processedRecords / totalRecords * 100.0;
     }
 }

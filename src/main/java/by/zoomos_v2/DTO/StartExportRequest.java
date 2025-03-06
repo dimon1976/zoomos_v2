@@ -7,9 +7,28 @@ import java.util.Map;
 
 @Data
 public class StartExportRequest {
-    private Long fileId;
-    private List<Long> fileIds;
+    /**
+     * ID конфигурации экспорта
+     */
     private Long configId;
+
+    /**
+     * ID одного файла для экспорта (используется при одиночном экспорте)
+     */
+    private Long fileId;
+
+    /**
+     * Список ID файлов для экспорта (используется при множественном экспорте)
+     */
+    private List<Long> fileIds;
+
+    /**
+     * Тип файла экспорта (CSV, XLSX)
+     */
     private String fileType;
+
+    /**
+     * Параметры стратегии обработки данных
+     */
     private Map<String, String> strategyParams;
 }

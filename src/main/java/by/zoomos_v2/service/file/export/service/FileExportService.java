@@ -9,6 +9,7 @@ import by.zoomos_v2.model.entity.Product;
 import by.zoomos_v2.model.entity.RegionData;
 import by.zoomos_v2.model.enums.OperationStatus;
 import by.zoomos_v2.model.enums.OperationType;
+import by.zoomos_v2.model.operation.BaseOperation;
 import by.zoomos_v2.model.operation.ExportOperation;
 import by.zoomos_v2.repository.FileMetadataRepository;
 import by.zoomos_v2.repository.ProductRepository;
@@ -116,56 +117,144 @@ public class FileExportService {
 
             // Получаем метаданные первого файла для инициализации операции
             FileMetadata firstMetadata = getFileMetadata(fileIds.get(0));
+
+            // Создаем единую операцию экспорта для всех файлов
             operation = initializeMultiFileOperation(fileIds, firstMetadata, fileType, exportConfig);
 
             // Получаем стратегию и проверяем параметры
             DataProcessingStrategy strategy = strategyManager.getStrategy(exportConfig.getStrategyType());
             strategyManager.validateStrategyParameters(exportConfig.getStrategyType(), exportConfig.getParams());
 
-            // Обрабатываем данные батчами для экономии памяти
+            // Обрабатываем данные в оптимизированном режиме - объединяем все данные из файлов
             List<Map<String, Object>> allData = new ArrayList<>();
             int totalRecords = 0;
+            int processedFiles = 0;
+
+            // Добавляем информацию о общем количестве файлов в метаданные
+            Map<String, Object> progressInfo = new HashMap<>();
+            progressInfo.put("totalFiles", fileIds.size());
+            operation.getMetadata().put("progressInfo", progressInfo);
+            statisticsProcessor.updateOperationStats(operation);
 
             for (Long fileId : fileIds) {
                 FileMetadata metadata = getFileMetadata(fileId);
+                processedFiles++;
 
                 // Обновляем метрики прогресса
-                updateOperationProgress(operation, fileIds.indexOf(fileId), fileIds.size());
+                int progressPercentage = (int) ((processedFiles * 100.0) / fileIds.size());
+                String progressMessage = String.format("Обработка файла %d из %d - %s",
+                        processedFiles, fileIds.size(), metadata.getOriginalFilename());
 
-                // Получаем и добавляем данные из текущего файла
+                // Обновляем прогресс и метаданные
+                operation.setCurrentProgress(progressPercentage);
+                progressInfo.put("currentFile", metadata.getOriginalFilename());
+                progressInfo.put("processedFiles", processedFiles);
+                progressInfo.put("message", progressMessage);
+
+                // Обновляем прогресс операции
+                statisticsProcessor.handleProgress(operation, progressPercentage, progressMessage);
+
+                // Получаем данные из текущего файла
                 List<Map<String, Object>> fileData = getDataFromFile(metadata);
                 allData.addAll(fileData);
                 totalRecords += fileData.size();
 
                 // Обновляем статистику операции
                 operation.setTotalRecords(totalRecords);
+                operation.setProcessedRecords(processedFiles); // Обновляем количество обработанных файлов
                 statisticsProcessor.updateOperationStats(operation);
             }
 
             // Обрабатываем все собранные данные с помощью стратегии
+            progressInfo.put("processingStatus", "Применение стратегии обработки данных");
+            statisticsProcessor.updateOperationStats(operation);
+
             BatchProcessingData batchData = BatchProcessingData.createNew();
             List<Map<String, Object>> processedData = strategy.processData(allData, exportConfig, batchData);
 
+            // Устанавливаем количество обработанных записей
+            if (batchData != null && batchData.getSuccessCount() > 0) {
+                operation.setProcessedRecords((int) batchData.getSuccessCount());
+            } else {
+                operation.setProcessedRecords(processedData.size());
+            }
+
+            // Устанавливаем общее количество записей
+            operation.setTotalRecords(Math.max(totalRecords, processedData.size()));
+
             // Экспортируем обработанные данные
+            progressInfo.put("processingStatus", "Формирование файла экспорта");
+            statisticsProcessor.updateOperationStats(operation);
+
             ExportResult result = createExportResult(processedData, firstMetadata, getExporter(fileType),
                     exportConfig, fileType);
 
             // Формируем имя выходного файла с учетом нескольких источников
             result.setFileName(generateMultiFileExportName(fileIds, fileType));
 
-            // Обновляем статистику
+            // Обновляем статистику завершенной операции
             if (operation != null) {
                 operation.setFilesGenerated(1);
-                operation.setProcessedRecords(processedData.size());
                 operation.setTargetPath(result.getFileName());
-                statisticsProcessor.updateOperationStats(operation);
+
+                // Устанавливаем final_status в метаданные для анализа
+                operation.getMetadata().put("final_status", "success");
+                operation.getMetadata().put("processed_records", operation.getProcessedRecords());
+                operation.getMetadata().put("total_records", operation.getTotalRecords());
+
+                // Помечаем операцию как успешно завершенную
+                operationStatsService.updateOperationStatus(
+                        operation,
+                        OperationStatus.COMPLETED,
+                        null,
+                        null
+                );
             }
+
+            // Добавляем статистику обработки в результат
+            result.setBatchProcessingData(batchData);
 
             return result;
 
         } catch (Exception e) {
             handleExportError(operation, e);
             return ExportResult.error(e.getMessage());
+        }
+    }
+
+    /**
+     * Инициализирует базовые поля операции, чтобы избежать NullPointerException
+     * @param operation операция для инициализации
+     */
+    private void initializeBaseOperationFields(BaseOperation operation) {
+        // Инициализация базовых полей для предотвращения NullPointerException
+        if (operation.getProcessedRecords() == null) {
+            operation.setProcessedRecords(0);
+        }
+
+        if (operation.getTotalRecords() == null) {
+            operation.setTotalRecords(0);
+        }
+
+        if (operation.getFailedRecords() == null) {
+            operation.setFailedRecords(0);
+        }
+
+        if (operation.getCurrentProgress() == null) {
+            operation.setCurrentProgress(0);
+        }
+
+        if (operation.getMetadata() == null) {
+            operation.setMetadata(new HashMap<>());
+        }
+
+        // Для ExportOperation
+        if (operation instanceof ExportOperation) {
+            ExportOperation exportOp = (ExportOperation) operation;
+
+            if (exportOp.getFilesGenerated() == null) {
+                exportOp.setFilesGenerated(0);
+            }
         }
     }
 
@@ -224,6 +313,9 @@ public class FileExportService {
         operation.setProcessingStrategy(exportConfig.getStrategyType().name());
         operation.setExportConfig(convertExportConfigToMap(exportConfig));
 
+        // Инициализируем все необходимые поля
+        initializeBaseOperationFields(operation);
+
         // Добавляем метаданные о многофайловом экспорте
         Map<String, Object> multiFileMetadata = new HashMap<>();
         multiFileMetadata.put("fileCount", fileIds.size());
@@ -244,6 +336,9 @@ public class FileExportService {
         operation.setSourceIdentifier(metadata.getStoredFilename());
         operation.setProcessingStrategy(exportConfig.getStrategyType().name());
         operation.setExportConfig(convertExportConfigToMap(exportConfig));
+
+        // Инициализируем все необходимые поля
+        initializeBaseOperationFields(operation);
 
         return operationStatsService.createOperation(operation);
     }
